@@ -1,0 +1,3 @@
+# Cloudflare Pages SPA fallback — client-side routed app,
+# so any unmatched path serves index.html and lets React handle routing.
+/*    /index.html   200

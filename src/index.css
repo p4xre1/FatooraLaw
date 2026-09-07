@@ -1,0 +1,229 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@500;600;700;800&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-display: 'Sora', 'Inter', system-ui, sans-serif;
+
+  /* Ink / surfaces (light content area) */
+  --color-ink: #0b1220;
+  --color-canvas: #f4f6f9;
+  --color-surface: #ffffff;
+  --color-line: #e5e8ee;
+  --color-line-strong: #d3d8e2;
+  --color-muted: #64748b;
+  --color-faint: #94a3b8;
+
+  /* Brand */
+  --color-brand: #2563eb;
+  --color-brand-50: #eef3ff;
+  --color-brand-100: #dbe6ff;
+  --color-brand-700: #1d4ed8;
+  --color-navy: #0f172a;
+
+  --color-emerald-brand: #10b981;
+  --color-emerald-50: #e7f9f1;
+  --color-emerald-700: #047857;
+
+  /* Sidebar (dark) */
+  --color-sidebar: #0f172a;
+  --color-sidebar-hover: #1e293b;
+  --color-sidebar-active: #2563eb;
+  --color-sidebar-ink: #cbd5e1;
+  --color-sidebar-faint: #64748b;
+
+  /* Status */
+  --color-good: #10b981;
+  --color-good-50: #e7f9f1;
+  --color-warn: #d97706;
+  --color-warn-50: #fdf3e7;
+  --color-serious: #dc2626;
+  --color-serious-50: #fdeaea;
+  --color-info-50: #eef3ff;
+
+  /* Chart categorical (validated) */
+  --chart-1: #2563eb;
+  --chart-2: #10b981;
+  --chart-3: #f59e0b;
+  --chart-4: #8b5cf6;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+*:hover {
+  scrollbar-color: #cbd5e1 transparent;
+}
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+*::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 9px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*:hover::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  background-clip: content-box;
+}
+/* Dark scrollbar inside sidebar */
+.dark-scroll:hover::-webkit-scrollbar-thumb {
+  background: #334155;
+  background-clip: content-box;
+}
+
+::selection {
+  background: var(--color-brand);
+  color: #fff;
+}
+
+@keyframes mz-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes mz-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes mz-slide {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.mz-view {
+  animation: mz-slide 0.22s ease-out;
+}
+
+/* ---- Landing (dark marketing) ---- */
+.font-display {
+  font-family: var(--font-display);
+}
+@keyframes mz-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+.mz-float {
+  animation: mz-float 6s ease-in-out infinite;
+}
+@keyframes mz-glow {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.9; }
+}
+.mz-glow {
+  animation: mz-glow 4s ease-in-out infinite;
+}
+@keyframes mz-rise {
+  from { opacity: 0; transform: translateY(22px); }
+  to { opacity: 1; transform: none; }
+}
+.mz-rise {
+  animation: mz-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+/* Landing theme tokens (scoped — never touches the ERP light theme) */
+.landing-root {
+  --l-bg-solid: #0b0f19;
+  --l-header: rgba(11, 15, 25, 0.7);
+  --l-panel: #0e1322;
+  --l-panel-2: rgba(255, 255, 255, 0.03);
+  --l-surface: rgba(255, 255, 255, 0.02);
+  --l-border: rgba(148, 163, 184, 0.1);
+  --l-border-strong: rgba(148, 163, 184, 0.16);
+  --l-heading: #ffffff;
+  --l-text: #cbd5e1;
+  --l-muted: #94a3b8;
+  --l-faint: #64748b;
+  --l-chip: rgba(255, 255, 255, 0.05);
+  --l-accent-text: #c4b5fd;
+  color: var(--l-text);
+}
+.landing-root[data-theme='light'] {
+  --l-bg-solid: #f6f6fc;
+  --l-header: rgba(255, 255, 255, 0.78);
+  --l-panel: #ffffff;
+  --l-panel-2: #ffffff;
+  --l-surface: rgba(15, 23, 42, 0.02);
+  --l-border: rgba(15, 23, 42, 0.08);
+  --l-border-strong: rgba(15, 23, 42, 0.14);
+  --l-heading: #0f172a;
+  --l-text: #475569;
+  --l-muted: #64748b;
+  --l-faint: #94a3b8;
+  --l-chip: rgba(15, 23, 42, 0.04);
+  --l-accent-text: #7c3aed;
+}
+
+/* Aurora / mesh ground for the landing */
+.aurora {
+  background:
+    radial-gradient(60% 55% at 15% 0%, rgba(124, 58, 237, 0.28), transparent 60%),
+    radial-gradient(55% 50% at 90% 10%, rgba(147, 51, 234, 0.22), transparent 55%),
+    radial-gradient(70% 60% at 50% 100%, rgba(88, 28, 135, 0.18), transparent 60%),
+    var(--l-bg-solid);
+}
+.landing-root[data-theme='light'] .aurora {
+  background:
+    radial-gradient(60% 55% at 15% 0%, rgba(124, 58, 237, 0.14), transparent 60%),
+    radial-gradient(55% 50% at 90% 10%, rgba(147, 51, 234, 0.1), transparent 55%),
+    radial-gradient(70% 60% at 50% 100%, rgba(168, 85, 247, 0.08), transparent 60%),
+    var(--l-bg-solid);
+}
+.grid-veil {
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+  background-size: 46px 46px;
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 40%, transparent 75%);
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 40%, transparent 75%);
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+}

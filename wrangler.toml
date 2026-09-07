@@ -1,0 +1,22 @@
+name = "fatoora-web-app"
+compatibility_date = "2024-09-01"
+pages_build_output_dir = "dist"
+
+# Cloudflare Pages project settings
+# Build command:  pnpm build   (or: npm run build)
+# Build output:   dist
+#
+# Deploy with:
+#   npx wrangler pages deploy dist --project-name=fatoora-web-app
+#
+# Or connect this repo directly in the Cloudflare dashboard:
+#   Workers & Pages → Create → Pages → Connect to Git
+#   Framework preset: Vite
+#   Build command:    pnpm install && pnpm build
+#   Build output dir: dist
+
+[env.production]
+vars = { NODE_ENV = "production" }
+
+[env.preview]
+vars = { NODE_ENV = "preview" }

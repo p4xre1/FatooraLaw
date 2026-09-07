@@ -1,0 +1,20 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "chrome",
+      "request": "launch",
+      "name": "Launch dev server & debug",
+      "url": "http://localhost:8443",
+      "webRoot": "${workspaceFolder}",
+      "preLaunchTask": "dev"
+    },
+    {
+      "type": "chrome",
+      "request": "attach",
+      "name": "Attach to running dev server",
+      "port": 9222,
+      "webRoot": "${workspaceFolder}"
+    }
+  ]
+}
