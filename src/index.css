@@ -1,10 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@500;600;700;800&family=Cairo:wght@400;500;600;700;800&display=swap');
 @import 'tailwindcss';
 
 @theme {
   --font-sans: 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
   --font-display: 'Sora', 'Inter', system-ui, sans-serif;
+  --font-arabic: 'Cairo', 'Inter', system-ui, sans-serif;
 
   /* Ink / surfaces (light content area) */
   --color-ink: #0b1220;
@@ -71,6 +72,11 @@ body {
 .tnum {
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum';
+}
+
+/* Arabic text renders with Cairo; numbers stay Western-digit (Maghrebi convention). */
+[dir='rtl'] {
+  font-family: var(--font-arabic);
 }
 
 * {

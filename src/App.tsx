@@ -1,12 +1,13 @@
 import { Suspense, lazy, useMemo, useState } from "react"
-import { Loader2, ArrowRight, ArrowLeft, ShieldCheck, Lock } from "lucide-react"
-import type { ModuleKey, Role } from "./store/types"
+import { Loader2 } from "lucide-react"
+import type { ModuleKey } from "./store/types"
 import { useMizan } from "./store/useMizan"
-import { NAV, Logo } from "./components/nav"
-import { roleLabels } from "./lib/mizan"
+import { useSupabaseAuth } from "./hooks/useSupabaseAuth"
+import { supabase } from "./lib/supabase"
+import { NAV } from "./components/nav"
 import Sidebar from "./components/Sidebar"
 import Topbar from "./components/Topbar"
-import { Btn, Field, Input, Select } from "./components/kit"
+import Auth from "./components/Auth"
 import Landing from "./marketing/Landing"
 
 const Dashboard = lazy(() => import("./modules/Dashboard"))
@@ -32,7 +33,8 @@ function Fallback() {
 }
 
 export default function App() {
-  const { auth, team, signIn, signOut } = useMizan()
+  const { auth, team, signOut } = useMizan()
+  const { recovery, clearRecovery } = useSupabaseAuth()
   const [active, setActive] = useState<ModuleKey>("dashboard")
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -46,9 +48,16 @@ export default function App() {
     return member ? member.permissions : all
   }, [auth, team])
 
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    signOut()
+  }
+
   if (!auth) {
+    // A password-reset link always takes priority, regardless of where the visitor was.
+    if (recovery) return <Auth initialView="reset" onBack={clearRecovery} onRecoveryDone={clearRecovery} />
     return showLogin
-      ? <Login onSignIn={signIn} onBack={() => setShowLogin(false)} />
+      ? <Auth onBack={() => setShowLogin(false)} />
       : <Landing onEnter={() => setShowLogin(true)} />
   }
 
@@ -72,7 +81,7 @@ export default function App() {
         setMobileOpen={setMobileOpen}
       />
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar title={title} onMenu={() => setMobileOpen(true)} onNavigate={go} onLogout={signOut} />
+        <Topbar title={title} onMenu={() => setMobileOpen(true)} onNavigate={go} onLogout={handleLogout} />
         <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:px-8">
           <Suspense fallback={<Fallback />}>
             {current === "dashboard" && <Dashboard onNavigate={go} />}
@@ -95,68 +104,3 @@ export default function App() {
   )
 }
 
-function Login({ onSignIn, onBack }: { onSignIn: (name: string, email: string, role?: Role) => void; onBack: () => void }) {
-  const [name, setName] = useState("Karim Benjelloun")
-  const [email, setEmail] = useState("karim@atlas.ma")
-  const [role, setRole] = useState<Role>("owner")
-
-  return (
-    <div className="grid min-h-screen lg:grid-cols-2">
-      {/* Brand panel */}
-      <div className="relative hidden flex-col justify-between overflow-hidden bg-navy p-12 text-white lg:flex">
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.07]"
-          style={{ backgroundImage: "linear-gradient(var(--color-brand) 1px, transparent 1px), linear-gradient(90deg, var(--color-brand) 1px, transparent 1px)", backgroundSize: "44px 44px" }}
-        />
-        <button onClick={onBack} className="relative text-left"><Logo light size={38} /></button>
-        <div className="relative max-w-md">
-          <h1 className="text-[34px] font-extrabold leading-[1.1] tracking-tight">La gestion d'entreprise, en équilibre.</h1>
-          <p className="mt-4 text-[15px] leading-relaxed text-slate-300">
-            Projets, trésorerie, achats, stock et conformité juridique — une plateforme unique pour les professionnels et PME au Maroc.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-2.5">
-            {["Loi 09-08 / CNDP", "Multi-rôles & audit", "Hors-ligne prêt"].map((t) => (
-              <span key={t} className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[12.5px] font-medium">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-brand" /> {t}
-              </span>
-            ))}
-          </div>
-        </div>
-        <p className="relative text-[12px] text-slate-400">© 2026 Mizan ERP · Casablanca, Maroc</p>
-      </div>
-
-      {/* Form panel */}
-      <div className="flex items-center justify-center bg-canvas p-6">
-        <div className="w-full max-w-sm" style={{ animation: "mz-slide .3s ease-out" }}>
-          <button onClick={onBack} className="mb-6 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-muted transition-colors hover:text-brand">
-            <ArrowLeft className="h-3.5 w-3.5" /> Retour au site
-          </button>
-          <div className="mb-8 lg:hidden"><Logo size={38} /></div>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1 text-[12px] font-semibold text-brand-700"><Lock className="h-3.5 w-3.5" /> Espace sécurisé</span>
-          <h2 className="mt-3 text-[24px] font-bold tracking-tight text-ink">Connexion</h2>
-          <p className="mt-1 text-[13.5px] text-muted">Accédez à votre tableau de bord.</p>
-
-          <form
-            className="mt-7 space-y-4"
-            onSubmit={(e) => { e.preventDefault(); if (name.trim() && email.trim()) onSignIn(name, email, role) }}
-          >
-            <Field label="Nom complet"><Input value={name} onChange={(e) => setName(e.target.value)} autoFocus /></Field>
-            <Field label="Email professionnel"><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
-            <Field label="Rôle (démonstration)" hint="Détermine les modules accessibles.">
-              <Select value={role} onChange={(e) => setRole(e.target.value as Role)}>
-                {(Object.keys(roleLabels) as Role[]).map((r) => <option key={r} value={r}>{roleLabels[r]}</option>)}
-              </Select>
-            </Field>
-            <Btn type="submit" className="w-full" disabled={!name.trim() || !email.trim()}>
-              Se connecter <ArrowRight className="h-4 w-4" />
-            </Btn>
-          </form>
-
-          <p className="mt-6 text-center text-[11.5px] leading-relaxed text-faint">
-            En continuant, vous acceptez le traitement de vos données conformément à la Loi 09-08 relative à la protection des données personnelles.
-          </p>
-        </div>
-      </div>
-    </div>
-  )
-}

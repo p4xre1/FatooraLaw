@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 import { useEffect } from "react"
-import { X } from "lucide-react"
+import { Check, X } from "lucide-react"
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
@@ -120,6 +120,30 @@ export function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: 
     >
       <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${checked ? "left-[18px]" : "left-0.5"}`} />
     </button>
+  )
+}
+
+export function Checkbox({
+  checked, onChange, children, id,
+}: { checked: boolean; onChange: (v: boolean) => void; children: ReactNode; id?: string }) {
+  return (
+    <label htmlFor={id} className="flex cursor-pointer items-start gap-2.5 select-none">
+      <span className="relative mt-0.5 shrink-0">
+        <input
+          id={id}
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          className="peer sr-only"
+        />
+        <span
+          className="grid h-[18px] w-[18px] place-items-center rounded-[5px] border border-line-strong bg-surface transition-colors peer-checked:border-brand peer-checked:bg-brand peer-focus-visible:ring-2 peer-focus-visible:ring-brand/30"
+        >
+          <Check className="h-3 w-3 text-white transition-opacity" style={{ opacity: checked ? 1 : 0 }} />
+        </span>
+      </span>
+      <span className="text-[12.5px] leading-relaxed text-muted">{children}</span>
+    </label>
   )
 }
 

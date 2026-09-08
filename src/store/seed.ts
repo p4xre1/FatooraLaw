@@ -25,6 +25,7 @@ export const seedSettings: Settings = {
   logo: null,
   headerNote: "Atlas Bâtiment & Services — Travaux tous corps d'état",
   footerNote: "Merci de votre confiance · Paiement à 30 jours · TVA 20%",
+  language: "ar", // <-- This fixes the TS2741 error
 }
 
 export const seedContacts: Contact[] = [

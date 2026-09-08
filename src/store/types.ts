@@ -105,6 +105,7 @@ export type Settings = {
   address: string
   city: string
   currency: "MAD" | "EUR" | "USD"
+  language: "en" | "ar"
   taxRate: number
   logo: string | null
   headerNote: string
