@@ -10,10 +10,23 @@ const queryClient = new QueryClient({
   },
 })
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+const app = (
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <App />
     </QueryClientProvider>
-  </React.StrictMode>,
+  </React.StrictMode>
 )
+
+const container = document.getElementById('root')!
+
+// Production builds prerender the signed-out landing page into this element
+// (see scripts/prerender.mjs) — hydrate over it instead of re-rendering from
+// scratch, so visitors and crawlers see instant content with no flash.
+// In dev (or if prerendering was skipped), the container starts empty and we
+// fall back to a normal client render.
+if (container.hasChildNodes()) {
+  ReactDOM.hydrateRoot(container, app)
+} else {
+  ReactDOM.createRoot(container).render(app)
+}

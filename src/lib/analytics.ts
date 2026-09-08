@@ -1,9 +1,10 @@
 import type { Contact, Expense, Project } from "../store/types"
 
 export const MONTHS = ["Jan", "Fév", "Mar", "Avr", "Mai", "Jun", "Jul", "Aoû", "Sep", "Oct", "Nov", "Déc"]
+export const MONTHS_AR = ["ينا", "فبر", "مار", "أبر", "ماي", "يون", "يول", "غشت", "شتن", "أكت", "نون", "دجن"]
 
 /** Deterministic monthly revenue/expense series seeded from real totals for stable charts. */
-export function monthlySeries(projects: Project[], expenses: Expense[], count = 8) {
+export function monthlySeries(projects: Project[], expenses: Expense[], count = 8, monthNames: string[] = MONTHS) {
   const now = new Date()
   const labels: string[] = []
   const revenue: number[] = []
@@ -16,7 +17,7 @@ export function monthlySeries(projects: Project[], expenses: Expense[], count = 
 
   for (let i = count - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    labels.push(MONTHS[d.getMonth()])
+    labels.push(monthNames[d.getMonth()])
     const wave = 1 + 0.35 * Math.sin((i / count) * Math.PI * 2) + (((i * 37) % 13) / 100)
     revenue.push(Math.round((baseR * wave) / 1000) * 1000)
     const ewave = 0.85 + 0.25 * Math.cos((i / count) * Math.PI * 2) + (((i * 19) % 11) / 100)

@@ -47,9 +47,9 @@ const T: Record<Lang, {
     f3: { tag: "Finances", title: "Suivi des Abonnements & Outils", desc: "Saisissez chaque outil, visualisez vos totaux et suivez la tendance de vos dépenses mensuelles.", add: "Ajouter un outil", cols: ["Outil", "Coût / mois", "Début", "Expiration"], tools: [["Adobe Creative Cloud", "299 MAD", "01/03/26", "01/03/27"], ["Microsoft 365", "129 MAD", "12/01/26", "12/01/27"], ["Sage Compta", "450 MAD", "05/06/26", "05/06/27"], ["Hébergement OVH", "89 MAD", "20/02/26", "20/02/27"]], blocks: [["Total / mois", "1 720"], ["Outils actifs", "14"], ["Expire < 30j", "3"]], trend: "Tendance mensuelle" },
     cal: { month: "Septembre 2026", renew: "Renouv.", pay: "Paiement", legal: "Échéance légale", days: ["L", "M", "M", "J", "V", "S", "D"], upcoming: "Dates cruciales à venir", events: [{ day: 8, type: "pay", label: "Paiement Adobe CC — 299 MAD" }, { day: 15, type: "renew", label: "Renouvellement Microsoft 365" }, { day: 23, type: "legal", label: "Déclaration TVA (DGI)" }, { day: 27, type: "renew", label: "Fin abonnement Sage Compta" }] },
     prev: { greet: "Bonjour, Karim 👋", title: "Suivi des outils", add: "Ajouter", stats: ["Dépense / mois", "Outils actifs", "Échéances 7j"], trend: "Tendance des dépenses", plan: "Plan Pro", nav: ["Tableau", "Contrats", "Calendrier", "Risques", "Outils"] },
-    asst: { badge: "Mizan Assistant", title: "Intégration juridique intelligente", desc: "Un panneau léger et intelligent qui vous sert dynamiquement les règles juridiques locales exactes et des modèles de contrats prêts à l'emploi — adaptés au droit marocain.", cta: "Découvrir l'assistant", panel: "Modèles suggérés", panelSub: "Basés sur votre activité", rules: ["Contrat de prestation — art. 723 DOC", "Clause de confidentialité (Loi 09-08)", "Facture conforme ICE + TVA 20%"], verified: "Vérifié selon le DOC & la Loi 09-08" },
-    trust: "Ils pilotent leur activité avec Mizan",
-    footer: { title: "Prêt à équilibrer votre gestion ?", compliance: "Conforme Loi 09-08 (CNDP)", copy: "© 2026 Mizan ERP · Casablanca, Maroc" },
+    asst: { badge: "Fatorati Assistant", title: "Intégration juridique intelligente", desc: "Un panneau léger et intelligent qui vous sert dynamiquement les règles juridiques locales exactes et des modèles de contrats prêts à l'emploi — adaptés au droit marocain.", cta: "Découvrir l'assistant", panel: "Modèles suggérés", panelSub: "Basés sur votre activité", rules: ["Contrat de prestation — art. 723 DOC", "Clause de confidentialité (Loi 09-08)", "Facture conforme ICE + TVA 20%"], verified: "Vérifié selon le DOC & la Loi 09-08" },
+    trust: "Ils pilotent leur activité avec Fatorati",
+    footer: { title: "Prêt à équilibrer votre gestion ?", compliance: "Conforme Loi 09-08 (CNDP)", copy: "© 2026 Fatorati · Casablanca, Maroc" },
   },
   en: {
     nav: { features: "Features", assistant: "Assistant" },
@@ -66,9 +66,9 @@ const T: Record<Lang, {
     f3: { tag: "Finance", title: "Subscriptions & Tools Tracking", desc: "Log each tool, view your totals and track your monthly spending trend.", add: "Add a tool", cols: ["Tool", "Cost / month", "Start", "Expiry"], tools: [["Adobe Creative Cloud", "299 MAD", "01/03/26", "01/03/27"], ["Microsoft 365", "129 MAD", "12/01/26", "12/01/27"], ["Sage Compta", "450 MAD", "05/06/26", "05/06/27"], ["OVH Hosting", "89 MAD", "20/02/26", "20/02/27"]], blocks: [["Total / month", "1 720"], ["Active tools", "14"], ["Expiring < 30d", "3"]], trend: "Monthly trend" },
     cal: { month: "September 2026", renew: "Renewal", pay: "Payment", legal: "Legal deadline", days: ["M", "T", "W", "T", "F", "S", "S"], upcoming: "Upcoming crucial dates", events: [{ day: 8, type: "pay", label: "Adobe CC payment — 299 MAD" }, { day: 15, type: "renew", label: "Microsoft 365 renewal" }, { day: 23, type: "legal", label: "VAT return (DGI)" }, { day: 27, type: "renew", label: "Sage Compta subscription ends" }] },
     prev: { greet: "Hello, Karim 👋", title: "Tools tracking", add: "Add", stats: ["Spend / month", "Active tools", "Due in 7d"], trend: "Spending trend", plan: "Pro plan", nav: ["Dashboard", "Contracts", "Calendar", "Risks", "Tools"] },
-    asst: { badge: "Mizan Assistant", title: "Smart legal integration", desc: "A lightweight, intelligent panel that dynamically serves the exact local legal rules and ready-to-use contract templates — tailored to Moroccan law.", cta: "Discover the assistant", panel: "Suggested templates", panelSub: "Based on your activity", rules: ["Service contract — art. 723 DOC", "Confidentiality clause (Law 09-08)", "Invoice compliant ICE + VAT 20%"], verified: "Verified against the DOC & Law 09-08" },
-    trust: "They run their business with Mizan",
-    footer: { title: "Ready to balance your management?", compliance: "Law 09-08 compliant (CNDP)", copy: "© 2026 Mizan ERP · Casablanca, Morocco" },
+    asst: { badge: "Fatorati Assistant", title: "Smart legal integration", desc: "A lightweight, intelligent panel that dynamically serves the exact local legal rules and ready-to-use contract templates — tailored to Moroccan law.", cta: "Discover the assistant", panel: "Suggested templates", panelSub: "Based on your activity", rules: ["Service contract — art. 723 DOC", "Confidentiality clause (Law 09-08)", "Invoice compliant ICE + VAT 20%"], verified: "Verified against the DOC & Law 09-08" },
+    trust: "They run their business with Fatorati",
+    footer: { title: "Ready to balance your management?", compliance: "Law 09-08 compliant (CNDP)", copy: "© 2026 Fatorati · Casablanca, Morocco" },
   },
   ar: {
     nav: { features: "الميزات", assistant: "المساعد" },
@@ -85,9 +85,9 @@ const T: Record<Lang, {
     f3: { tag: "المالية", title: "متابعة الاشتراكات والأدوات", desc: "سجّل كل أداة، اطّلع على إجمالياتك وتابع اتجاه نفقاتك الشهرية.", add: "إضافة أداة", cols: ["الأداة", "التكلفة / شهر", "البدء", "الانتهاء"], tools: [["Adobe Creative Cloud", "299 MAD", "01/03/26", "01/03/27"], ["Microsoft 365", "129 MAD", "12/01/26", "12/01/27"], ["Sage Compta", "450 MAD", "05/06/26", "05/06/27"], ["استضافة OVH", "89 MAD", "20/02/26", "20/02/27"]], blocks: [["الإجمالي / شهر", "1 720"], ["أدوات نشطة", "14"], ["تنتهي < 30 يوم", "3"]], trend: "الاتجاه الشهري" },
     cal: { month: "شتنبر 2026", renew: "تجديد", pay: "دفع", legal: "موعد قانوني", days: ["ن", "ث", "ر", "خ", "ج", "س", "ح"], upcoming: "مواعيد حاسمة قادمة", events: [{ day: 8, type: "pay", label: "دفع Adobe CC — 299 MAD" }, { day: 15, type: "renew", label: "تجديد Microsoft 365" }, { day: 23, type: "legal", label: "إقرار الضريبة (DGI)" }, { day: 27, type: "renew", label: "انتهاء اشتراك Sage Compta" }] },
     prev: { greet: "مرحباً كريم 👋", title: "متابعة الأدوات", add: "إضافة", stats: ["الإنفاق / شهر", "أدوات نشطة", "استحقاق 7 أيام"], trend: "اتجاه الإنفاق", plan: "خطة برو", nav: ["لوحة", "عقود", "تقويم", "مخاطر", "أدوات"] },
-    asst: { badge: "مساعد ميزان", title: "تكامل قانوني ذكي", desc: "لوحة خفيفة وذكية تقدّم لك القواعد القانونية المحلية الدقيقة ونماذج عقود جاهزة — مصممة للقانون المغربي.", cta: "اكتشف المساعد", panel: "نماذج مقترحة", panelSub: "بناءً على نشاطك", rules: ["عقد خدمة — المادة 723 ق.ل.ع", "بند السرية (القانون 09-08)", "فاتورة مطابقة ICE + ض.ق.م 20%"], verified: "تم التحقق وفق ق.ل.ع والقانون 09-08" },
-    trust: "يديرون نشاطهم مع ميزان",
-    footer: { title: "مستعد لموازنة إدارتك؟", compliance: "متوافق مع القانون 09-08 (CNDP)", copy: "© 2026 ميزان · الدار البيضاء، المغرب" },
+    asst: { badge: "مساعد فاتورتي", title: "تكامل قانوني ذكي", desc: "لوحة خفيفة وذكية تقدّم لك القواعد القانونية المحلية الدقيقة ونماذج عقود جاهزة — مصممة للقانون المغربي.", cta: "اكتشف المساعد", panel: "نماذج مقترحة", panelSub: "بناءً على نشاطك", rules: ["عقد خدمة — المادة 723 ق.ل.ع", "بند السرية (القانون 09-08)", "فاتورة مطابقة ICE + ض.ق.م 20%"], verified: "تم التحقق وفق ق.ل.ع والقانون 09-08" },
+    trust: "يديرون نشاطهم مع فاتورتي",
+    footer: { title: "مستعد لموازنة إدارتك؟", compliance: "متوافق مع القانون 09-08 (CNDP)", copy: "© 2026 فاتورتي · الدار البيضاء، المغرب" },
   },
 }
 
@@ -256,7 +256,7 @@ function DashboardPreview({ t }: { t: Dict }) {
           <span className="h-2.5 w-2.5 rounded-full bg-[var(--l-border-strong)]" />
           <span className="h-2.5 w-2.5 rounded-full bg-[var(--l-border-strong)]" />
           <span className="h-2.5 w-2.5 rounded-full bg-[var(--l-border-strong)]" />
-          <span className="mx-3 rounded-md bg-[var(--l-chip)] px-2 py-0.5 font-mono text-[10.5px] text-[var(--l-faint)]">app.mizan.ma/tableau</span>
+          <span className="mx-3 rounded-md bg-[var(--l-chip)] px-2 py-0.5 font-mono text-[10.5px] text-[var(--l-faint)]">fatoriti.tech/tableau</span>
         </div>
 
         <div className="flex">

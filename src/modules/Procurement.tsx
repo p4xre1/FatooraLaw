@@ -40,7 +40,7 @@ export default function Procurement() {
     toExcel(filtered.map((e) => ({
       Date: e.date, Fournisseur: vendorName(e.vendorId), Catégorie: e.category,
       Mode: methodMeta[e.method].label, Montant: e.amount, Statut: e.status === "approved" ? "Approuvé" : "En attente",
-    })), "mizan-depenses.xls")
+    })), "fatorati-depenses.xls")
   }
 
   return (

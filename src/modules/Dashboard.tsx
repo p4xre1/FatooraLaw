@@ -1,145 +1,182 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   TrendingUp, Wallet, PiggyBank, Landmark, ArrowUpRight, ArrowDownRight,
-  FileSpreadsheet, FileText, FileDown, FolderPlus, ReceiptText, FileSignature, Loader2, SlidersHorizontal,
+  FileSpreadsheet, FileText, FileDown, FolderPlus, ReceiptText, FileSignature, Loader2, SlidersHorizontal, Languages,
 } from "lucide-react"
-import type { ModuleKey, Settings } from "../store/types"
+import type { ModuleKey } from "../store/types"
 import { useMizan } from "../store/useMizan"
 import { money } from "../lib/mizan"
-import { metrics, monthlySeries, expenseByCategory } from "../lib/analytics"
+import { metrics, monthlySeries, expenseByCategory, MONTHS_AR } from "../lib/analytics"
 import { toCSV, toExcel, runAsync } from "../lib/mizan"
 import { Card, SectionTitle, Btn, Badge, Toggle } from "../components/kit"
 import { AreaChart, BarChart, Donut, Legend } from "../components/charts"
 
-type Lang = Settings["language"]
+type Lang = "fr" | "ar"
 
-/**
- * Dashboard-local translations (English / Arabic). The rest of the app is
- * still French — this dictionary only covers the Dashboard's own chrome.
- * Dynamic business data (activity log text, expense category names, project
- * names) comes straight from the store and isn't translated here.
- */
-const dict = {
-  en: {
-    title: "Dashboard",
-    sub: "Executive view · real-time metrics",
-    range: { 6: "Last 6 months", 8: "Last 8 months", 12: "Last 12 months" },
+/** Dashboard UI strings. Only interface chrome is translated — seeded/user
+ * data (project names, audit actors/notes, contact names…) stays as entered. */
+const dict: Record<
+  Lang,
+  {
+    dir: "ltr" | "rtl"
+    title: string
+    subtitle: string
+    range: (n: number) => string
+    csv: string
+    excel: string
+    pdf: string
+    widgets: string
+    show: string
+    flow: string
+    velocity: string
+    breakdown: string
+    quickProject: string
+    quickExpense: string
+    quickContract: string
+    cardRevenue: string
+    cardMargin: string
+    cardTreasury: string
+    cardReceivables: string
+    receivablePending: string
+    chartFlowTitle: string
+    chartFlowSub: (cur: string) => string
+    seriesRevenue: string
+    seriesExpense: string
+    chartBreakdownTitle: string
+    chartBreakdownSub: string
+    chartVelocityTitle: string
+    chartVelocitySub: string
+    seriesNet: string
+    recentActivity: string
+    viewLog: string
+    sevCritical: string
+    sevWarning: string
+    sevInfo: string
+    exportMonth: string
+    exportRevenue: string
+    exportExpense: string
+    exportNet: string
+    category: (raw: string) => string
+  }
+> = {
+  fr: {
+    dir: "ltr",
+    title: "Tableau de bord",
+    subtitle: "Vue exécutive · métriques temps réel",
+    range: (n) => `${n} derniers mois`,
     csv: "CSV",
     excel: "Excel",
     pdf: "PDF",
-    widgetsBtn: "Widgets",
-    show: "Show",
-    widgetFlow: "Cash flow",
-    widgetVelocity: "Cash velocity",
-    widgetBreakdown: "Breakdown",
-    quickProject: "Create project",
-    quickExpense: "Add expense",
-    quickContract: "Generate contract",
-    cardRevenue: "Revenue",
-    cardMargin: "Margin (profit)",
-    cardTreasury: "Treasury (cash)",
-    cardReceivables: "Accounts receivable",
-    deltaRevenue: "+8.2%",
-    deltaTreasury: "+3.1%",
-    deltaReceivables: "to collect",
-    flowTitle: "Cash flow",
-    flowSub: (cur: string) => `Revenue vs expenses · ${cur}`,
-    legendRevenue: "Revenue",
-    legendExpense: "Expenses",
-    breakdownTitle: "Expense breakdown",
-    breakdownSub: "By category",
-    velocityTitle: "Cash velocity",
-    velocitySub: "Net monthly flow (revenue − expenses)",
-    netSeries: "Net",
-    activityTitle: "Recent activity",
-    viewLog: "View log",
-    sevCritical: "Critical",
-    sevWarning: "Warning",
+    widgets: "Widgets",
+    show: "Afficher",
+    flow: "Flux financier",
+    velocity: "Cash-velocity",
+    breakdown: "Répartition",
+    quickProject: "Générer un projet",
+    quickExpense: "Créer une dépense",
+    quickContract: "Générer un contrat",
+    cardRevenue: "Chiffre d'affaires",
+    cardMargin: "Marge (bénéfice)",
+    cardTreasury: "Trésorerie (liquidité)",
+    cardReceivables: "Créances clients",
+    receivablePending: "à recouvrer",
+    chartFlowTitle: "Flux financier",
+    chartFlowSub: (cur) => `Revenus vs dépenses · ${cur}`,
+    seriesRevenue: "Revenus",
+    seriesExpense: "Dépenses",
+    chartBreakdownTitle: "Répartition des dépenses",
+    chartBreakdownSub: "Par catégorie",
+    chartVelocityTitle: "Vélocité de trésorerie",
+    chartVelocitySub: "Flux net mensuel (revenus − dépenses)",
+    seriesNet: "Net",
+    recentActivity: "Activité récente",
+    viewLog: "Voir le journal",
+    sevCritical: "Critique",
+    sevWarning: "Attention",
     sevInfo: "Info",
-    exportMonth: "Month",
-    exportRevenue: "Revenue",
-    exportExpense: "Expenses",
+    exportMonth: "Mois",
+    exportRevenue: "Revenu",
+    exportExpense: "Dépenses",
     exportNet: "Net",
+    category: (raw) => raw,
   },
   ar: {
+    dir: "rtl",
     title: "لوحة التحكم",
-    sub: "نظرة تنفيذية · مؤشرات لحظية",
-    range: { 6: "آخر 6 أشهر", 8: "آخر 8 أشهر", 12: "آخر 12 شهرًا" },
+    subtitle: "نظرة تنفيذية · مؤشرات لحظية",
+    range: (n) => `آخر ${n} أشهر`,
     csv: "CSV",
     excel: "Excel",
     pdf: "PDF",
-    widgetsBtn: "العناصر",
+    widgets: "الأدوات",
     show: "إظهار",
-    widgetFlow: "التدفق المالي",
-    widgetVelocity: "سرعة التدفق النقدي",
-    widgetBreakdown: "التوزيع",
+    flow: "التدفق المالي",
+    velocity: "سرعة السيولة",
+    breakdown: "التوزيع",
     quickProject: "إنشاء مشروع",
-    quickExpense: "إضافة مصروف",
+    quickExpense: "تسجيل مصروف",
     quickContract: "إنشاء عقد",
-    cardRevenue: "الإيرادات",
+    cardRevenue: "رقم المعاملات",
     cardMargin: "الهامش (الربح)",
     cardTreasury: "الخزينة (السيولة)",
     cardReceivables: "ذمم العملاء",
-    deltaRevenue: "+8.2%",
-    deltaTreasury: "+3.1%",
-    deltaReceivables: "قيد التحصيل",
-    flowTitle: "التدفق المالي",
-    flowSub: (cur: string) => `الإيرادات مقابل المصروفات · ${cur}`,
-    legendRevenue: "الإيرادات",
-    legendExpense: "المصروفات",
-    breakdownTitle: "توزيع المصروفات",
-    breakdownSub: "حسب الفئة",
-    velocityTitle: "سرعة التدفق النقدي",
-    velocitySub: "التدفق الشهري الصافي (الإيرادات − المصروفات)",
-    netSeries: "الصافي",
-    activityTitle: "النشاط الأخير",
+    receivablePending: "قيد التحصيل",
+    chartFlowTitle: "التدفق المالي",
+    chartFlowSub: (cur) => `الإيرادات مقابل المصاريف · ${cur}`,
+    seriesRevenue: "الإيرادات",
+    seriesExpense: "المصاريف",
+    chartBreakdownTitle: "توزيع المصاريف",
+    chartBreakdownSub: "حسب الفئة",
+    chartVelocityTitle: "سرعة السيولة",
+    chartVelocitySub: "التدفق الصافي الشهري (الإيرادات − المصاريف)",
+    seriesNet: "الصافي",
+    recentActivity: "النشاط الأخير",
     viewLog: "عرض السجل",
     sevCritical: "حرج",
     sevWarning: "تنبيه",
     sevInfo: "معلومة",
     exportMonth: "الشهر",
     exportRevenue: "الإيرادات",
-    exportExpense: "المصروفات",
+    exportExpense: "المصاريف",
     exportNet: "الصافي",
+    category: (raw) => categoryAr[raw] ?? raw,
   },
-} as const
+}
 
-/** Month-abbreviation lookup keyed by the French labels lib/analytics.ts emits
- *  (Moroccan/Maghrebi Arabic month names — يوليوز، غشت، شتنبر... — since this
- *  is a Morocco-based app, not the Mashriqi Arabic names). */
-const MONTH_TR: Record<string, { en: string; ar: string }> = {
-  "Jan": { en: "Jan", ar: "يناير" },
-  "Fév": { en: "Feb", ar: "فبراير" },
-  "Mar": { en: "Mar", ar: "مارس" },
-  "Avr": { en: "Apr", ar: "أبريل" },
-  "Mai": { en: "May", ar: "ماي" },
-  "Jun": { en: "Jun", ar: "يونيو" },
-  "Jul": { en: "Jul", ar: "يوليوز" },
-  "Aoû": { en: "Aug", ar: "غشت" },
-  "Sep": { en: "Sep", ar: "شتنبر" },
-  "Oct": { en: "Oct", ar: "أكتوبر" },
-  "Nov": { en: "Nov", ar: "نونبر" },
-  "Déc": { en: "Dec", ar: "دجنبر" },
+/** Seed data uses a fixed, known set of expense categories — translate the ones we know. */
+const categoryAr: Record<string, string> = {
+  "Matériaux": "مواد البناء",
+  "Quincaillerie": "أدوات ومعدات",
+  "Location": "إيجار",
+  "Carburant": "وقود",
 }
 
 export default function Dashboard({ onNavigate }: { onNavigate: (m: ModuleKey) => void }) {
-  const { projects, expenses, contacts, audit, settings, updateSettings } = useMizan()
+  const { projects, expenses, contacts, audit, settings } = useMizan()
   const [range, setRange] = useState<6 | 8 | 12>(8)
   const [busy, setBusy] = useState<string | null>(null)
   const [widgets, setWidgets] = useState({ flow: true, velocity: true, breakdown: true })
   const [showCustomize, setShowCustomize] = useState(false)
+  const [lang, setLang] = useState<Lang>(() => (localStorage.getItem("mizan.dashboard.lang") as Lang) || "fr")
 
-  const lang: Lang = settings.language ?? "en"
+  useEffect(() => {
+    localStorage.setItem("mizan.dashboard.lang", lang)
+  }, [lang])
+
   const t = dict[lang]
-  const rtl = lang === "ar"
+  const rtl = t.dir === "rtl"
 
   const m = useMemo(() => metrics(projects, expenses, contacts), [projects, expenses, contacts])
-  const rawSeries = useMemo(() => monthlySeries(projects, expenses, range), [projects, expenses, range])
-  const byCat = useMemo(() => expenseByCategory(expenses), [expenses])
+  const series = useMemo(
+    () => monthlySeries(projects, expenses, range, lang === "ar" ? MONTHS_AR : undefined),
+    [projects, expenses, range, lang],
+  )
+  const byCat = useMemo(
+    () => expenseByCategory(expenses).map((s) => ({ ...s, label: t.category(s.label) })),
+    [expenses, lang],
+  )
   const cur = settings.currency
 
-  const labels = useMemo(() => rawSeries.labels.map((l) => MONTH_TR[l]?.[lang] ?? l), [rawSeries.labels, lang])
-  const series = { ...rawSeries, labels }
   const net = series.labels.map((_, i) => series.revenue[i] - series.expense[i])
 
   async function doExport(kind: "csv" | "excel" | "pdf") {
@@ -148,18 +185,18 @@ export default function Dashboard({ onNavigate }: { onNavigate: (m: ModuleKey) =
       [t.exportMonth]: l, [t.exportRevenue]: series.revenue[i], [t.exportExpense]: series.expense[i], [t.exportNet]: net[i],
     }))
     await runAsync(() => {
-      if (kind === "csv") toCSV(rows, "mizan-flux.csv")
-      else if (kind === "excel") toExcel(rows, "mizan-flux.xls")
+      if (kind === "csv") toCSV(rows, "fatorati-flux.csv")
+      else if (kind === "excel") toExcel(rows, "fatorati-flux.xls")
       else window.print()
     })
     setBusy(null)
   }
 
   const cards = [
-    { label: t.cardRevenue, value: money(m.contractValue, cur), icon: TrendingUp, chip: "bg-brand-50 text-brand-700", delta: t.deltaRevenue, up: true },
-    { label: t.cardMargin, value: money(m.margin, cur), icon: PiggyBank, chip: "bg-good-50 text-emerald-700", delta: `${m.marginPct.toFixed(1)}%`, up: true },
-    { label: t.cardTreasury, value: money(m.treasury, cur), icon: Wallet, chip: "bg-brand-50 text-brand-700", delta: t.deltaTreasury, up: true },
-    { label: t.cardReceivables, value: money(m.receivables, cur), icon: Landmark, chip: "bg-warn-50 text-warn", delta: t.deltaReceivables, up: false },
+    { label: t.cardRevenue, value: money(m.contractValue, cur), icon: TrendingUp, chip: "bg-brand-50 text-brand-700", delta: "+8,2 %", up: true },
+    { label: t.cardMargin, value: money(m.margin, cur), icon: PiggyBank, chip: "bg-good-50 text-emerald-700", delta: `${m.marginPct.toFixed(1)} %`, up: true },
+    { label: t.cardTreasury, value: money(m.treasury, cur), icon: Wallet, chip: "bg-brand-50 text-brand-700", delta: "+3,1 %", up: true },
+    { label: t.cardReceivables, value: money(m.receivables, cur), icon: Landmark, chip: "bg-warn-50 text-warn", delta: t.receivablePending, up: false },
   ]
 
   const quick = [
@@ -169,28 +206,24 @@ export default function Dashboard({ onNavigate }: { onNavigate: (m: ModuleKey) =
   ]
 
   return (
-    <div className="mz-view space-y-6" dir={rtl ? "rtl" : "ltr"} lang={lang}>
+    <div className="mz-view space-y-6" dir={t.dir} lang={lang}>
       <SectionTitle
         title={t.title}
-        sub={t.sub}
+        sub={t.subtitle}
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex items-center rounded-lg border border-line-strong bg-surface p-0.5">
-              {(["en", "ar"] as const).map((l) => (
-                <button
-                  key={l}
-                  onClick={() => updateSettings({ language: l })}
-                  className={`rounded-md px-2.5 py-1.5 text-[12px] font-bold transition-colors ${lang === l ? "bg-brand text-white" : "text-muted hover:text-ink"}`}
-                  aria-pressed={lang === l}
-                >
-                  {l.toUpperCase()}
-                </button>
-              ))}
-            </div>
+            <Btn
+              variant="outline"
+              size="sm"
+              onClick={() => setLang((l) => (l === "fr" ? "ar" : "fr"))}
+              title={lang === "fr" ? "التبديل إلى العربية" : "Passer au français"}
+            >
+              <Languages className="h-4 w-4" /> {lang === "fr" ? "العربية" : "Français"}
+            </Btn>
             <select value={range} onChange={(e) => setRange(Number(e.target.value) as 6 | 8 | 12)} className="rounded-lg border border-line-strong bg-surface px-3 py-2 text-[12.5px] font-semibold text-ink outline-none focus:border-brand">
-              <option value={6}>{t.range[6]}</option>
-              <option value={8}>{t.range[8]}</option>
-              <option value={12}>{t.range[12]}</option>
+              <option value={6}>{t.range(6)}</option>
+              <option value={8}>{t.range(8)}</option>
+              <option value={12}>{t.range(12)}</option>
             </select>
             <Btn variant="outline" size="sm" onClick={() => doExport("csv")} disabled={!!busy}>
               {busy === "csv" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} {t.csv}
@@ -202,7 +235,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (m: ModuleKey) =
               {busy === "pdf" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />} {t.pdf}
             </Btn>
             <Btn variant="ghost" size="sm" onClick={() => setShowCustomize((v) => !v)}>
-              <SlidersHorizontal className="h-4 w-4" /> {t.widgetsBtn}
+              <SlidersHorizontal className="h-4 w-4" /> {t.widgets}
             </Btn>
           </div>
         }
@@ -211,7 +244,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (m: ModuleKey) =
       {showCustomize && (
         <Card className="flex flex-wrap items-center gap-6 px-5 py-3.5">
           <span className="text-[12px] font-semibold uppercase tracking-wide text-muted">{t.show}</span>
-          {([["flow", t.widgetFlow], ["velocity", t.widgetVelocity], ["breakdown", t.widgetBreakdown]] as const).map(([k, lbl]) => (
+          {([["flow", t.flow], ["velocity", t.velocity], ["breakdown", t.breakdown]] as const).map(([k, lbl]) => (
             <label key={k} className="flex items-center gap-2 text-[13px] font-medium">
               <Toggle checked={widgets[k]} onChange={(v) => setWidgets((w) => ({ ...w, [k]: v }))} /> {lbl}
             </label>
@@ -236,7 +269,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (m: ModuleKey) =
             <div className="flex items-start justify-between">
               <span className={`grid h-9 w-9 place-items-center rounded-lg ${c.chip}`}><c.icon className="h-4.5 w-4.5" strokeWidth={2.2} /></span>
               <span className={`inline-flex items-center gap-0.5 text-[11.5px] font-semibold ${c.up ? "text-emerald-700" : "text-warn"}`}>
-                {c.up ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />} {c.delta}
+                {c.up ? <ArrowUpRight className={`h-3.5 w-3.5 ${rtl ? "rotate-180" : ""}`} /> : <ArrowDownRight className={`h-3.5 w-3.5 ${rtl ? "rotate-180" : ""}`} />} {c.delta}
               </span>
             </div>
             <p className="mt-4 text-[12px] font-medium text-muted">{c.label}</p>
@@ -251,16 +284,16 @@ export default function Dashboard({ onNavigate }: { onNavigate: (m: ModuleKey) =
           <Card className="p-5 lg:col-span-2">
             <div className="mb-3 flex items-center justify-between">
               <div>
-                <h2 className="text-[14px] font-bold">{t.flowTitle}</h2>
-                <p className="text-[12px] text-muted">{t.flowSub(cur)}</p>
+                <h2 className="text-[14px] font-bold">{t.chartFlowTitle}</h2>
+                <p className="text-[12px] text-muted">{t.chartFlowSub(cur)}</p>
               </div>
-              <Legend series={[{ name: t.legendRevenue, values: [] }, { name: t.legendExpense, color: "var(--chart-3)", values: [] }]} />
+              <Legend series={[{ name: t.seriesRevenue, values: [] }, { name: t.seriesExpense, color: "var(--chart-3)", values: [] }]} />
             </div>
             <AreaChart
               labels={series.labels}
               series={[
-                { name: t.legendRevenue, values: series.revenue },
-                { name: t.legendExpense, color: "var(--chart-3)", values: series.expense },
+                { name: t.seriesRevenue, values: series.revenue },
+                { name: t.seriesExpense, color: "var(--chart-3)", values: series.expense },
               ]}
               format={(n) => money(n, cur, true)}
             />
@@ -268,8 +301,8 @@ export default function Dashboard({ onNavigate }: { onNavigate: (m: ModuleKey) =
         )}
         {widgets.breakdown && (
           <Card className="p-5">
-            <h2 className="text-[14px] font-bold">{t.breakdownTitle}</h2>
-            <p className="mb-4 text-[12px] text-muted">{t.breakdownSub}</p>
+            <h2 className="text-[14px] font-bold">{t.chartBreakdownTitle}</h2>
+            <p className="mb-4 text-[12px] text-muted">{t.chartBreakdownSub}</p>
             <Donut segments={byCat} />
           </Card>
         )}
@@ -278,17 +311,17 @@ export default function Dashboard({ onNavigate }: { onNavigate: (m: ModuleKey) =
       {widgets.velocity && (
         <Card className="p-5">
           <div className="mb-3">
-            <h2 className="text-[14px] font-bold">{t.velocityTitle}</h2>
-            <p className="text-[12px] text-muted">{t.velocitySub}</p>
+            <h2 className="text-[14px] font-bold">{t.chartVelocityTitle}</h2>
+            <p className="text-[12px] text-muted">{t.chartVelocitySub}</p>
           </div>
-          <BarChart labels={series.labels} series={[{ name: t.netSeries, values: net }]} format={(n) => money(n, cur, true)} />
+          <BarChart labels={series.labels} series={[{ name: t.seriesNet, values: net }]} format={(n) => money(n, cur, true)} />
         </Card>
       )}
 
       {/* Recent activity */}
       <Card>
         <header className="flex items-center justify-between border-b border-line px-5 py-3.5">
-          <h2 className="text-[14px] font-bold">{t.activityTitle}</h2>
+          <h2 className="text-[14px] font-bold">{t.recentActivity}</h2>
           <Btn variant="ghost" size="sm" onClick={() => onNavigate("audit")}>{t.viewLog}</Btn>
         </header>
         <ul className="divide-y divide-line">

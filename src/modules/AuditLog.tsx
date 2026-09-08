@@ -33,7 +33,7 @@ export default function AuditLog() {
     toCSV(filtered.map((a) => ({
       Horodatage: fmtDateTime(a.ts), Acteur: a.actor, Action: a.action, Cible: a.target,
       Module: moduleLabel(a.module), Sévérité: sevMeta[a.severity].label,
-    })), "mizan-journal-audit.csv")
+    })), "fatorati-journal-audit.csv")
   }
 
   return (

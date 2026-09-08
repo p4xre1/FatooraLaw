@@ -22,7 +22,7 @@ export default function Contacts() {
   }, [contacts, q, facet])
 
   function exportCsv() {
-    toCSV(filtered.map((c) => ({ Nom: c.name, Type: c.type, ICE: c.ice, Téléphone: c.phone, Email: c.email, Ville: c.city, Solde: c.balance })), "mizan-contacts.csv")
+    toCSV(filtered.map((c) => ({ Nom: c.name, Type: c.type, ICE: c.ice, Téléphone: c.phone, Email: c.email, Ville: c.city, Solde: c.balance })), "fatorati-contacts.csv")
   }
   function onImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
