@@ -28,7 +28,7 @@ export function Logo({ size = 32, light = false }: { size?: number; light?: bool
         <ReceiptText strokeWidth={2.4} style={{ width: size * 0.55, height: size * 0.55 }} aria-hidden="true" />
       </span>
       <span className={`text-[18px] font-extrabold tracking-tight leading-none ${light ? "text-white" : "text-ink"}`}>
-        Fatorti
+        Fatorati
       </span>
     </span>
   )

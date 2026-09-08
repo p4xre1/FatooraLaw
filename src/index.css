@@ -75,7 +75,7 @@ body {
 }
 
 /* Arabic content: swap to an Arabic-optimized face and keep money/dates LTR
-  even inside an RTL paragraph (Fatorti amounts stay in Western numerals). */
+  even inside an RTL paragraph (Fatorati amounts stay in Western numerals). */
 [dir='rtl'] {
   font-family: var(--font-arabic);
 }

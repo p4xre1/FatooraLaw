@@ -82,7 +82,7 @@ function Notice({ kind, children }: { kind: "error" | "success"; children: React
   )
 }
 
-const PRIVACY_POLICY = `Fatorti ERP collecte les informations que vous fournissez à l'inscription (nom, e-mail) ainsi que les données de gestion que vous saisissez dans l'application (projets, contacts, dépenses, contrats). Ces données sont utilisées uniquement pour fournir et sécuriser le service, et ne sont ni vendues ni partagées avec des tiers à des fins commerciales.
+const PRIVACY_POLICY = `Fatorati ERP collecte les informations que vous fournissez à l'inscription (nom, e-mail) ainsi que les données de gestion que vous saisissez dans l'application (projets, contacts, dépenses, contrats). Ces données sont utilisées uniquement pour fournir et sécuriser le service, et ne sont ni vendues ni partagées avec des tiers à des fins commerciales.
 
 Vos données sont hébergées de manière sécurisée et vous pouvez, à tout moment, demander leur export ou leur suppression en nous contactant. Nous conservons un journal d'audit des actions effectuées dans votre espace afin de garantir la traçabilité et la sécurité de votre compte.
 
@@ -237,7 +237,7 @@ export default function Auth({
             ))}
           </div>
         </div>
-        <p className="relative text-[12px] text-slate-400">© 2026 Fatorti ERP · Casablanca, Maroc</p>
+        <p className="relative text-[12px] text-slate-400">© 2026 Fatorati ERP · Casablanca, Maroc</p>
       </div>
 
       {/* Form panel */}

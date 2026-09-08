@@ -185,8 +185,8 @@ export default function Dashboard({ onNavigate }: { onNavigate: (m: ModuleKey) =
       [t.exportMonth]: l, [t.exportRevenue]: series.revenue[i], [t.exportExpense]: series.expense[i], [t.exportNet]: net[i],
     }))
     await runAsync(() => {
-      if (kind === "csv") toCSV(rows, "fatorti-flux.csv")
-      else if (kind === "excel") toExcel(rows, "fatorti-flux.xls")
+      if (kind === "csv") toCSV(rows, "fatorati-flux.csv")
+      else if (kind === "excel") toExcel(rows, "fatorati-flux.xls")
       else window.print()
     })
     setBusy(null)

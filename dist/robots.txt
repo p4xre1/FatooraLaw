@@ -1,4 +1,4 @@
-# Fatorti — robots.txt
+# Fatorati — robots.txt
 # https://fatoriti.tech
 
 # Default: allow everything

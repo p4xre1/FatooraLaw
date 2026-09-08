@@ -75,7 +75,7 @@ export default function App() {
   }
 
   const current: ModuleKey = allowed[active] ? active : "dashboard"
-  const title = NAV.find((n) => n.key === current)?.label ?? "Fatorti"
+  const title = NAV.find((n) => n.key === current)?.label ?? "Fatorati"
 
   function go(m: ModuleKey) {
     setActive(m)
@@ -144,7 +144,7 @@ function Login({ onSignIn, onBack, idleSignedOut }: { onSignIn: (name: string, e
             ))}
           </div>
         </div>
-        <p className="relative text-[12px] text-slate-400">© 2026 Fatorti · Casablanca, Maroc</p>
+        <p className="relative text-[12px] text-slate-400">© 2026 Fatorati · Casablanca, Maroc</p>
       </div>
 
       {/* Form panel */}

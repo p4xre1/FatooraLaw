@@ -1,6 +1,6 @@
 # Security Policy
 
-Fatorti is a client-side financial/compliance app for Moroccan small
+Fatorati is a client-side financial/compliance app for Moroccan small
 businesses and artisans. This document describes what's actually in place,
 how to report a problem, and — importantly — what is *not* yet in place, so
 nobody assumes more coverage than exists.
