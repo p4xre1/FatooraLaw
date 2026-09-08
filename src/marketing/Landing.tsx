@@ -1,16 +1,37 @@
-import { useId, useState } from "react"
+import { useEffect, useId, useState } from "react"
 import {
   ArrowRight, Sparkles, ShieldCheck, CalendarDays, ShieldAlert, Wrench, FileText,
   Check, TrendingUp, Zap, Plus, Bell, ScrollText, LayoutDashboard, ChevronRight,
-  Globe, ChevronDown, Sun, Moon,
+  Globe, ChevronDown, Sun, Moon, Mail, Phone, MapPin, BookOpen, CheckCircle2,
 } from "lucide-react"
 import { Logo } from "../components/nav"
 
 const GRAD = "linear-gradient(135deg, #7c3aed 0%, #9333ea 100%)"
+const DASHBOARD_GRAD = "linear-gradient(135deg, #2563eb 0%, #10b981 100%)"
 
 type Lang = "fr" | "en" | "ar"
 type Theme = "dark" | "light"
 type Seg = { t: string; hi?: boolean }
+type LandingPage = "home" | "features" | "assistant" | "about" | "benefits" | "pricing" | "blog" | "faq" | "contact" | "privacy" | "terms" | "cookies"
+
+function getLandingPage(): LandingPage {
+  if (typeof window === "undefined") return "home"
+  const path = window.location.pathname.split("/").filter(Boolean)[0]
+  return (["features", "assistant", "about", "benefits", "pricing", "blog", "faq", "contact", "privacy", "terms", "cookies"] as string[]).includes(path)
+    ? path as LandingPage
+    : "home"
+}
+
+type ExtraCopy = {
+  nav: { benefits: string; pricing: string; faq: string }
+  about: { eyebrow: string; title: string; desc: string; points: string[] }
+  benefits: { eyebrow: string; title: string; sub: string; items: { title: string; desc: string }[] }
+  pricing: { eyebrow: string; title: string; sub: string; plans: { name: string; price: string; period: string; desc: string; cta: string; items: string[]; featured?: boolean }[] }
+  blog: { eyebrow: string; title: string; posts: { tag: string; title: string; desc: string; date: string }[] }
+  faq: { eyebrow: string; title: string; items: { q: string; a: string }[] }
+  contact: { eyebrow: string; title: string; sub: string; email: string; phone: string; city: string; cta: string }
+  legal: { privacy: string; privacyText: string; terms: string; termsText: string; cookies: string; cookiesText: string }
+}
 
 const LANGS: { code: Lang; label: string }[] = [
   { code: "fr", label: "Français" },
@@ -19,7 +40,7 @@ const LANGS: { code: Lang; label: string }[] = [
 ]
 
 const T: Record<Lang, {
-  nav: { features: string; assistant: string }
+  nav: { features: string; assistant: string; benefits: string; pricing: string; faq: string }
   signup: string; explore: string
   hero: { badge: string; headline: Seg[]; sub: string; note: string }
   feat: { eyebrow: string; title: string; sub: string }
@@ -29,11 +50,10 @@ const T: Record<Lang, {
   cal: { month: string; renew: string; pay: string; legal: string; days: string[]; upcoming: string; events: { day: number; type: "renew" | "pay" | "legal"; label: string }[] }
   prev: { greet: string; title: string; add: string; stats: string[]; trend: string; plan: string; nav: string[] }
   asst: { badge: string; title: string; desc: string; cta: string; panel: string; panelSub: string; rules: string[]; verified: string }
-  trust: string
   footer: { title: string; compliance: string; copy: string }
 }> = {
   fr: {
-    nav: { features: "Fonctionnalités", assistant: "Assistant" },
+    nav: { features: "Fonctionnalités", assistant: "Assistant", benefits: "Avantages", pricing: "Tarifs", faq: "FAQ" },
     signup: "S'inscrire", explore: "Explorer",
     hero: {
       badge: "Pensé pour les artisans, freelances & TPE marocaines",
@@ -43,16 +63,15 @@ const T: Record<Lang, {
     },
     feat: { eyebrow: "Tout-en-un", title: "Trois outils, une seule application", sub: "Chaque fonctionnalité pensée pour la réalité du terrain marocain." },
     f1: { tag: "Planification", title: "Outil de Calendrier", desc: "Un calendrier de time-blocking épuré pour ne jamais manquer une date clé : échéances légales, renouvellements de contrats et paiements." },
-    f2: { tag: "Conformité", title: "Gestion des Risques", desc: "Des alertes proactives et des contrôles de conformité locaux, adaptés aux réglementations des entreprises marocaines.", items: [{ label: "Déclaration TVA — T3 2026", desc: "À déposer avant le 30/09 auprès de la DGI. Pénalité de 15% en cas de retard.", level: "Élevé" }, { label: "Contrat client Atlas BTP", desc: "Clause de pénalité de retard à réviser avant renouvellement.", level: "Moyen" }, { label: "Registre du commerce (RC)", desc: "Modèle J mis à jour au tribunal de commerce de Casablanca.", level: "OK" }] },
+    f2: { tag: "Conformité", title: "Gestion des Risques", desc: "Des alertes proactives et des contrôles de conformité locaux, adaptés aux réglementations des entreprises marocaines.", items: [{ label: "Déclaration TVA — T3 2026", desc: "À déposer avant le 30/09 auprès de la DGI. Pénalité de 15% en cas de retard.", level: "Élevé" }, { label: "Contrat client — PME locale", desc: "Clause de pénalité de retard à réviser avant renouvellement.", level: "Moyen" }, { label: "Registre du commerce (RC)", desc: "Modèle J mis à jour au tribunal de commerce de Casablanca.", level: "OK" }] },
     f3: { tag: "Finances", title: "Suivi des Abonnements & Outils", desc: "Saisissez chaque outil, visualisez vos totaux et suivez la tendance de vos dépenses mensuelles.", add: "Ajouter un outil", cols: ["Outil", "Coût / mois", "Début", "Expiration"], tools: [["Adobe Creative Cloud", "299 MAD", "01/03/26", "01/03/27"], ["Microsoft 365", "129 MAD", "12/01/26", "12/01/27"], ["Sage Compta", "450 MAD", "05/06/26", "05/06/27"], ["Hébergement OVH", "89 MAD", "20/02/26", "20/02/27"]], blocks: [["Total / mois", "1 720"], ["Outils actifs", "14"], ["Expire < 30j", "3"]], trend: "Tendance mensuelle" },
     cal: { month: "Septembre 2026", renew: "Renouv.", pay: "Paiement", legal: "Échéance légale", days: ["L", "M", "M", "J", "V", "S", "D"], upcoming: "Dates cruciales à venir", events: [{ day: 8, type: "pay", label: "Paiement Adobe CC — 299 MAD" }, { day: 15, type: "renew", label: "Renouvellement Microsoft 365" }, { day: 23, type: "legal", label: "Déclaration TVA (DGI)" }, { day: 27, type: "renew", label: "Fin abonnement Sage Compta" }] },
     prev: { greet: "Bonjour, Karim 👋", title: "Suivi des outils", add: "Ajouter", stats: ["Dépense / mois", "Outils actifs", "Échéances 7j"], trend: "Tendance des dépenses", plan: "Plan Pro", nav: ["Tableau", "Contrats", "Calendrier", "Risques", "Outils"] },
-    asst: { badge: "Fatorati Assistant", title: "Intégration juridique intelligente", desc: "Un panneau léger et intelligent qui vous sert dynamiquement les règles juridiques locales exactes et des modèles de contrats prêts à l'emploi — adaptés au droit marocain.", cta: "Découvrir l'assistant", panel: "Modèles suggérés", panelSub: "Basés sur votre activité", rules: ["Contrat de prestation — art. 723 DOC", "Clause de confidentialité (Loi 09-08)", "Facture conforme ICE + TVA 20%"], verified: "Vérifié selon le DOC & la Loi 09-08" },
-    trust: "Ils pilotent leur activité avec Fatorati",
-    footer: { title: "Prêt à équilibrer votre gestion ?", compliance: "Conforme Loi 09-08 (CNDP)", copy: "© 2026 Fatorati · Casablanca, Maroc" },
+    asst: { badge: "Fatorti Assistant", title: "Intégration juridique intelligente", desc: "Un panneau léger et intelligent qui vous sert dynamiquement les règles juridiques locales exactes et des modèles de contrats prêts à l'emploi — adaptés au droit marocain.", cta: "Découvrir l'assistant", panel: "Modèles suggérés", panelSub: "Basés sur votre activité", rules: ["Contrat de prestation — art. 723 DOC", "Clause de confidentialité (Loi 09-08)", "Facture conforme ICE + TVA 20%"], verified: "Vérifié selon le DOC & la Loi 09-08" },
+    footer: { title: "Prêt à équilibrer votre gestion ?", compliance: "Conforme Loi 09-08 (CNDP)", copy: "© 2026 Fatorti · Casablanca, Maroc" },
   },
   en: {
-    nav: { features: "Features", assistant: "Assistant" },
+    nav: { features: "Features", assistant: "Assistant", benefits: "Benefits", pricing: "Pricing", faq: "FAQ" },
     signup: "Sign up", explore: "Explore",
     hero: {
       badge: "Built for Moroccan artisans, freelancers & small businesses",
@@ -62,16 +81,15 @@ const T: Record<Lang, {
     },
     feat: { eyebrow: "All-in-one", title: "Three tools, one single app", sub: "Every feature designed for the Moroccan field reality." },
     f1: { tag: "Planning", title: "Calendar Tool", desc: "A clean time-blocking calendar so you never miss a key date: legal deadlines, contract renewals and payments." },
-    f2: { tag: "Compliance", title: "Risk Management", desc: "Proactive alerts and local compliance checks, tailored to Moroccan business regulations.", items: [{ label: "VAT return — Q3 2026", desc: "Due before 30/09 to the DGI. 15% penalty on late filing.", level: "High" }, { label: "Client contract Atlas BTP", desc: "Late-payment penalty clause to review before renewal.", level: "Medium" }, { label: "Trade register (RC)", desc: "Model J updated at the Casablanca commercial court.", level: "OK" }] },
+    f2: { tag: "Compliance", title: "Risk Management", desc: "Proactive alerts and local compliance checks, tailored to Moroccan business regulations.", items: [{ label: "VAT return — Q3 2026", desc: "Due before 30/09 to the DGI. 15% penalty on late filing.", level: "High" }, { label: "Client contract — local SME", desc: "Late-payment penalty clause to review before renewal.", level: "Medium" }, { label: "Trade register (RC)", desc: "Model J updated at the Casablanca commercial court.", level: "OK" }] },
     f3: { tag: "Finance", title: "Subscriptions & Tools Tracking", desc: "Log each tool, view your totals and track your monthly spending trend.", add: "Add a tool", cols: ["Tool", "Cost / month", "Start", "Expiry"], tools: [["Adobe Creative Cloud", "299 MAD", "01/03/26", "01/03/27"], ["Microsoft 365", "129 MAD", "12/01/26", "12/01/27"], ["Sage Compta", "450 MAD", "05/06/26", "05/06/27"], ["OVH Hosting", "89 MAD", "20/02/26", "20/02/27"]], blocks: [["Total / month", "1 720"], ["Active tools", "14"], ["Expiring < 30d", "3"]], trend: "Monthly trend" },
     cal: { month: "September 2026", renew: "Renewal", pay: "Payment", legal: "Legal deadline", days: ["M", "T", "W", "T", "F", "S", "S"], upcoming: "Upcoming crucial dates", events: [{ day: 8, type: "pay", label: "Adobe CC payment — 299 MAD" }, { day: 15, type: "renew", label: "Microsoft 365 renewal" }, { day: 23, type: "legal", label: "VAT return (DGI)" }, { day: 27, type: "renew", label: "Sage Compta subscription ends" }] },
     prev: { greet: "Hello, Karim 👋", title: "Tools tracking", add: "Add", stats: ["Spend / month", "Active tools", "Due in 7d"], trend: "Spending trend", plan: "Pro plan", nav: ["Dashboard", "Contracts", "Calendar", "Risks", "Tools"] },
-    asst: { badge: "Fatorati Assistant", title: "Smart legal integration", desc: "A lightweight, intelligent panel that dynamically serves the exact local legal rules and ready-to-use contract templates — tailored to Moroccan law.", cta: "Discover the assistant", panel: "Suggested templates", panelSub: "Based on your activity", rules: ["Service contract — art. 723 DOC", "Confidentiality clause (Law 09-08)", "Invoice compliant ICE + VAT 20%"], verified: "Verified against the DOC & Law 09-08" },
-    trust: "They run their business with Fatorati",
-    footer: { title: "Ready to balance your management?", compliance: "Law 09-08 compliant (CNDP)", copy: "© 2026 Fatorati · Casablanca, Morocco" },
+    asst: { badge: "Fatorti Assistant", title: "Smart legal integration", desc: "A lightweight, intelligent panel that dynamically serves the exact local legal rules and ready-to-use contract templates — tailored to Moroccan law.", cta: "Discover the assistant", panel: "Suggested templates", panelSub: "Based on your activity", rules: ["Service contract — art. 723 DOC", "Confidentiality clause (Law 09-08)", "Invoice compliant ICE + VAT 20%"], verified: "Verified against the DOC & Law 09-08" },
+    footer: { title: "Ready to balance your management?", compliance: "Law 09-08 compliant (CNDP)", copy: "© 2026 Fatorti · Casablanca, Morocco" },
   },
   ar: {
-    nav: { features: "الميزات", assistant: "المساعد" },
+    nav: { features: "الميزات", assistant: "المساعد", benefits: "المزايا", pricing: "الأسعار", faq: "الأسئلة" },
     signup: "إنشاء حساب", explore: "استكشاف",
     hero: {
       badge: "مصمم للحرفيين والمستقلين والشركات الصغيرة في المغرب",
@@ -86,28 +104,73 @@ const T: Record<Lang, {
     cal: { month: "شتنبر 2026", renew: "تجديد", pay: "دفع", legal: "موعد قانوني", days: ["ن", "ث", "ر", "خ", "ج", "س", "ح"], upcoming: "مواعيد حاسمة قادمة", events: [{ day: 8, type: "pay", label: "دفع Adobe CC — 299 MAD" }, { day: 15, type: "renew", label: "تجديد Microsoft 365" }, { day: 23, type: "legal", label: "إقرار الضريبة (DGI)" }, { day: 27, type: "renew", label: "انتهاء اشتراك Sage Compta" }] },
     prev: { greet: "مرحباً كريم 👋", title: "متابعة الأدوات", add: "إضافة", stats: ["الإنفاق / شهر", "أدوات نشطة", "استحقاق 7 أيام"], trend: "اتجاه الإنفاق", plan: "خطة برو", nav: ["لوحة", "عقود", "تقويم", "مخاطر", "أدوات"] },
     asst: { badge: "مساعد فاتورتي", title: "تكامل قانوني ذكي", desc: "لوحة خفيفة وذكية تقدّم لك القواعد القانونية المحلية الدقيقة ونماذج عقود جاهزة — مصممة للقانون المغربي.", cta: "اكتشف المساعد", panel: "نماذج مقترحة", panelSub: "بناءً على نشاطك", rules: ["عقد خدمة — المادة 723 ق.ل.ع", "بند السرية (القانون 09-08)", "فاتورة مطابقة ICE + ض.ق.م 20%"], verified: "تم التحقق وفق ق.ل.ع والقانون 09-08" },
-    trust: "يديرون نشاطهم مع فاتورتي",
     footer: { title: "مستعد لموازنة إدارتك؟", compliance: "متوافق مع القانون 09-08 (CNDP)", copy: "© 2026 فاتورتي · الدار البيضاء، المغرب" },
+  },
+}
+
+const EXTRA: Record<Lang, ExtraCopy> = {
+  fr: {
+    nav: { benefits: "Avantages", pricing: "Tarifs", faq: "FAQ" },
+    about: { eyebrow: "À propos", title: "La gestion pensée pour le terrain marocain.", desc: "Fatorti réunit les outils essentiels des artisans, freelances et petites entreprises dans un espace clair, mobile et conforme.", points: ["Une expérience simple, en français et en arabe.", "Des échéances, contrats et dépenses visibles au même endroit.", "Une approche conçue avec les réalités des TPE marocaines."] },
+    benefits: { eyebrow: "Pourquoi Fatorti", title: "Moins d'oubli. Plus de maîtrise.", sub: "Une vue claire pour décider vite et travailler sereinement.", items: [{ title: "Gagnez du temps", desc: "Retrouvez vos clients, dépenses, contrats et échéances sans passer d'un outil à l'autre." }, { title: "Restez conforme", desc: "Anticipez vos obligations et conservez une trace utile de chaque action importante." }, { title: "Pilotez depuis votre poche", desc: "Une interface mobile-first qui reste lisible au bureau comme sur le terrain." }, { title: "Travaillez en équipe", desc: "Attribuez les bons rôles et gardez le contrôle sur les accès sensibles." }] },
+    pricing: { eyebrow: "Tarifs", title: "Un plan pour chaque étape.", sub: "Commencez simplement, puis adaptez votre espace à votre activité.", plans: [{ name: "Essentiel", price: "0 MAD", period: "/ pour commencer", desc: "Pour découvrir les fondamentaux.", cta: "Commencer", items: ["Tableau de bord", "Calendrier des échéances", "Gestion des contacts"] }, { name: "Pro", price: "199 MAD", period: "/ mois", desc: "Pour piloter une activité en croissance.", cta: "Choisir Pro", featured: true, items: ["Tout dans Essentiel", "Contrats et coffre juridique", "Rapports et exports", "Rôles et permissions"] }, { name: "Équipe", price: "499 MAD", period: "/ mois", desc: "Pour une équipe qui veut aller plus loin.", cta: "Parler à l'équipe", items: ["Tout dans Pro", "Équipe multi-utilisateurs", "Suivi avancé et audit", "Accompagnement prioritaire"] }] },
+    blog: { eyebrow: "Ressources", title: "Le journal Fatorti.", posts: [{ tag: "Gestion", title: "Les 5 échéances à ne plus laisser passer", desc: "Une méthode simple pour organiser vos obligations mensuelles et trimestrielles.", date: "12 sept. 2026" }, { tag: "Conformité", title: "Préparer ses contrats avec plus de sérénité", desc: "Les points à vérifier avant de signer une prestation au Maroc.", date: "04 sept. 2026" }, { tag: "Trésorerie", title: "Où part vraiment votre budget outils ?", desc: "Comment repérer les abonnements inutilisés et reprendre la main sur vos coûts.", date: "28 août 2026" }] },
+    faq: { eyebrow: "FAQ", title: "Questions fréquentes.", items: [{ q: "Fatorti est-il adapté aux petites entreprises marocaines ?", a: "Oui. L'application est conçue pour les artisans, freelances, TPE et PME qui veulent centraliser leur gestion sans complexité inutile." }, { q: "Puis-je utiliser Fatorti sur mobile ?", a: "Oui. L'interface est mobile-first et reste confortable sur téléphone, tablette et ordinateur." }, { q: "Mes données sont-elles protégées ?", a: "Fatorti applique des contrôles d'accès, une session sécurisée et une traçabilité des actions importantes. Consultez notre politique de confidentialité pour les détails." }, { q: "Puis-je changer de formule ?", a: "Oui. Vous pouvez faire évoluer votre formule selon la taille de votre activité et vos besoins." }] },
+    contact: { eyebrow: "Contact", title: "Parlons de votre activité.", sub: "Une question sur Fatorti, les tarifs ou votre déploiement ? Notre équipe vous répond.", email: "bonjour@fatorti.tech", phone: "+212 5 20 00 00 00", city: "Casablanca, Maroc", cta: "Écrire à l'équipe" },
+    legal: { privacy: "Politique de confidentialité", privacyText: "Nous utilisons vos informations uniquement pour fournir, sécuriser et améliorer Fatorti. Vous pouvez demander l'accès, la rectification ou la suppression de vos données.", terms: "Conditions d'utilisation", termsText: "En utilisant Fatorti, vous acceptez d'utiliser le service de manière légale et de conserver vos identifiants confidentiels. Les fonctionnalités peuvent évoluer pour améliorer le service.", cookies: "Politique des cookies", cookiesText: "Fatorti utilise uniquement les cookies nécessaires au fonctionnement de la session et aux préférences de l'interface. Nous ne vendons pas vos données de navigation." },
+  },
+  en: {
+    nav: { benefits: "Benefits", pricing: "Pricing", faq: "FAQ" },
+    about: { eyebrow: "About", title: "Management designed for Moroccan businesses.", desc: "Fatorti brings the essential tools for artisans, freelancers and small businesses into one clear, mobile and compliant workspace.", points: ["A simple experience in French and Arabic.", "Deadlines, contracts and spending visible in one place.", "Built around the realities of Moroccan small businesses."] },
+    benefits: { eyebrow: "Why Fatorti", title: "Less chasing. More control.", sub: "A clear view that helps you decide quickly and work with confidence.", items: [{ title: "Save time", desc: "Find clients, spending, contracts and deadlines without jumping between tools." }, { title: "Stay compliant", desc: "Anticipate obligations and keep a useful trail of every important action." }, { title: "Work from anywhere", desc: "A mobile-first interface that stays clear in the office or on site." }, { title: "Work as a team", desc: "Assign the right roles and keep control of sensitive access." }] },
+    pricing: { eyebrow: "Pricing", title: "A plan for every stage.", sub: "Start simply, then adapt your workspace as your business grows.", plans: [{ name: "Essential", price: "MAD 0", period: "/ to start", desc: "For exploring the essentials.", cta: "Get started", items: ["Dashboard", "Deadline calendar", "Contact management"] }, { name: "Pro", price: "MAD 199", period: "/ month", desc: "For running a growing business.", cta: "Choose Pro", featured: true, items: ["Everything in Essential", "Contracts and legal vault", "Reports and exports", "Roles and permissions"] }, { name: "Team", price: "MAD 499", period: "/ month", desc: "For a team ready to go further.", cta: "Talk to the team", items: ["Everything in Pro", "Multi-user workspace", "Advanced audit trail", "Priority support"] }] },
+    blog: { eyebrow: "Resources", title: "The Fatorti journal.", posts: [{ tag: "Management", title: "5 deadlines worth never missing", desc: "A simple method for organizing monthly and quarterly obligations.", date: "Sep 12, 2026" }, { tag: "Compliance", title: "Prepare contracts with more confidence", desc: "What to review before signing a service agreement in Morocco.", date: "Sep 04, 2026" }, { tag: "Cash flow", title: "Where is your tools budget really going?", desc: "How to spot unused subscriptions and regain control of costs.", date: "Aug 28, 2026" }] },
+    faq: { eyebrow: "FAQ", title: "Frequently asked questions.", items: [{ q: "Is Fatorti made for Moroccan small businesses?", a: "Yes. It is designed for artisans, freelancers, small businesses and teams that want practical management without unnecessary complexity." }, { q: "Can I use Fatorti on mobile?", a: "Yes. The interface is mobile-first and comfortable on phones, tablets and desktops." }, { q: "Is my data protected?", a: "Fatorti applies access controls, secure sessions and audit trails for important actions. See our privacy policy for details." }, { q: "Can I change plans?", a: "Yes. You can adjust your plan as your business and needs evolve." }] },
+    contact: { eyebrow: "Contact", title: "Let us talk about your business.", sub: "Questions about Fatorti, pricing or rollout? Our team will get back to you.", email: "hello@fatorti.tech", phone: "+212 5 20 00 00 00", city: "Casablanca, Morocco", cta: "Email the team" },
+    legal: { privacy: "Privacy policy", privacyText: "We use your information only to provide, secure and improve Fatorti. You can request access, correction or deletion of your data.", terms: "Terms of use", termsText: "By using Fatorti, you agree to use the service lawfully and keep your credentials confidential. Features may evolve as the service improves.", cookies: "Cookie policy", cookiesText: "Fatorti uses only cookies necessary for session operation and interface preferences. We do not sell browsing data." },
+  },
+  ar: {
+    nav: { benefits: "المزايا", pricing: "الأسعار", faq: "الأسئلة" },
+    about: { eyebrow: "عن فاتورتي", title: "إدارة مصممة للشركات المغربية.", desc: "تجمع فاتورتي الأدوات الأساسية للحرفيين والمستقلين والشركات الصغيرة في مساحة واضحة وآمنة ومتوافقة.", points: ["تجربة بسيطة بالفرنسية والعربية.", "المواعيد والعقود والمصاريف في مكان واحد.", "مصممة لواقع المقاولات الصغيرة المغربية."] },
+    benefits: { eyebrow: "لماذا فاتورتي", title: "نسيان أقل. تحكم أكبر.", sub: "رؤية واضحة تساعدك على اتخاذ القرار والعمل بثقة.", items: [{ title: "وفّر وقتك", desc: "اعثر على العملاء والمصاريف والعقود والمواعيد دون التنقل بين الأدوات." }, { title: "ابقَ ممتثلاً", desc: "استبق التزاماتك واحتفظ بسجل مفيد لكل إجراء مهم." }, { title: "اعمل من أي مكان", desc: "واجهة مصممة للهاتف وتبقى واضحة في المكتب أو الميدان." }, { title: "اعمل كفريق", desc: "عيّن الأدوار المناسبة وتحكم في صلاحيات الوصول الحساسة." }] },
+    pricing: { eyebrow: "الأسعار", title: "خطة لكل مرحلة.", sub: "ابدأ ببساطة وطوّر مساحتك مع نمو نشاطك.", plans: [{ name: "أساسي", price: "0 MAD", period: "/ للبدء", desc: "لاكتشاف الأساسيات.", cta: "ابدأ الآن", items: ["لوحة التحكم", "تقويم المواعيد", "إدارة جهات الاتصال"] }, { name: "برو", price: "199 MAD", period: "/ شهر", desc: "لتسيير نشاط في نمو.", cta: "اختر برو", featured: true, items: ["كل ما في الأساسي", "العقود والخزنة القانونية", "التقارير والتصدير", "الأدوار والصلاحيات"] }, { name: "فريق", price: "499 MAD", period: "/ شهر", desc: "لفريق يريد التقدم أكثر.", cta: "تواصل معنا", items: ["كل ما في برو", "مساحة متعددة المستخدمين", "سجل تدقيق متقدم", "دعم ذو أولوية"] }] },
+    blog: { eyebrow: "الموارد", title: "مجلة فاتورتي.", posts: [{ tag: "الإدارة", title: "5 مواعيد لا يجب تفويتها", desc: "طريقة بسيطة لتنظيم التزاماتك الشهرية والفصلية.", date: "12 شتنبر 2026" }, { tag: "الامتثال", title: "جهّز عقودك بثقة أكبر", desc: "ما يجب مراجعته قبل توقيع عقد خدمة في المغرب.", date: "04 شتنبر 2026" }, { tag: "الخزينة", title: "أين تذهب ميزانية أدواتك؟", desc: "كيف تكتشف الاشتراكات غير المستخدمة وتتحكم في التكاليف.", date: "28 غشت 2026" }] },
+    faq: { eyebrow: "الأسئلة الشائعة", title: "أسئلة متكررة.", items: [{ q: "هل فاتورتي مناسبة للشركات المغربية الصغيرة؟", a: "نعم. صممت للحرفيين والمستقلين والشركات الصغيرة والفرق التي تريد إدارة عملية دون تعقيد." }, { q: "هل يمكنني استخدام فاتورتي على الهاتف؟", a: "نعم. الواجهة مصممة للهاتف وتعمل بشكل مريح على الهاتف واللوحة والحاسوب." }, { q: "هل بياناتي محمية؟", a: "تطبق فاتورتي صلاحيات وصول وجلسات آمنة وسجل تدقيق للإجراءات المهمة. راجع سياسة الخصوصية لمزيد من التفاصيل." }, { q: "هل يمكنني تغيير الخطة؟", a: "نعم. يمكنك تعديل خطتك مع تطور نشاطك واحتياجاتك." }] },
+    contact: { eyebrow: "تواصل معنا", title: "لنتحدث عن نشاطك.", sub: "لديك سؤال حول فاتورتي أو الأسعار أو طريقة الانطلاق؟ فريقنا يجيبك.", email: "hello@fatorti.tech", phone: "+212 5 20 00 00 00", city: "الدار البيضاء، المغرب", cta: "راسل الفريق" },
+    legal: { privacy: "سياسة الخصوصية", privacyText: "نستخدم معلوماتك فقط لتقديم فاتورتي وتأمينها وتحسينها. يمكنك طلب الوصول إلى بياناتك أو تصحيحها أو حذفها.", terms: "شروط الاستخدام", termsText: "باستخدام فاتورتي، توافق على استعمال الخدمة بشكل قانوني والحفاظ على سرية بيانات الدخول. قد تتطور الميزات لتحسين الخدمة.", cookies: "سياسة ملفات الارتباط", cookiesText: "تستخدم فاتورتي فقط الملفات الضرورية للجلسة وتفضيلات الواجهة. لا نبيع بيانات التصفح." },
   },
 }
 
 export default function Landing({ onEnter }: { onEnter: () => void }) {
   const [lang, setLang] = useState<Lang>("fr")
   const [theme, setTheme] = useState<Theme>("dark")
+  const [page, setPage] = useState<LandingPage>("home")
   const t = T[lang]
+  const extra = EXTRA[lang]
   const rtl = lang === "ar"
+
+  useEffect(() => {
+    setPage(getLandingPage())
+  }, [])
 
   return (
     <div className="landing-root aurora min-h-screen font-sans antialiased" data-theme={theme} dir={rtl ? "rtl" : "ltr"}>
       <div className="relative">
         <div className="grid-veil pointer-events-none absolute inset-0 h-[720px]" />
         <Header t={t} lang={lang} setLang={setLang} theme={theme} setTheme={setTheme} onEnter={onEnter} />
-        <Hero t={t} onEnter={onEnter} />
+        {page === "home" && <Hero t={t} onEnter={onEnter} />}
       </div>
-      <Features t={t} />
-      <Assistant t={t} onEnter={onEnter} />
-      <SocialProof t={t} />
-      <Footer t={t} onEnter={onEnter} />
+      {page === "features" && <Features t={t} />}
+      {page === "assistant" && <Assistant t={t} onEnter={onEnter} />}
+      {page === "about" && <AboutSection copy={extra.about} />}
+      {page === "benefits" && <BenefitsSection copy={extra.benefits} />}
+      {page === "pricing" && <PricingSection copy={extra.pricing} onEnter={onEnter} />}
+      {page === "blog" && <BlogSection copy={extra.blog} />}
+      {page === "faq" && <FaqSection copy={extra.faq} />}
+      {page === "contact" && <ContactSection copy={extra.contact} />}
+      {(page === "privacy" || page === "terms" || page === "cookies") && <LegalSection copy={extra.legal} active={page} />}
+      <Footer t={t} extra={extra} onEnter={onEnter} />
+      <CookieBanner lang={lang} />
     </div>
   )
 }
@@ -197,10 +260,13 @@ function Header({ t, lang, setLang, theme, setTheme, onEnter }: { t: Dict; lang:
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--l-border)] bg-[var(--l-header)] backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-5 sm:px-8">
-        <Logo light={theme === "dark"} size={32} />
+        <a href="/" aria-label="Fatorti accueil"><Logo light={theme === "dark"} size={32} /></a>
         <nav className="hidden items-center gap-8 text-[13.5px] font-medium text-[var(--l-muted)] md:flex">
-          <a href="#features" className="transition-colors hover:text-[var(--l-heading)]">{t.nav.features}</a>
-          <a href="#assistant" className="transition-colors hover:text-[var(--l-heading)]">{t.nav.assistant}</a>
+          <a href="/features/" className="transition-colors hover:text-[var(--l-heading)]">{t.nav.features}</a>
+          <a href="/assistant/" className="transition-colors hover:text-[var(--l-heading)]">{t.nav.assistant}</a>
+          <a href="/benefits/" className="transition-colors hover:text-[var(--l-heading)]">{t.nav.benefits}</a>
+          <a href="/pricing/" className="transition-colors hover:text-[var(--l-heading)]">{t.nav.pricing}</a>
+          <a href="/faq/" className="transition-colors hover:text-[var(--l-heading)]">{t.nav.faq}</a>
         </nav>
         <div className="flex items-center gap-2">
           <LangSwitcher lang={lang} setLang={setLang} />
@@ -250,7 +316,7 @@ const previewIcons = [LayoutDashboard, FileText, CalendarDays, ShieldAlert, Wren
 function DashboardPreview({ t }: { t: Dict }) {
   return (
     <div className="mz-rise relative mt-14 sm:mt-20" style={{ animationDelay: "0.25s" }}>
-      <div className="mz-glow pointer-events-none absolute -inset-x-10 -top-10 bottom-0 -z-10 rounded-[40px] blur-3xl" style={{ background: "radial-gradient(50% 50% at 50% 30%, rgba(124,58,237,0.35), transparent 70%)" }} />
+      <div className="mz-glow pointer-events-none absolute -inset-x-10 -top-10 bottom-0 -z-10 rounded-[40px] blur-3xl" style={{ background: "radial-gradient(50% 50% at 50% 30%, rgba(37,99,235,0.3), transparent 70%)" }} />
       <div className="overflow-hidden rounded-2xl border border-[var(--l-border-strong)] bg-[var(--l-panel)] shadow-[0_40px_120px_-30px_rgba(0,0,0,0.55)] backdrop-blur-xl">
         <div className="flex items-center gap-1.5 border-b border-[var(--l-border)] px-4 py-3">
           <span className="h-2.5 w-2.5 rounded-full bg-[var(--l-border-strong)]" />
@@ -266,14 +332,14 @@ function DashboardPreview({ t }: { t: Dict }) {
               const Icon = previewIcons[i]
               const active = i === 4
               return (
-                <div key={label} className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12.5px] font-medium ${active ? "text-white" : "text-[var(--l-muted)]"}`} style={active ? { backgroundImage: GRAD } : undefined}>
+                <div key={label} className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12.5px] font-medium ${active ? "text-white" : "text-[var(--l-muted)]"}`} style={active ? { backgroundImage: DASHBOARD_GRAD } : undefined}>
                   <Icon className="h-4 w-4" strokeWidth={active ? 2.4 : 2} /> {label}
                 </div>
               )
             })}
             <div className="mt-auto rounded-lg border border-[var(--l-border)] bg-[var(--l-panel-2)] p-2.5">
               <p className="text-[10.5px] text-[var(--l-faint)]">{t.prev.plan}</p>
-              <div className="mt-1.5 h-1.5 rounded-full bg-[var(--l-border-strong)]"><div className="h-full w-2/3 rounded-full" style={{ backgroundImage: GRAD }} /></div>
+              <div className="mt-1.5 h-1.5 rounded-full bg-[var(--l-border-strong)]"><div className="h-full w-2/3 rounded-full" style={{ backgroundImage: DASHBOARD_GRAD }} /></div>
             </div>
           </aside>
 
@@ -283,7 +349,7 @@ function DashboardPreview({ t }: { t: Dict }) {
                 <p className="text-[11px] text-[var(--l-faint)]">{t.prev.greet}</p>
                 <h3 className="font-display text-[16px] font-bold text-[var(--l-heading)]">{t.prev.title}</h3>
               </div>
-              <span className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11.5px] font-semibold text-white" style={{ backgroundImage: GRAD }}>
+              <span className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11.5px] font-semibold text-white" style={{ backgroundImage: DASHBOARD_GRAD }}>
                 <Plus className="h-3.5 w-3.5" /> {t.prev.add}
               </span>
             </div>
@@ -345,12 +411,12 @@ function TrendChart({ height = 120 }: { height?: number }) {
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height }} preserveAspectRatio="none" onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
         <defs>
           <linearGradient id={`${gid}-fill`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#9333ea" stopOpacity={0.35} />
-            <stop offset="100%" stopColor="#7c3aed" stopOpacity={0} />
+            <stop offset="0%" stopColor="#2563eb" stopOpacity={0.35} />
+            <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
           </linearGradient>
           <linearGradient id={`${gid}-stroke`} x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#a855f7" />
-            <stop offset="100%" stopColor="#d946ef" />
+            <stop offset="0%" stopColor="#2563eb" />
+            <stop offset="100%" stopColor="#10b981" />
           </linearGradient>
         </defs>
         <line x1={padX} x2={W - padX} y1={padTop + ih * 0.5} y2={padTop + ih * 0.5} stroke="rgba(148,163,184,0.18)" strokeWidth={1} />
@@ -384,7 +450,7 @@ function Features({ t }: { t: Dict }) {
         <p className="mt-3 text-[15px] text-[var(--l-muted)]">{t.feat.sub}</p>
       </div>
 
-      <div className="mt-14 grid gap-5 lg:grid-cols-3">
+      <div className="mt-14 flex w-full flex-col gap-5">
         <FeatureCard icon={CalendarDays} title={t.f1.title} tag={t.f1.tag}>
           <p className="text-[13.5px] leading-relaxed text-[var(--l-muted)]">{t.f1.desc}</p>
           <CalendarWidget t={t} />
@@ -406,7 +472,7 @@ function Features({ t }: { t: Dict }) {
 
 function FeatureCard({ icon: Icon, title, tag, children }: { icon: typeof Wrench; title: string; tag: string; children: React.ReactNode }) {
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-[var(--l-border)] bg-[var(--l-surface)] p-6 transition-all duration-300 hover:border-violet-400/30">
+    <div className="group relative flex h-full w-full flex-col overflow-hidden rounded-2xl border border-[var(--l-border)] bg-[var(--l-surface)] p-6 transition-all duration-300 hover:border-violet-400/30">
       <div className="pointer-events-none absolute -end-16 -top-16 h-40 w-40 rounded-full bg-violet-600/10 blur-3xl transition-opacity duration-300 group-hover:bg-violet-500/20" />
       <div className="relative flex items-center gap-3">
         <span className="grid h-11 w-11 place-items-center rounded-xl text-white shadow-[0_8px_24px_-6px_rgba(124,58,237,0.6)]" style={{ backgroundImage: GRAD }}>
@@ -415,7 +481,7 @@ function FeatureCard({ icon: Icon, title, tag, children }: { icon: typeof Wrench
         <span className="rounded-full border border-[var(--l-border-strong)] px-2.5 py-0.5 text-[11px] font-medium text-[var(--l-muted)]">{tag}</span>
       </div>
       <h3 className="font-display relative mt-4 text-[18px] font-bold text-[var(--l-heading)]">{title}</h3>
-      <div className="relative mt-2 space-y-4">{children}</div>
+      <div className="relative mt-2 flex flex-1 flex-col space-y-4">{children}</div>
     </div>
   )
 }
@@ -593,41 +659,194 @@ function Assistant({ t, onEnter }: { t: Dict; onEnter: () => void }) {
   )
 }
 
-/* -------------------------- Social proof -------------------------- */
-
-function SocialProof({ t }: { t: Dict }) {
-  const clients = ["Atlas BTP", "Riad Zitoun", "Chaoui Immo", "Al Amane", "Sonasid", "Tazi & Fils"]
+function AboutSection({ copy }: { copy: ExtraCopy["about"] }) {
   return (
-    <section id="trust" className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
-      <div className="flex flex-col items-center gap-8 rounded-2xl border border-[var(--l-border)] bg-[var(--l-surface)] px-6 py-10">
-        <p className="text-[12.5px] font-medium uppercase tracking-[0.15em] text-[var(--l-faint)]">{t.trust}</p>
-        <div className="grid w-full grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3 md:grid-cols-6">
-          {clients.map((c) => (
-            <div key={c} className="flex items-center justify-center opacity-70 transition-opacity hover:opacity-100">
-              <span className="font-display text-[14px] font-bold tracking-tight text-[var(--l-text)]">{c}</span>
-            </div>
-          ))}
+    <section id="about" className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
+      <div className="grid gap-10 rounded-3xl border border-[var(--l-border)] bg-[var(--l-surface)] p-8 sm:p-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+        <div>
+          <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-emerald-400">{copy.eyebrow}</p>
+          <h2 className="font-display mt-3 text-[30px] font-bold leading-tight text-[var(--l-heading)] sm:text-[38px]">{copy.title}</h2>
+        </div>
+        <div>
+          <p className="text-[15px] leading-relaxed text-[var(--l-muted)]">{copy.desc}</p>
+          <ul className="mt-6 space-y-3">
+            {copy.points.map((point) => <li key={point} className="flex items-start gap-2.5 text-[13.5px] text-[var(--l-text)]"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />{point}</li>)}
+          </ul>
         </div>
       </div>
     </section>
   )
 }
 
+function BenefitsSection({ copy }: { copy: ExtraCopy["benefits"] }) {
+  const icons = [Zap, ShieldCheck, Wrench, LayoutDashboard]
+  return (
+    <section id="benefits" className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
+      <div className="mx-auto max-w-2xl text-center">
+        <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-emerald-400">{copy.eyebrow}</p>
+        <h2 className="font-display mt-3 text-[30px] font-bold text-[var(--l-heading)] sm:text-[38px]">{copy.title}</h2>
+        <p className="mt-3 text-[15px] text-[var(--l-muted)]">{copy.sub}</p>
+      </div>
+      <div className="mx-auto mt-12 max-w-3xl space-y-4">
+        {copy.items.map((item, i) => {
+          const Icon = icons[i]
+          return <article key={item.title} className="flex gap-4 rounded-2xl border border-[var(--l-border)] bg-[var(--l-surface)] p-5 sm:p-6">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-500/10 text-blue-400"><Icon className="h-5 w-5" /></span>
+            <div><h3 className="font-display text-[16px] font-bold text-[var(--l-heading)]">{item.title}</h3><p className="mt-1.5 text-[13.5px] leading-relaxed text-[var(--l-muted)]">{item.desc}</p></div>
+          </article>
+        })}
+      </div>
+    </section>
+  )
+}
+
+function PricingSection({ copy, onEnter }: { copy: ExtraCopy["pricing"]; onEnter: () => void }) {
+  return (
+    <section id="pricing" className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
+      <div className="mx-auto max-w-2xl text-center">
+        <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-blue-400">{copy.eyebrow}</p>
+        <h2 className="font-display mt-3 text-[30px] font-bold text-[var(--l-heading)] sm:text-[38px]">{copy.title}</h2>
+        <p className="mt-3 text-[15px] text-[var(--l-muted)]">{copy.sub}</p>
+      </div>
+      <div className="mx-auto mt-12 max-w-3xl space-y-4">
+        {copy.plans.map((plan) => <article key={plan.name} className={`relative rounded-2xl border p-6 sm:p-8 ${plan.featured ? "border-blue-400/50 bg-blue-500/10" : "border-[var(--l-border)] bg-[var(--l-surface)]"}`}>
+          {plan.featured && <span className="absolute end-6 top-6 rounded-full bg-blue-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white">Pro</span>}
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+            <div><h3 className="font-display text-[20px] font-bold text-[var(--l-heading)]">{plan.name}</h3><p className="mt-1 text-[13px] text-[var(--l-muted)]">{plan.desc}</p></div>
+            <div className="sm:text-end"><span className="font-display text-[28px] font-bold text-[var(--l-heading)]">{plan.price}</span><span className="ms-1 text-[12px] text-[var(--l-faint)]">{plan.period}</span></div>
+          </div>
+          <div className="mt-6 flex flex-col gap-4 border-t border-[var(--l-border)] pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <ul className="space-y-2">{plan.items.map((item) => <li key={item} className="flex items-center gap-2 text-[13px] text-[var(--l-text)]"><Check className="h-3.5 w-3.5 text-emerald-400" />{item}</li>)}</ul>
+            <GlowButton onClick={onEnter} className="shrink-0 px-4 py-2.5 text-[12.5px]">{plan.cta} <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" /></GlowButton>
+          </div>
+        </article>)}
+      </div>
+    </section>
+  )
+}
+
+function BlogSection({ copy }: { copy: ExtraCopy["blog"] }) {
+  return (
+    <section id="blog" className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
+      <div className="mx-auto max-w-2xl text-center">
+        <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-blue-400">{copy.eyebrow}</p>
+        <h2 className="font-display mt-3 text-[30px] font-bold text-[var(--l-heading)] sm:text-[38px]">{copy.title}</h2>
+      </div>
+      <div className="mx-auto mt-12 max-w-3xl space-y-4">
+        {copy.posts.map((post) => <article key={post.title} className="rounded-2xl border border-[var(--l-border)] bg-[var(--l-surface)] p-6 sm:p-7">
+          <div className="flex flex-wrap items-center justify-between gap-2"><span className="rounded-full bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold text-blue-400">{post.tag}</span><time className="text-[11px] text-[var(--l-faint)]">{post.date}</time></div>
+          <h3 className="font-display mt-4 text-[19px] font-bold text-[var(--l-heading)]">{post.title}</h3><p className="mt-2 max-w-2xl text-[13.5px] leading-relaxed text-[var(--l-muted)]">{post.desc}</p>
+          <a href="/contact/" className="mt-4 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-blue-400">Lire l'article <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" /></a>
+        </article>)}
+      </div>
+    </section>
+  )
+}
+
+function FaqSection({ copy }: { copy: ExtraCopy["faq"] }) {
+  const [open, setOpen] = useState(0)
+  return (
+    <section id="faq" className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
+      <div className="mx-auto max-w-2xl text-center"><p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-emerald-400">{copy.eyebrow}</p><h2 className="font-display mt-3 text-[30px] font-bold text-[var(--l-heading)] sm:text-[38px]">{copy.title}</h2></div>
+      <div className="mx-auto mt-12 max-w-3xl divide-y divide-[var(--l-border)] rounded-2xl border border-[var(--l-border)] bg-[var(--l-surface)] px-5 sm:px-7">
+        {copy.items.map((item, i) => <div key={item.q}>
+          <button type="button" onClick={() => setOpen(open === i ? -1 : i)} className="flex w-full items-center justify-between gap-4 py-5 text-start text-[14px] font-semibold text-[var(--l-heading)]"><span>{item.q}</span><ChevronDown className={`h-4 w-4 shrink-0 text-[var(--l-faint)] transition-transform ${open === i ? "rotate-180" : ""}`} /></button>
+          {open === i && <p className="pb-5 pe-8 text-[13.5px] leading-relaxed text-[var(--l-muted)]">{item.a}</p>}
+        </div>)}
+      </div>
+    </section>
+  )
+}
+
+function ContactSection({ copy }: { copy: ExtraCopy["contact"] }) {
+  return (
+    <section id="contact" className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
+      <div className="mx-auto max-w-3xl rounded-3xl border border-blue-400/20 bg-blue-500/10 p-8 sm:p-10">
+        <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-blue-400">{copy.eyebrow}</p><h2 className="font-display mt-3 text-[30px] font-bold text-[var(--l-heading)] sm:text-[38px]">{copy.title}</h2><p className="mt-3 max-w-xl text-[15px] leading-relaxed text-[var(--l-muted)]">{copy.sub}</p>
+        <div className="mt-8 grid gap-3 sm:grid-cols-3">
+          <a href={`mailto:${copy.email}`} className="flex items-center gap-2.5 rounded-xl border border-[var(--l-border)] bg-[var(--l-panel)] p-3 text-[12px] text-[var(--l-text)] hover:border-blue-400/40"><Mail className="h-4 w-4 text-blue-400" />{copy.email}</a>
+          <a href={`tel:${copy.phone.replace(/\s/g, "")}`} className="flex items-center gap-2.5 rounded-xl border border-[var(--l-border)] bg-[var(--l-panel)] p-3 text-[12px] text-[var(--l-text)] hover:border-blue-400/40"><Phone className="h-4 w-4 text-blue-400" />{copy.phone}</a>
+          <span className="flex items-center gap-2.5 rounded-xl border border-[var(--l-border)] bg-[var(--l-panel)] p-3 text-[12px] text-[var(--l-text)]"><MapPin className="h-4 w-4 shrink-0 text-blue-400" />{copy.city}</span>
+        </div>
+        <a href={`mailto:${copy.email}`} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-500 px-5 py-3 text-[13px] font-semibold text-white hover:bg-blue-400">{copy.cta} <Mail className="h-4 w-4" /></a>
+      </div>
+    </section>
+  )
+}
+
+function LegalSection({ copy, active }: { copy: ExtraCopy["legal"]; active?: "privacy" | "terms" | "cookies" }) {
+  const items = [{ id: "privacy", title: copy.privacy, text: copy.privacyText }, { id: "terms", title: copy.terms, text: copy.termsText }, { id: "cookies", title: copy.cookies, text: copy.cookiesText }]
+  return <section className="mx-auto max-w-6xl px-5 py-16 sm:px-8"><div className="mx-auto max-w-3xl border-t border-[var(--l-border)] pt-10">{items.filter((item) => !active || item.id === active).map((item) => <article id={item.id} key={item.id}><h2 className="font-display text-[24px] font-bold text-[var(--l-heading)]">{item.title}</h2><p className="mt-4 text-[14px] leading-relaxed text-[var(--l-muted)]">{item.text}</p></article>)}</div></section>
+}
+
 /* ----------------------------- Footer ----------------------------- */
 
-function Footer({ t, onEnter }: { t: Dict; onEnter: () => void }) {
+function Footer({ t, extra, onEnter }: { t: Dict; extra: ExtraCopy; onEnter: () => void }) {
   return (
     <footer className="border-t border-[var(--l-border)] bg-[var(--l-bg-solid)]">
       <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
-        <div className="flex flex-col items-center gap-6 text-center">
-          <h2 className="font-display max-w-xl text-[26px] font-bold leading-tight tracking-tight text-[var(--l-heading)] sm:text-[32px]">{t.footer.title}</h2>
-          <GlowButton onClick={onEnter}>{t.signup} <ArrowRight className="h-4 w-4 rtl:rotate-180" /></GlowButton>
+        <div className="grid gap-10 border-b border-[var(--l-border)] pb-12 lg:grid-cols-[1.2fr_0.8fr_0.8fr]">
+          <div>
+            <Logo light size={32} />
+            <h2 className="font-display mt-6 max-w-xl text-[26px] font-bold leading-tight tracking-tight text-[var(--l-heading)] sm:text-[32px]">{t.footer.title}</h2>
+            <GlowButton onClick={onEnter} className="mt-6">{t.signup} <ArrowRight className="h-4 w-4 rtl:rotate-180" /></GlowButton>
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--l-faint)]">{extra.about.eyebrow}</p>
+            <div className="mt-4 flex flex-col items-start gap-3 text-[12.5px] text-[var(--l-muted)]">
+              <a href="/features/" className="hover:text-[var(--l-heading)]">{t.nav.features}</a>
+              <a href="/benefits/" className="hover:text-[var(--l-heading)]">{t.nav.benefits}</a>
+              <a href="/pricing/" className="hover:text-[var(--l-heading)]">{t.nav.pricing}</a>
+              <a href="/blog/" className="hover:text-[var(--l-heading)]">{extra.blog.eyebrow}</a>
+            </div>
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--l-faint)]">{extra.contact.eyebrow}</p>
+            <div className="mt-4 flex flex-col items-start gap-3 text-[12.5px] text-[var(--l-muted)]">
+              <a href={`mailto:${extra.contact.email}`} className="hover:text-[var(--l-heading)]">{extra.contact.email}</a>
+              <a href="/faq/" className="hover:text-[var(--l-heading)]">{t.nav.faq}</a>
+              <a href="/privacy/" className="hover:text-[var(--l-heading)]">{extra.legal.privacy}</a>
+              <a href="/terms/" className="hover:text-[var(--l-heading)]">{extra.legal.terms}</a>
+            </div>
+          </div>
         </div>
-        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-[var(--l-border)] pt-6 text-[12px] text-[var(--l-faint)] sm:flex-row">
+        <div className="mt-8 flex flex-col items-start justify-between gap-4 text-[12px] text-[var(--l-faint)] sm:flex-row sm:items-center">
           <p>{t.footer.copy}</p>
-          <p className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-violet-400" /> {t.footer.compliance}</p>
+          <div className="flex flex-wrap items-center gap-4">
+            <a href="/cookies/" className="hover:text-[var(--l-heading)]">{extra.legal.cookies}</a>
+            <p className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> {t.footer.compliance}</p>
+          </div>
         </div>
       </div>
     </footer>
+  )
+}
+
+function CookieBanner({ lang }: { lang: Lang }) {
+  const [visible, setVisible] = useState(false)
+  const copy = {
+    fr: { text: "Nous utilisons des cookies nécessaires au fonctionnement du site et des mesures d'audience pour améliorer Fatorti.", accept: "Accepter", reject: "Refuser", link: "En savoir plus" },
+    en: { text: "We use necessary cookies and audience measurement to improve Fatorti.", accept: "Accept", reject: "Decline", link: "Learn more" },
+    ar: { text: "نستخدم ملفات ضرورية لتشغيل الموقع وقياس الجمهور لتحسين فاتورتي.", accept: "موافقة", reject: "رفض", link: "معرفة المزيد" },
+  }[lang]
+
+  useEffect(() => {
+    setVisible(localStorage.getItem("fatorti-cookie-consent") === null)
+  }, [])
+
+  function choose(value: "accepted" | "declined") {
+    localStorage.setItem("fatorti-cookie-consent", value)
+    setVisible(false)
+  }
+
+  if (!visible) return null
+  return (
+    <aside className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-3xl rounded-2xl border border-[var(--l-border-strong)] bg-[var(--l-panel)] p-4 shadow-2xl backdrop-blur-xl sm:flex sm:items-center sm:gap-5 sm:p-5" role="dialog" aria-label={copy.link}>
+      <p className="flex-1 text-[12.5px] leading-relaxed text-[var(--l-text)]">{copy.text} <a href="/cookies/" className="font-semibold text-blue-400 hover:underline">{copy.link}</a></p>
+      <div className="mt-4 flex shrink-0 gap-2 sm:mt-0">
+        <button type="button" onClick={() => choose("declined")} className="rounded-lg border border-[var(--l-border-strong)] px-3 py-2 text-[12px] font-semibold text-[var(--l-muted)] hover:text-[var(--l-heading)]">{copy.reject}</button>
+        <button type="button" onClick={() => choose("accepted")} className="rounded-lg bg-blue-500 px-3 py-2 text-[12px] font-semibold text-white hover:bg-blue-400">{copy.accept}</button>
+      </div>
+    </aside>
   )
 }

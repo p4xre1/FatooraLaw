@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import type { Session } from "@supabase/supabase-js"
-import { supabase } from "../lib/supabase"
+import { isSupabaseConfigured, supabase } from "../lib/supabase"
 import { useMizan } from "../store/useMizan"
 import type { Role } from "../store/types"
 
@@ -18,9 +18,15 @@ export function useSupabaseAuth() {
   useEffect(() => {
     let mounted = true
 
+    if (!isSupabaseConfigured) {
+      setReady(true)
+      return () => { mounted = false }
+    }
+
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return
       if (data.session) hydrate(data.session, { silent: true })
+      else signOut()
       setReady(true)
     })
 
@@ -58,5 +64,8 @@ export function useSupabaseAuth() {
     ready,
     recovery,
     clearRecovery: () => setRecovery(false),
+    logout: async () => {
+      if (isSupabaseConfigured) await supabase.auth.signOut()
+    },
   }
 }

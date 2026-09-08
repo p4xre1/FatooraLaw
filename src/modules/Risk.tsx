@@ -14,7 +14,7 @@ const LEVEL_META: Record<Level, { label: string; tone: "serious" | "warn" | "goo
 const RISKS: Risk[] = [
   { id: "r1", label: "Déclaration TVA — T3 2026", category: "Fiscalité", due: "30/09/2026", level: "high", desc: "Dépôt et télépaiement obligatoires auprès de la DGI avant le 30/09. Une majoration de 15% s'applique en cas de retard, plus 0,5% par mois." },
   { id: "r2", label: "Acompte IS — 1er versement", category: "Fiscalité", due: "15/09/2026", level: "high", desc: "Premier acompte de l'impôt sur les sociétés basé sur le résultat fiscal N-1 à régler à la Trésorerie Générale du Royaume." },
-  { id: "r3", label: "Contrat client — Atlas BTP", category: "Contrats", due: "22/09/2026", level: "medium", desc: "La clause de pénalité de retard (art. 264 DOC) doit être révisée avant reconduction. Plafond actuel non conforme au marché." },
+  { id: "r3", label: "Contrat client — PME locale", category: "Contrats", due: "22/09/2026", level: "medium", desc: "La clause de pénalité de retard (art. 264 DOC) doit être révisée avant reconduction. Plafond actuel non conforme au marché." },
   { id: "r4", label: "Registre du commerce — Modèle J", category: "Registre commercial", due: "—", level: "ok", desc: "Modèle J à jour auprès du tribunal de commerce de Casablanca. Prochaine mise à jour requise après l'AGO." },
   { id: "r5", label: "Assurance RC Professionnelle", category: "Contrats", due: "20/09/2026", level: "medium", desc: "Échéance trimestrielle de la prime. Vérifier l'adéquation des plafonds de garantie aux chantiers en cours." },
   { id: "r6", label: "CNSS — déclaration mensuelle", category: "Social", due: "—", level: "ok", desc: "Télédéclaration et paiement des cotisations effectués via le portail DAMANCOM. À jour." },

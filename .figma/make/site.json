@@ -1,7 +1,17 @@
 {
-  "description": "Streamline contract and invoice creation with a bilingual, mobile-friendly dashboard tailored for Moroccan contractors and artisans to manage clients and finances.",
+  "title": "Fatorti | Gestion simple pour les entreprises marocaines",
+  "description": "Fatorti aide les artisans, freelances et petites entreprises marocaines à gérer leurs finances, contrats, échéances et conformité.",
+  "icons": {
+    "icon": "/fatorti-logo.svg"
+  },
   "robots": {
-    "index": false
+    "index": true
+  },
+  "openGraph": {
+    "image": "/fatorti-logo.svg"
+  },
+  "analytics": {
+    "googleAnalyticsId": "G-E9G2TM3MCH"
   },
   "accessibility": {
     "addBypassLinks": false,

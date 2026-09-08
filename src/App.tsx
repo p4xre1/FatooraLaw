@@ -3,6 +3,8 @@ import { Loader2, ArrowRight, ArrowLeft, ShieldCheck, Lock, ShieldAlert } from "
 import type { ModuleKey, Role } from "./store/types"
 import { useMizan } from "./store/useMizan"
 import { NAV, Logo } from "./components/nav"
+import Auth from "./components/Auth"
+import { useSupabaseAuth } from "./hooks/useSupabaseAuth"
 import { roleLabels } from "./lib/mizan"
 import { useIdleLogout } from "./lib/useIdleLogout"
 import Sidebar from "./components/Sidebar"
@@ -37,6 +39,7 @@ const IDLE_TIMEOUT_MS = 20 * 60 * 1000
 
 export default function App() {
   const { auth, team, signIn, signOut } = useMizan()
+  const { ready, recovery, clearRecovery, logout } = useSupabaseAuth()
   const [active, setActive] = useState<ModuleKey>("dashboard")
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -44,7 +47,7 @@ export default function App() {
   const [idleSignedOut, setIdleSignedOut] = useState(false)
 
   useIdleLogout(!!auth, IDLE_TIMEOUT_MS, () => {
-    signOut()
+    void logout()
     setShowLogin(true)
     setIdleSignedOut(true)
   })
@@ -57,20 +60,22 @@ export default function App() {
     return member ? member.permissions : all
   }, [auth, team])
 
+  if (!ready) {
+    return <Fallback />
+  }
+
+  if (recovery) {
+    return <Auth onBack={() => { clearRecovery(); void logout() }} initialView="reset" onRecoveryDone={clearRecovery} />
+  }
+
   if (!auth) {
     return showLogin
-      ? (
-        <Login
-          onSignIn={(name, email, role) => { setIdleSignedOut(false); signIn(name, email, role) }}
-          onBack={() => { setShowLogin(false); setIdleSignedOut(false) }}
-          idleSignedOut={idleSignedOut}
-        />
-      )
+      ? <Auth onBack={() => { setShowLogin(false); setIdleSignedOut(false) }} />
       : <Landing onEnter={() => setShowLogin(true)} />
   }
 
   const current: ModuleKey = allowed[active] ? active : "dashboard"
-  const title = NAV.find((n) => n.key === current)?.label ?? "Fatorati"
+  const title = NAV.find((n) => n.key === current)?.label ?? "Fatorti"
 
   function go(m: ModuleKey) {
     setActive(m)
@@ -89,7 +94,7 @@ export default function App() {
         setMobileOpen={setMobileOpen}
       />
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar title={title} onMenu={() => setMobileOpen(true)} onNavigate={go} onLogout={signOut} />
+        <Topbar title={title} onMenu={() => setMobileOpen(true)} onNavigate={go} onLogout={() => { void logout() }} />
         <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:px-8">
           <Suspense fallback={<Fallback />}>
             {current === "dashboard" && <Dashboard onNavigate={go} />}
@@ -139,7 +144,7 @@ function Login({ onSignIn, onBack, idleSignedOut }: { onSignIn: (name: string, e
             ))}
           </div>
         </div>
-        <p className="relative text-[12px] text-slate-400">© 2026 Fatorati · Casablanca, Maroc</p>
+        <p className="relative text-[12px] text-slate-400">© 2026 Fatorti · Casablanca, Maroc</p>
       </div>
 
       {/* Form panel */}

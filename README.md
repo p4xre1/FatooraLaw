@@ -1,1 +1,1 @@
-# FatooraLaw
+# FatortiLaw

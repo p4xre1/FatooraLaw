@@ -28,11 +28,11 @@ export const seedSettings: Settings = {
 }
 
 export const seedContacts: Contact[] = [
-  { id: "ct1", type: "client", name: "Groupe Chaoui Immobilier", ice: "001928374000055", phone: "+212 522-441-207", email: "contact@chaoui.ma", city: "Casablanca", balance: 84000 },
-  { id: "ct2", type: "client", name: "Résidence Al Amane", ice: "001827364000011", phone: "+212 537-882-101", email: "gestion@alamane.ma", city: "Rabat", balance: 32500 },
+  { id: "ct1", type: "client", name: "Groupe Immobilier Atlas", ice: "001928374000055", phone: "+212 522-441-207", email: "contact@atlas-immo.ma", city: "Casablanca", balance: 84000 },
+  { id: "ct2", type: "client", name: "Résidence Les Jardins", ice: "001827364000011", phone: "+212 537-882-101", email: "gestion@lesjardins.ma", city: "Rabat", balance: 32500 },
   { id: "ct3", type: "client", name: "Youssef El Amrani", ice: "—", phone: "+212 661-204-118", email: "y.amrani@gmail.com", city: "Casablanca", balance: 0 },
-  { id: "ct4", type: "client", name: "Hôtel Riad Zitoun", ice: "004182773000090", phone: "+212 524-388-114", email: "dg@riadzitoun.ma", city: "Marrakech", balance: 156000 },
-  { id: "sp1", type: "supplier", name: "Sonasid Aciers", ice: "000112233000021", phone: "+212 539-402-118", email: "ventes@sonasid.ma", city: "Nador", balance: -47800 },
+  { id: "ct4", type: "client", name: "Hôtel Les Oliviers", ice: "004182773000090", phone: "+212 524-388-114", email: "dg@lesoliviers.ma", city: "Marrakech", balance: 156000 },
+  { id: "sp1", type: "supplier", name: "Aciers du Nord", ice: "000112233000021", phone: "+212 539-402-118", email: "ventes@aciers-nord.ma", city: "Nador", balance: -47800 },
   { id: "sp2", type: "supplier", name: "LafargeHolcim Maroc", ice: "000998877000033", phone: "+212 522-999-000", email: "pro@lafarge.ma", city: "Casablanca", balance: -28900 },
   { id: "sp3", type: "supplier", name: "Quincaillerie Tazi", ice: "003344556000012", phone: "+212 535-661-908", email: "tazi.quincaillerie@gmail.com", city: "Fès", balance: -6400 },
 ]
@@ -50,7 +50,7 @@ export const seedProjects: Project[] = [
     equipmentIds: ["st5", "st6"],
   },
   {
-    id: "pj2", name: "Réhabilitation façade — Al Amane", clientId: "ct2", budget: 420_000, paid: 210_000, cost: 268_000,
+    id: "pj2", name: "Réhabilitation façade — Les Jardins", clientId: "ct2", budget: 420_000, paid: 210_000, cost: 268_000,
     status: "active", progress: 45, start: iso(-40), end: iso(35),
     milestones: [
       { id: "m1", label: "Échafaudage", done: true },
@@ -60,7 +60,7 @@ export const seedProjects: Project[] = [
     equipmentIds: ["st6"],
   },
   {
-    id: "pj3", name: "Aménagement suites — Riad Zitoun", clientId: "ct4", budget: 980_000, paid: 300_000, cost: 540_000,
+    id: "pj3", name: "Aménagement suites — Les Oliviers", clientId: "ct4", budget: 980_000, paid: 300_000, cost: 540_000,
     status: "active", progress: 33, start: iso(-25), end: iso(90),
     milestones: [
       { id: "m1", label: "Démolition", done: true },

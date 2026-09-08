@@ -17,7 +17,7 @@
     "typecheck": "tsc --noEmit",
     "clean": "bash scripts/clean.sh",
     "ci": "bash scripts/ci.sh",
-    "deploy": "vite build && wrangler pages deploy dist --project-name=fatoora-web-app"
+    "deploy": "vite build && wrangler pages deploy dist --project-name=fatorti-web-app"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

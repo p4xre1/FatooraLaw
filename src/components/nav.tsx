@@ -1,6 +1,7 @@
 import {
   LayoutDashboard, FolderKanban, Users, ShoppingCart, Boxes, Scale,
   BarChart3, ShieldCheck, ScrollText, Settings, CalendarDays, ShieldAlert, Wrench,
+  ReceiptText,
 } from "lucide-react"
 import type { ModuleKey } from "../store/types"
 
@@ -24,10 +25,10 @@ export function Logo({ size = 32, light = false }: { size?: number; light?: bool
   return (
     <span className="inline-flex items-center gap-2.5 select-none">
       <span className="grid place-items-center rounded-[9px] bg-brand text-white shadow-sm" style={{ width: size, height: size }}>
-        <span className="font-extrabold leading-none" style={{ fontSize: size * 0.52 }}>F</span>
+        <ReceiptText strokeWidth={2.4} style={{ width: size * 0.55, height: size * 0.55 }} aria-hidden="true" />
       </span>
       <span className={`text-[18px] font-extrabold tracking-tight leading-none ${light ? "text-white" : "text-ink"}`}>
-        Fatoora
+        Fatorti
       </span>
     </span>
   )

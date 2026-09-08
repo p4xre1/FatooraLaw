@@ -5,7 +5,7 @@ import {
 } from "lucide-react"
 import type { Role } from "../store/types"
 import { roleLabels } from "../lib/mizan"
-import { supabase } from "../lib/supabase"
+import { isSupabaseConfigured, supabase } from "../lib/supabase"
 import { Logo } from "./nav"
 import { Btn, Field, Input, Select, Checkbox, Modal } from "./kit"
 
@@ -82,7 +82,7 @@ function Notice({ kind, children }: { kind: "error" | "success"; children: React
   )
 }
 
-const PRIVACY_POLICY = `Fatoora ERP collecte les informations que vous fournissez à l'inscription (nom, e-mail) ainsi que les données de gestion que vous saisissez dans l'application (projets, contacts, dépenses, contrats). Ces données sont utilisées uniquement pour fournir et sécuriser le service, et ne sont ni vendues ni partagées avec des tiers à des fins commerciales.
+const PRIVACY_POLICY = `Fatorti ERP collecte les informations que vous fournissez à l'inscription (nom, e-mail) ainsi que les données de gestion que vous saisissez dans l'application (projets, contacts, dépenses, contrats). Ces données sont utilisées uniquement pour fournir et sécuriser le service, et ne sont ni vendues ni partagées avec des tiers à des fins commerciales.
 
 Vos données sont hébergées de manière sécurisée et vous pouvez, à tout moment, demander leur export ou leur suppression en nous contactant. Nous conservons un journal d'audit des actions effectuées dans votre espace afin de garantir la traçabilité et la sécurité de votre compte.
 
@@ -131,9 +131,16 @@ export default function Auth({
     setView(v)
   }
 
+  function requireSupabase() {
+    if (isSupabaseConfigured) return true
+    setError("Supabase n'est pas configuré. Ajoutez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY dans le fichier .env, puis redémarrez Vite.")
+    return false
+  }
+
   async function handleLogin(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    if (!requireSupabase()) return
     setLoading(true)
     const { error: err } = await supabase.auth.signInWithPassword({ email: loginEmail.trim(), password: loginPassword })
     setLoading(false)
@@ -144,6 +151,7 @@ export default function Auth({
   async function handleSignup(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    if (!requireSupabase()) return
     if (signupPassword.length < 6) return setError("Le mot de passe doit contenir au moins 6 caractères.")
     if (signupPassword !== confirmPassword) return setError("Les mots de passe ne correspondent pas.")
     if (!agree) return setError("Veuillez accepter la politique de confidentialité pour continuer.")
@@ -177,6 +185,7 @@ export default function Auth({
   async function handleForgot(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    if (!requireSupabase()) return
     setLoading(true)
     const { error: err } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
       redirectTo: window.location.origin,
@@ -189,6 +198,7 @@ export default function Auth({
   async function handleReset(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    if (!requireSupabase()) return
     if (newPassword.length < 6) return setError("Le mot de passe doit contenir au moins 6 caractères.")
     if (newPassword !== confirmNewPassword) return setError("Les mots de passe ne correspondent pas.")
 
@@ -227,7 +237,7 @@ export default function Auth({
             ))}
           </div>
         </div>
-        <p className="relative text-[12px] text-slate-400">© 2026 Fatoora ERP · Casablanca, Maroc</p>
+        <p className="relative text-[12px] text-slate-400">© 2026 Fatorti ERP · Casablanca, Maroc</p>
       </div>
 
       {/* Form panel */}

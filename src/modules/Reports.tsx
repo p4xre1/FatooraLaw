@@ -29,7 +29,7 @@ export default function Reports() {
 
   async function exportReport() {
     setBusy(true)
-    await runAsync(() => toCSV(income.map((r) => ({ Poste: r.label, Montant: r.value })), "fatorati-compte-resultat.csv"))
+    await runAsync(() => toCSV(income.map((r) => ({ Poste: r.label, Montant: r.value })), "fatorti-compte-resultat.csv"))
     setBusy(false)
   }
 
