@@ -9,6 +9,124 @@ import { Logo } from "../components/nav"
 const GRAD = "linear-gradient(135deg, #7c3aed 0%, #9333ea 100%)"
 const DASHBOARD_GRAD = "linear-gradient(135deg, #2563eb 0%, #10b981 100%)"
 
+/* --------------------------- Structured data ------------------------
+ * Per-page JSON-LD ("Content Schema") that complements the site-wide
+ * Organization/WebSite JSON-LD emitted at build time (see vite.config.ts).
+ * Kept next to the copy it describes so it can never drift from what's
+ * actually rendered on the page.
+ * ---------------------------------------------------------------- */
+const SITE_URL = "https://fatoriti.tech"
+const ORG_REF = { "@id": `${SITE_URL}/#organization` }
+/** Assumption — same as `organization.foundingDate` in .figma/make/site.json. Correct both if wrong. */
+const CONTENT_PUBLISHED = "2026-01-01"
+/** Bump this whenever the copy in this file changes materially. */
+const CONTENT_UPDATED = "2026-09-08"
+
+function pagePath(page: LandingPage): string {
+  return page === "home" ? "/" : `/${page}/`
+}
+
+/** MAD price strings appear as either "199 MAD" (fr/ar) or "MAD 199" (en); pull the digits either way. */
+function priceDigits(price: string): string {
+  return price.replace(/\D/g, "") || "0"
+}
+
+function offersFromPlans(plans: ExtraCopy["pricing"]["plans"]) {
+  return plans.map((plan, i) => ({
+    "@type": "Offer",
+    position: i + 1,
+    name: plan.name,
+    description: plan.desc,
+    price: priceDigits(plan.price),
+    priceCurrency: "MAD",
+    url: `${SITE_URL}/pricing/`,
+  }))
+}
+
+function buildJsonLd(page: LandingPage, lang: Lang, t: Dict, extra: ExtraCopy): Record<string, unknown> {
+  const url = `${SITE_URL}${pagePath(page)}`
+  const base = {
+    "@context": "https://schema.org",
+    "@id": `${url}#content`,
+    url,
+    inLanguage: lang,
+    isPartOf: { "@id": `${SITE_URL}/#website` },
+    author: ORG_REF,
+    publisher: ORG_REF,
+    datePublished: CONTENT_PUBLISHED,
+    dateModified: CONTENT_UPDATED,
+  }
+
+  switch (page) {
+    case "faq":
+      return {
+        ...base,
+        "@type": "FAQPage",
+        name: extra.faq.title,
+        mainEntity: extra.faq.items.map((item) => ({
+          "@type": "Question",
+          name: item.q,
+          acceptedAnswer: { "@type": "Answer", text: item.a },
+        })),
+      }
+    case "pricing":
+      return {
+        ...base,
+        "@type": "WebPage",
+        name: extra.pricing.title,
+        description: extra.pricing.sub,
+        mainEntity: { "@type": "ItemList", itemListElement: offersFromPlans(extra.pricing.plans) },
+      }
+    case "home":
+      return {
+        ...base,
+        "@type": "SoftwareApplication",
+        name: "Fatorati",
+        description: t.hero.sub,
+        applicationCategory: "BusinessApplication",
+        operatingSystem: "Web",
+        offers: offersFromPlans(extra.pricing.plans),
+      }
+    case "about":
+      return { ...base, "@type": "AboutPage", name: extra.about.title, description: extra.about.desc }
+    case "benefits":
+      return { ...base, "@type": "WebPage", name: extra.benefits.title, description: extra.benefits.sub }
+    case "assistant":
+      return { ...base, "@type": "WebPage", name: t.asst.title, description: t.asst.desc }
+    case "features":
+      return { ...base, "@type": "WebPage", name: t.feat.title, description: t.feat.sub }
+    case "contact":
+      return { ...base, "@type": "ContactPage", name: extra.contact.title, description: extra.contact.sub }
+    case "blog":
+      return { ...base, "@type": "CollectionPage", name: extra.blog.title, description: `${extra.blog.eyebrow} — Fatorati` }
+    case "privacy":
+      return { ...base, "@type": "WebPage", name: extra.legal.privacy, description: extra.legal.privacyText }
+    case "terms":
+      return { ...base, "@type": "WebPage", name: extra.legal.terms, description: extra.legal.termsText }
+    case "cookies":
+      return { ...base, "@type": "WebPage", name: extra.legal.cookies, description: extra.legal.cookiesText }
+  }
+}
+
+/** Upserts a single <script type="application/ld+json"> in <head> and keeps document.title in sync per page. */
+function usePageStructuredData(page: LandingPage, lang: Lang, t: Dict, extra: ExtraCopy) {
+  useEffect(() => {
+    const schema = buildJsonLd(page, lang, t, extra)
+    let script = document.getElementById("ld-content") as HTMLScriptElement | null
+    if (!script) {
+      script = document.createElement("script")
+      script.id = "ld-content"
+      script.type = "application/ld+json"
+      document.head.appendChild(script)
+    }
+    script.textContent = JSON.stringify(schema)
+
+    if (page !== "home") {
+      document.title = `${schema.name as string} | Fatorati`
+    }
+  }, [page, lang, t, extra])
+}
+
 type Lang = "fr" | "en" | "ar"
 type Theme = "dark" | "light"
 type Seg = { t: string; hi?: boolean }
@@ -27,7 +145,7 @@ type ExtraCopy = {
   about: { eyebrow: string; title: string; desc: string; points: string[] }
   benefits: { eyebrow: string; title: string; sub: string; items: { title: string; desc: string }[] }
   pricing: { eyebrow: string; title: string; sub: string; plans: { name: string; price: string; period: string; desc: string; cta: string; items: string[]; featured?: boolean }[] }
-  blog: { eyebrow: string; title: string; posts: { tag: string; title: string; desc: string; date: string }[] }
+  blog: { eyebrow: string; title: string; posts: { tag: string; title: string; desc: string; date: string; iso: string }[] }
   faq: { eyebrow: string; title: string; items: { q: string; a: string }[] }
   contact: { eyebrow: string; title: string; sub: string; email: string; phone: string; city: string; cta: string }
   legal: { privacy: string; privacyText: string; terms: string; termsText: string; cookies: string; cookiesText: string }
@@ -114,7 +232,7 @@ const EXTRA: Record<Lang, ExtraCopy> = {
     about: { eyebrow: "À propos", title: "La gestion pensée pour le terrain marocain.", desc: "Fatorati réunit les outils essentiels des artisans, freelances et petites entreprises dans un espace clair, mobile et conforme.", points: ["Une expérience simple, en français et en arabe.", "Des échéances, contrats et dépenses visibles au même endroit.", "Une approche conçue avec les réalités des TPE marocaines."] },
     benefits: { eyebrow: "Pourquoi Fatorati", title: "Moins d'oubli. Plus de maîtrise.", sub: "Une vue claire pour décider vite et travailler sereinement.", items: [{ title: "Gagnez du temps", desc: "Retrouvez vos clients, dépenses, contrats et échéances sans passer d'un outil à l'autre." }, { title: "Restez conforme", desc: "Anticipez vos obligations et conservez une trace utile de chaque action importante." }, { title: "Pilotez depuis votre poche", desc: "Une interface mobile-first qui reste lisible au bureau comme sur le terrain." }, { title: "Travaillez en équipe", desc: "Attribuez les bons rôles et gardez le contrôle sur les accès sensibles." }] },
     pricing: { eyebrow: "Tarifs", title: "Un plan pour chaque étape.", sub: "Commencez simplement, puis adaptez votre espace à votre activité.", plans: [{ name: "Essentiel", price: "0 MAD", period: "/ pour commencer", desc: "Pour découvrir les fondamentaux.", cta: "Commencer", items: ["Tableau de bord", "Calendrier des échéances", "Gestion des contacts"] }, { name: "Pro", price: "199 MAD", period: "/ mois", desc: "Pour piloter une activité en croissance.", cta: "Choisir Pro", featured: true, items: ["Tout dans Essentiel", "Contrats et coffre juridique", "Rapports et exports", "Rôles et permissions"] }, { name: "Équipe", price: "499 MAD", period: "/ mois", desc: "Pour une équipe qui veut aller plus loin.", cta: "Parler à l'équipe", items: ["Tout dans Pro", "Équipe multi-utilisateurs", "Suivi avancé et audit", "Accompagnement prioritaire"] }] },
-    blog: { eyebrow: "Ressources", title: "Le journal Fatorati.", posts: [{ tag: "Gestion", title: "Les 5 échéances à ne plus laisser passer", desc: "Une méthode simple pour organiser vos obligations mensuelles et trimestrielles.", date: "12 sept. 2026" }, { tag: "Conformité", title: "Préparer ses contrats avec plus de sérénité", desc: "Les points à vérifier avant de signer une prestation au Maroc.", date: "04 sept. 2026" }, { tag: "Trésorerie", title: "Où part vraiment votre budget outils ?", desc: "Comment repérer les abonnements inutilisés et reprendre la main sur vos coûts.", date: "28 août 2026" }] },
+    blog: { eyebrow: "Ressources", title: "Le journal Fatorati.", posts: [{ tag: "Gestion", title: "Les 5 échéances à ne plus laisser passer", desc: "Une méthode simple pour organiser vos obligations mensuelles et trimestrielles.", date: "12 sept. 2026", iso: "2026-09-12" }, { tag: "Conformité", title: "Préparer ses contrats avec plus de sérénité", desc: "Les points à vérifier avant de signer une prestation au Maroc.", date: "04 sept. 2026", iso: "2026-09-04" }, { tag: "Trésorerie", title: "Où part vraiment votre budget outils ?", desc: "Comment repérer les abonnements inutilisés et reprendre la main sur vos coûts.", date: "28 août 2026", iso: "2026-08-28" }] },
     faq: { eyebrow: "FAQ", title: "Questions fréquentes.", items: [{ q: "Fatorati est-il adapté aux petites entreprises marocaines ?", a: "Oui. L'application est conçue pour les artisans, freelances, TPE et PME qui veulent centraliser leur gestion sans complexité inutile." }, { q: "Puis-je utiliser Fatorati sur mobile ?", a: "Oui. L'interface est mobile-first et reste confortable sur téléphone, tablette et ordinateur." }, { q: "Mes données sont-elles protégées ?", a: "Fatorati applique des contrôles d'accès, une session sécurisée et une traçabilité des actions importantes. Consultez notre politique de confidentialité pour les détails." }, { q: "Puis-je changer de formule ?", a: "Oui. Vous pouvez faire évoluer votre formule selon la taille de votre activité et vos besoins." }] },
     contact: { eyebrow: "Contact", title: "Parlons de votre activité.", sub: "Une question sur Fatorati, les tarifs ou votre déploiement ? Notre équipe vous répond.", email: "bonjour@fatorati.tech", phone: "+212 5 20 00 00 00", city: "Casablanca, Maroc", cta: "Écrire à l'équipe" },
     legal: { privacy: "Politique de confidentialité", privacyText: "Nous utilisons vos informations uniquement pour fournir, sécuriser et améliorer Fatorati. Vous pouvez demander l'accès, la rectification ou la suppression de vos données.", terms: "Conditions d'utilisation", termsText: "En utilisant Fatorati, vous acceptez d'utiliser le service de manière légale et de conserver vos identifiants confidentiels. Les fonctionnalités peuvent évoluer pour améliorer le service.", cookies: "Politique des cookies", cookiesText: "Fatorati utilise uniquement les cookies nécessaires au fonctionnement de la session et aux préférences de l'interface. Nous ne vendons pas vos données de navigation." },
@@ -124,7 +242,7 @@ const EXTRA: Record<Lang, ExtraCopy> = {
     about: { eyebrow: "About", title: "Management designed for Moroccan businesses.", desc: "Fatorati brings the essential tools for artisans, freelancers and small businesses into one clear, mobile and compliant workspace.", points: ["A simple experience in French and Arabic.", "Deadlines, contracts and spending visible in one place.", "Built around the realities of Moroccan small businesses."] },
     benefits: { eyebrow: "Why Fatorati", title: "Less chasing. More control.", sub: "A clear view that helps you decide quickly and work with confidence.", items: [{ title: "Save time", desc: "Find clients, spending, contracts and deadlines without jumping between tools." }, { title: "Stay compliant", desc: "Anticipate obligations and keep a useful trail of every important action." }, { title: "Work from anywhere", desc: "A mobile-first interface that stays clear in the office or on site." }, { title: "Work as a team", desc: "Assign the right roles and keep control of sensitive access." }] },
     pricing: { eyebrow: "Pricing", title: "A plan for every stage.", sub: "Start simply, then adapt your workspace as your business grows.", plans: [{ name: "Essential", price: "MAD 0", period: "/ to start", desc: "For exploring the essentials.", cta: "Get started", items: ["Dashboard", "Deadline calendar", "Contact management"] }, { name: "Pro", price: "MAD 199", period: "/ month", desc: "For running a growing business.", cta: "Choose Pro", featured: true, items: ["Everything in Essential", "Contracts and legal vault", "Reports and exports", "Roles and permissions"] }, { name: "Team", price: "MAD 499", period: "/ month", desc: "For a team ready to go further.", cta: "Talk to the team", items: ["Everything in Pro", "Multi-user workspace", "Advanced audit trail", "Priority support"] }] },
-    blog: { eyebrow: "Resources", title: "The Fatorati journal.", posts: [{ tag: "Management", title: "5 deadlines worth never missing", desc: "A simple method for organizing monthly and quarterly obligations.", date: "Sep 12, 2026" }, { tag: "Compliance", title: "Prepare contracts with more confidence", desc: "What to review before signing a service agreement in Morocco.", date: "Sep 04, 2026" }, { tag: "Cash flow", title: "Where is your tools budget really going?", desc: "How to spot unused subscriptions and regain control of costs.", date: "Aug 28, 2026" }] },
+    blog: { eyebrow: "Resources", title: "The Fatorati journal.", posts: [{ tag: "Management", title: "5 deadlines worth never missing", desc: "A simple method for organizing monthly and quarterly obligations.", date: "Sep 12, 2026", iso: "2026-09-12" }, { tag: "Compliance", title: "Prepare contracts with more confidence", desc: "What to review before signing a service agreement in Morocco.", date: "Sep 04, 2026", iso: "2026-09-04" }, { tag: "Cash flow", title: "Where is your tools budget really going?", desc: "How to spot unused subscriptions and regain control of costs.", date: "Aug 28, 2026", iso: "2026-08-28" }] },
     faq: { eyebrow: "FAQ", title: "Frequently asked questions.", items: [{ q: "Is Fatorati made for Moroccan small businesses?", a: "Yes. It is designed for artisans, freelancers, small businesses and teams that want practical management without unnecessary complexity." }, { q: "Can I use Fatorati on mobile?", a: "Yes. The interface is mobile-first and comfortable on phones, tablets and desktops." }, { q: "Is my data protected?", a: "Fatorati applies access controls, secure sessions and audit trails for important actions. See our privacy policy for details." }, { q: "Can I change plans?", a: "Yes. You can adjust your plan as your business and needs evolve." }] },
     contact: { eyebrow: "Contact", title: "Let us talk about your business.", sub: "Questions about Fatorati, pricing or rollout? Our team will get back to you.", email: "hello@fatorati.tech", phone: "+212 5 20 00 00 00", city: "Casablanca, Morocco", cta: "Email the team" },
     legal: { privacy: "Privacy policy", privacyText: "We use your information only to provide, secure and improve Fatorati. You can request access, correction or deletion of your data.", terms: "Terms of use", termsText: "By using Fatorati, you agree to use the service lawfully and keep your credentials confidential. Features may evolve as the service improves.", cookies: "Cookie policy", cookiesText: "Fatorati uses only cookies necessary for session operation and interface preferences. We do not sell browsing data." },
@@ -134,7 +252,7 @@ const EXTRA: Record<Lang, ExtraCopy> = {
     about: { eyebrow: "عن فاتورتي", title: "إدارة مصممة للشركات المغربية.", desc: "تجمع فاتورتي الأدوات الأساسية للحرفيين والمستقلين والشركات الصغيرة في مساحة واضحة وآمنة ومتوافقة.", points: ["تجربة بسيطة بالفرنسية والعربية.", "المواعيد والعقود والمصاريف في مكان واحد.", "مصممة لواقع المقاولات الصغيرة المغربية."] },
     benefits: { eyebrow: "لماذا فاتورتي", title: "نسيان أقل. تحكم أكبر.", sub: "رؤية واضحة تساعدك على اتخاذ القرار والعمل بثقة.", items: [{ title: "وفّر وقتك", desc: "اعثر على العملاء والمصاريف والعقود والمواعيد دون التنقل بين الأدوات." }, { title: "ابقَ ممتثلاً", desc: "استبق التزاماتك واحتفظ بسجل مفيد لكل إجراء مهم." }, { title: "اعمل من أي مكان", desc: "واجهة مصممة للهاتف وتبقى واضحة في المكتب أو الميدان." }, { title: "اعمل كفريق", desc: "عيّن الأدوار المناسبة وتحكم في صلاحيات الوصول الحساسة." }] },
     pricing: { eyebrow: "الأسعار", title: "خطة لكل مرحلة.", sub: "ابدأ ببساطة وطوّر مساحتك مع نمو نشاطك.", plans: [{ name: "أساسي", price: "0 MAD", period: "/ للبدء", desc: "لاكتشاف الأساسيات.", cta: "ابدأ الآن", items: ["لوحة التحكم", "تقويم المواعيد", "إدارة جهات الاتصال"] }, { name: "برو", price: "199 MAD", period: "/ شهر", desc: "لتسيير نشاط في نمو.", cta: "اختر برو", featured: true, items: ["كل ما في الأساسي", "العقود والخزنة القانونية", "التقارير والتصدير", "الأدوار والصلاحيات"] }, { name: "فريق", price: "499 MAD", period: "/ شهر", desc: "لفريق يريد التقدم أكثر.", cta: "تواصل معنا", items: ["كل ما في برو", "مساحة متعددة المستخدمين", "سجل تدقيق متقدم", "دعم ذو أولوية"] }] },
-    blog: { eyebrow: "الموارد", title: "مجلة فاتورتي.", posts: [{ tag: "الإدارة", title: "5 مواعيد لا يجب تفويتها", desc: "طريقة بسيطة لتنظيم التزاماتك الشهرية والفصلية.", date: "12 شتنبر 2026" }, { tag: "الامتثال", title: "جهّز عقودك بثقة أكبر", desc: "ما يجب مراجعته قبل توقيع عقد خدمة في المغرب.", date: "04 شتنبر 2026" }, { tag: "الخزينة", title: "أين تذهب ميزانية أدواتك؟", desc: "كيف تكتشف الاشتراكات غير المستخدمة وتتحكم في التكاليف.", date: "28 غشت 2026" }] },
+    blog: { eyebrow: "الموارد", title: "مجلة فاتورتي.", posts: [{ tag: "الإدارة", title: "5 مواعيد لا يجب تفويتها", desc: "طريقة بسيطة لتنظيم التزاماتك الشهرية والفصلية.", date: "12 شتنبر 2026", iso: "2026-09-12" }, { tag: "الامتثال", title: "جهّز عقودك بثقة أكبر", desc: "ما يجب مراجعته قبل توقيع عقد خدمة في المغرب.", date: "04 شتنبر 2026", iso: "2026-09-04" }, { tag: "الخزينة", title: "أين تذهب ميزانية أدواتك؟", desc: "كيف تكتشف الاشتراكات غير المستخدمة وتتحكم في التكاليف.", date: "28 غشت 2026", iso: "2026-08-28" }] },
     faq: { eyebrow: "الأسئلة الشائعة", title: "أسئلة متكررة.", items: [{ q: "هل فاتورتي مناسبة للشركات المغربية الصغيرة؟", a: "نعم. صممت للحرفيين والمستقلين والشركات الصغيرة والفرق التي تريد إدارة عملية دون تعقيد." }, { q: "هل يمكنني استخدام فاتورتي على الهاتف؟", a: "نعم. الواجهة مصممة للهاتف وتعمل بشكل مريح على الهاتف واللوحة والحاسوب." }, { q: "هل بياناتي محمية؟", a: "تطبق فاتورتي صلاحيات وصول وجلسات آمنة وسجل تدقيق للإجراءات المهمة. راجع سياسة الخصوصية لمزيد من التفاصيل." }, { q: "هل يمكنني تغيير الخطة؟", a: "نعم. يمكنك تعديل خطتك مع تطور نشاطك واحتياجاتك." }] },
     contact: { eyebrow: "تواصل معنا", title: "لنتحدث عن نشاطك.", sub: "لديك سؤال حول فاتورتي أو الأسعار أو طريقة الانطلاق؟ فريقنا يجيبك.", email: "hello@fatorati.tech", phone: "+212 5 20 00 00 00", city: "الدار البيضاء، المغرب", cta: "راسل الفريق" },
     legal: { privacy: "سياسة الخصوصية", privacyText: "نستخدم معلوماتك فقط لتقديم فاتورتي وتأمينها وتحسينها. يمكنك طلب الوصول إلى بياناتك أو تصحيحها أو حذفها.", terms: "شروط الاستخدام", termsText: "باستخدام فاتورتي، توافق على استعمال الخدمة بشكل قانوني والحفاظ على سرية بيانات الدخول. قد تتطور الميزات لتحسين الخدمة.", cookies: "سياسة ملفات الارتباط", cookiesText: "تستخدم فاتورتي فقط الملفات الضرورية للجلسة وتفضيلات الواجهة. لا نبيع بيانات التصفح." },
@@ -152,6 +270,8 @@ export default function Landing({ onEnter }: { onEnter: () => void }) {
   useEffect(() => {
     setPage(getLandingPage())
   }, [])
+
+  usePageStructuredData(page, lang, t, extra)
 
   return (
     <div className="landing-root aurora min-h-screen font-sans antialiased" data-theme={theme} dir={rtl ? "rtl" : "ltr"}>
@@ -734,7 +854,7 @@ function BlogSection({ copy }: { copy: ExtraCopy["blog"] }) {
       </div>
       <div className="mx-auto mt-12 max-w-3xl space-y-4">
         {copy.posts.map((post) => <article key={post.title} className="rounded-2xl border border-[var(--l-border)] bg-[var(--l-surface)] p-6 sm:p-7">
-          <div className="flex flex-wrap items-center justify-between gap-2"><span className="rounded-full bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold text-blue-400">{post.tag}</span><time className="text-[11px] text-[var(--l-faint)]">{post.date}</time></div>
+          <div className="flex flex-wrap items-center justify-between gap-2"><span className="rounded-full bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold text-blue-400">{post.tag}</span><time dateTime={post.iso} className="text-[11px] text-[var(--l-faint)]">{post.date}</time></div>
           <h3 className="font-display mt-4 text-[19px] font-bold text-[var(--l-heading)]">{post.title}</h3><p className="mt-2 max-w-2xl text-[13.5px] leading-relaxed text-[var(--l-muted)]">{post.desc}</p>
           <a href="/contact/" className="mt-4 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-blue-400">Lire l'article <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" /></a>
         </article>)}

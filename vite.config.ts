@@ -46,6 +46,10 @@ type FigmaSiteConfiguration = {
   title?: string
   description?: string
   language?: string
+  /** Canonical origin (no trailing slash), e.g. "https://fatoriti.tech". Used to emit <link rel="canonical"> and JSON-LD @id/url fields. */
+  siteUrl?: string
+  /** Comma-separated meta keywords. Set to "N/A" (or omit) to skip the tag. */
+  keywords?: string
   robots?: {
     index?: boolean
   }
@@ -54,6 +58,25 @@ type FigmaSiteConfiguration = {
   }
   openGraph?: {
     image?: string
+  }
+  /** Drives the site-wide Organization + WebSite JSON-LD (Entity Schema). */
+  organization?: {
+    name?: string
+    /** Full legal/registered name, if different from the display name. */
+    legalName?: string
+    email?: string
+    telephone?: string
+    addressLocality?: string
+    addressCountry?: string
+    /** ISO date (YYYY-MM-DD) the entity/site was established. */
+    foundingDate?: string
+    /**
+     * Other official profile URLs for this entity (LinkedIn, X, Facebook, GitHub…).
+     * Only put REAL, owned profile URLs here — fabricated/guessed sameAs links
+     * actively mislead search engines about entity identity, so this is left
+     * empty (and the tag simply omitted) rather than invented.
+     */
+    sameAs?: string[]
   }
   analytics?: {
     googleAnalyticsId?: string
@@ -85,6 +108,11 @@ function figmaSiteConfiguration(config: FigmaSiteConfiguration): Plugin {
   const description = config.description ?? ''
   const favicon = config.icons?.icon ?? ''
   const socialImage = config.openGraph?.image ?? ''
+  const siteUrl = config.siteUrl?.replace(/\/+$/, '') ?? ''
+  const keywords = config.keywords?.trim() ?? ''
+  const hasKeywords = keywords && keywords.toUpperCase() !== 'N/A'
+  const org = config.organization
+  const buildDate = new Date().toISOString().slice(0, 10)
   const language = sanitizeHtmlValue(config.language) || 'en'
   const googleAnalyticsId = sanitizeHtmlValue(config.analytics?.googleAnalyticsId)
   const headStart = config.customScripts?.headStart ?? ''
@@ -126,6 +154,59 @@ function figmaSiteConfiguration(config: FigmaSiteConfiguration): Plugin {
         const tags: HtmlTagDescriptor[] = []
         if (description) {
           tags.push({ tag: 'meta', attrs: { name: 'description', content: description }, injectTo: 'head' })
+        }
+        if (hasKeywords) {
+          tags.push({ tag: 'meta', attrs: { name: 'keywords', content: keywords }, injectTo: 'head' })
+        }
+        if (siteUrl) {
+          tags.push({ tag: 'link', attrs: { rel: 'canonical', href: `${siteUrl}/` }, injectTo: 'head' })
+        }
+        if (org && siteUrl) {
+          const orgId = `${siteUrl}/#organization`
+          const siteId = `${siteUrl}/#website`
+          const organizationNode: Record<string, unknown> = {
+            '@type': 'Organization',
+            '@id': orgId,
+            name: org.name ?? title,
+            url: `${siteUrl}/`,
+            foundingDate: org.foundingDate,
+            email: org.email,
+            telephone: org.telephone,
+          }
+          if (org.legalName) organizationNode.legalName = org.legalName
+          if (favicon) organizationNode.logo = { '@type': 'ImageObject', url: `${siteUrl}${favicon}` }
+          if (org.addressLocality || org.addressCountry) {
+            organizationNode.address = {
+              '@type': 'PostalAddress',
+              addressLocality: org.addressLocality,
+              addressCountry: org.addressCountry,
+            }
+          }
+          if (org.sameAs && org.sameAs.length > 0) organizationNode.sameAs = org.sameAs
+          // Strip undefined keys so they don't render as literal "undefined" in the JSON-LD.
+          for (const key of Object.keys(organizationNode)) {
+            if (organizationNode[key] === undefined) delete organizationNode[key]
+          }
+
+          const graph = [
+            organizationNode,
+            {
+              '@type': 'WebSite',
+              '@id': siteId,
+              name: org.name ?? title,
+              url: `${siteUrl}/`,
+              description: description || undefined,
+              inLanguage: language,
+              publisher: { '@id': orgId },
+              dateModified: buildDate,
+            },
+          ]
+          tags.push({
+            tag: 'script',
+            attrs: { type: 'application/ld+json' },
+            children: JSON.stringify({ '@context': 'https://schema.org', '@graph': graph }),
+            injectTo: 'head',
+          })
         }
         if (config.robots?.index === false) {
           tags.push({ tag: 'meta', attrs: { name: 'robots', content: 'noindex, nofollow' }, injectTo: 'head' })
