@@ -1,5 +1,5 @@
 # Fatorati — robots.txt
-# https://fatoriti.tech
+# https://fatorati.tech
 
 # Default: allow everything
 User-agent: *

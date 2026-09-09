@@ -517,5 +517,5 @@ for each row execute function public.enforce_plan_limit();
 
 -- Bootstrap the first CMS/platform administrator after creating their Auth user:
 -- insert into public.platform_admins (user_id)
--- select id from auth.users where email = 'admin@fatorati.tech'
+-- select id from auth.users where email = 'contact@fatorati.tech'
 -- on conflict do nothing;

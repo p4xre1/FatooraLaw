@@ -46,7 +46,7 @@ type FigmaSiteConfiguration = {
   title?: string
   description?: string
   language?: string
-  /** Canonical origin (no trailing slash), e.g. "https://fatoriti.tech". Used to emit <link rel="canonical"> and JSON-LD @id/url fields. */
+  /** Canonical origin (no trailing slash), e.g. "https://fatorati.tech". Used to emit <link rel="canonical"> and JSON-LD @id/url fields. */
   siteUrl?: string
   /** Comma-separated meta keywords. Set to "N/A" (or omit) to skip the tag. */
   keywords?: string

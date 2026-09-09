@@ -12,7 +12,7 @@ revenue, margin, treasury, and receivables — in French, English, and Arabic.
 
 ## Site
 
-- Website: https://fatoriti.tech
+- Website: https://fatorati.tech
 - Core features: financial dashboard, project tracking, contacts (clients &
   suppliers), procurement/expenses, inventory, legal document vault, tax &
   compliance reports, calendar of deadlines, risk/compliance alerts,

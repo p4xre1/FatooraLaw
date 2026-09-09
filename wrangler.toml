@@ -3,7 +3,7 @@ compatibility_date = "2024-09-01"
 pages_build_output_dir = "dist"
 
 # Cloudflare Pages project settings
-# Custom domain: fatoriti.tech
+# Custom domain: fatorati.tech
 # Build command:  pnpm build   (or: npm run build)
 # Build output:   dist
 #
