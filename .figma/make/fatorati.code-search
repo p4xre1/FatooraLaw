@@ -1,0 +1,44 @@
+# Query: fatoriti
+# ContextLines: 1
+
+9 results - 7 files
+
+SECURITY.md:
+  11  
+  12: - Email: **security@fatorati.tech** (see [`/.well-known/security.txt`](public/.well-known/security.txt))
+  13  - Include: what you found, steps to reproduce, and the potential impact.
+
+wrangler.toml:
+  17  #   Build output dir: dist
+  18: #   Custom domain:    fatorati.tech (add under Pages project → Custom domains)
+  19  
+
+.figma/make/site.json:
+  4    "language": "fr",
+  5:   "siteUrl": "https://fatorati.tech",
+  6    "keywords": "gestion entreprise Maroc, facturation Maroc, comptabilité TPE PME, conformité Loi 09-08, CNDP, gestion trésorerie, gestion projets artisans freelances, logiciel gestion PME marocaine",
+
+dist1/robots.txt:
+   1  # Fatorati — robots.txt
+   2: # https://fatorati.tech
+   3  
+
+  71  
+  72: Sitemap: https://fatorati.tech/sitemap.xml
+
+public/robots.txt:
+  71  
+  72: Sitemap: https://fatorati.tech/sitemap.xml
+
+public/.well-known/security.txt:
+  3  Preferred-Languages: fr, ar, en
+  4: Canonical: https://fatorati.tech/.well-known/security.txt
+
+src/marketing/Landing.tsx:
+   17   * ---------------------------------------------------------------- */
+   18: const SITE_URL = "https://fatorati.tech"
+   19  const ORG_REF = { "@id": `${SITE_URL}/#organization` }
+
+  444            <span className="h-2.5 w-2.5 rounded-full bg-[var(--l-border-strong)]" />
+  445:           <span className="mx-3 rounded-md bg-[var(--l-chip)] px-2 py-0.5 font-mono text-[10.5px] text-[var(--l-faint)]">fatoriti.tech/tableau</span>
+  446          </div>

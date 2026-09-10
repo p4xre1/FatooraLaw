@@ -9,7 +9,7 @@ nobody assumes more coverage than exists.
 
 Please report privately, not via a public GitHub issue.
 
-- Email: **security@fatoriti.tech** (see [`/.well-known/security.txt`](public/.well-known/security.txt))
+- Email: **security@fatorati.tech** (see [`/.well-known/security.txt`](public/.well-known/security.txt))
 - Include: what you found, steps to reproduce, and the potential impact.
 - You'll get an acknowledgement within **3 business days** and a status
   update at least every **7 days** until it's resolved.

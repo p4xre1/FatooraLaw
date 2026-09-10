@@ -15,7 +15,7 @@ const DASHBOARD_GRAD = "linear-gradient(135deg, #2563eb 0%, #10b981 100%)"
  * Kept next to the copy it describes so it can never drift from what's
  * actually rendered on the page.
  * ---------------------------------------------------------------- */
-const SITE_URL = "https://fatoriti.tech"
+const SITE_URL = "https://fatorati.tech"
 const ORG_REF = { "@id": `${SITE_URL}/#organization` }
 /** Assumption — same as `organization.foundingDate` in .figma/make/site.json. Correct both if wrong. */
 const CONTENT_PUBLISHED = "2026-01-01"
@@ -442,7 +442,7 @@ function DashboardPreview({ t }: { t: Dict }) {
           <span className="h-2.5 w-2.5 rounded-full bg-[var(--l-border-strong)]" />
           <span className="h-2.5 w-2.5 rounded-full bg-[var(--l-border-strong)]" />
           <span className="h-2.5 w-2.5 rounded-full bg-[var(--l-border-strong)]" />
-          <span className="mx-3 rounded-md bg-[var(--l-chip)] px-2 py-0.5 font-mono text-[10.5px] text-[var(--l-faint)]">fatoriti.tech/tableau</span>
+          <span className="mx-3 rounded-md bg-[var(--l-chip)] px-2 py-0.5 font-mono text-[10.5px] text-[var(--l-faint)]">fatorati.tech/tableau</span>
         </div>
 
         <div className="flex">

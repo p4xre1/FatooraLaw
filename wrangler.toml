@@ -15,7 +15,7 @@ pages_build_output_dir = "dist"
 #   Framework preset: Vite
 #   Build command:    pnpm install && pnpm build
 #   Build output dir: dist
-#   Custom domain:    fatoriti.tech (add under Pages project → Custom domains)
+#   Custom domain:    fatorati.tech (add under Pages project → Custom domains)
 
 [env.production]
 vars = { NODE_ENV = "production" }

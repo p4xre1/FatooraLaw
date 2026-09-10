@@ -69,4 +69,4 @@ Allow: /
 User-agent: DuckAssistBot
 Allow: /
 
-Sitemap: https://fatoriti.tech/sitemap.xml
+Sitemap: https://fatorati.tech/sitemap.xml
