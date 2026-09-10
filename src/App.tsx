@@ -4,7 +4,9 @@ import type { ModuleKey, Role } from "./store/types"
 import { useMizan } from "./store/useMizan"
 import { NAV, Logo } from "./components/nav"
 import Auth from "./components/Auth"
+import OnboardingModal from "./components/OnboardingModal"
 import { useSupabaseAuth } from "./hooks/useSupabaseAuth"
+import { useOnboarding } from "./hooks/useOnboarding"
 import { roleLabels } from "./lib/mizan"
 import { useIdleLogout } from "./lib/useIdleLogout"
 import Sidebar from "./components/Sidebar"
@@ -40,6 +42,7 @@ const IDLE_TIMEOUT_MS = 20 * 60 * 1000
 export default function App() {
   const { auth, team, signIn, signOut } = useMizan()
   const { ready, recovery, clearRecovery, logout } = useSupabaseAuth()
+  const { needsOnboarding, submitting: onboardingSubmitting, error: onboardingError, submit: submitOnboarding } = useOnboarding(!!auth)
   const [active, setActive] = useState<ModuleKey>("dashboard")
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -113,6 +116,9 @@ export default function App() {
           </Suspense>
         </main>
       </div>
+      {needsOnboarding && (
+        <OnboardingModal submitting={onboardingSubmitting} error={onboardingError} onSubmit={submitOnboarding} />
+      )}
     </div>
   )
 }

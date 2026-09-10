@@ -1,9 +1,14 @@
 # Fatorati — robots.txt
 # https://fatorati.tech
 
-# Default: allow everything
+# Default: allow everything except the admin CMS (also enforced via the
+# X-Robots-Tag response header in public/_headers and a noindex meta tag
+# rendered while /admin is mounted, in src/admin/AdminLayout.tsx — three
+# independent layers so it stays out of results even for a crawler that
+# only honors one of the three).
 User-agent: *
 Allow: /
+Disallow: /admin/
 
 # --- AI assistants & AI search crawlers explicitly allowed ---
 # (These would already be allowed by "User-agent: *" above; they're listed
@@ -69,4 +74,4 @@ Allow: /
 User-agent: DuckAssistBot
 Allow: /
 
-Sitemap: https://fatorati.tech/sitemap.xml
+Sitemap: https://fatoriti.tech/sitemap.xml

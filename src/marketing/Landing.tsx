@@ -3,6 +3,7 @@ import {
   ArrowRight, Sparkles, ShieldCheck, CalendarDays, ShieldAlert, Wrench, FileText,
   Check, TrendingUp, Zap, Plus, Bell, ScrollText, LayoutDashboard, ChevronRight,
   Globe, ChevronDown, Sun, Moon, Mail, Phone, MapPin, BookOpen, CheckCircle2,
+  Menu, X,
 } from "lucide-react"
 import { Logo } from "../components/nav"
 
@@ -15,7 +16,7 @@ const DASHBOARD_GRAD = "linear-gradient(135deg, #2563eb 0%, #10b981 100%)"
  * Kept next to the copy it describes so it can never drift from what's
  * actually rendered on the page.
  * ---------------------------------------------------------------- */
-const SITE_URL = "https://fatorati.tech"
+const SITE_URL = "https://fatoriti.tech"
 const ORG_REF = { "@id": `${SITE_URL}/#organization` }
 /** Assumption — same as `organization.foundingDate` in .figma/make/site.json. Correct both if wrong. */
 const CONTENT_PUBLISHED = "2026-01-01"
@@ -235,7 +236,14 @@ const EXTRA: Record<Lang, ExtraCopy> = {
     blog: { eyebrow: "Ressources", title: "Le journal Fatorati.", posts: [{ tag: "Gestion", title: "Les 5 échéances à ne plus laisser passer", desc: "Une méthode simple pour organiser vos obligations mensuelles et trimestrielles.", date: "12 sept. 2026", iso: "2026-09-12" }, { tag: "Conformité", title: "Préparer ses contrats avec plus de sérénité", desc: "Les points à vérifier avant de signer une prestation au Maroc.", date: "04 sept. 2026", iso: "2026-09-04" }, { tag: "Trésorerie", title: "Où part vraiment votre budget outils ?", desc: "Comment repérer les abonnements inutilisés et reprendre la main sur vos coûts.", date: "28 août 2026", iso: "2026-08-28" }] },
     faq: { eyebrow: "FAQ", title: "Questions fréquentes.", items: [{ q: "Fatorati est-il adapté aux petites entreprises marocaines ?", a: "Oui. L'application est conçue pour les artisans, freelances, TPE et PME qui veulent centraliser leur gestion sans complexité inutile." }, { q: "Puis-je utiliser Fatorati sur mobile ?", a: "Oui. L'interface est mobile-first et reste confortable sur téléphone, tablette et ordinateur." }, { q: "Mes données sont-elles protégées ?", a: "Fatorati applique des contrôles d'accès, une session sécurisée et une traçabilité des actions importantes. Consultez notre politique de confidentialité pour les détails." }, { q: "Puis-je changer de formule ?", a: "Oui. Vous pouvez faire évoluer votre formule selon la taille de votre activité et vos besoins." }] },
     contact: { eyebrow: "Contact", title: "Parlons de votre activité.", sub: "Une question sur Fatorati, les tarifs ou votre déploiement ? Notre équipe vous répond.", email: "contact@fatorati.tech", phone: "+212 0 20 00 00 00", city: "Tanger, Maroc", cta: "Écrire à l'équipe" },
-    legal: { privacy: "Politique de confidentialité", privacyText: "Nous utilisons vos informations uniquement pour fournir, sécuriser et améliorer Fatorati. Vous pouvez demander l'accès, la rectification ou la suppression de vos données.", terms: "Conditions d'utilisation", termsText: "En utilisant Fatorati, vous acceptez d'utiliser le service de manière légale et de conserver vos identifiants confidentiels. Les fonctionnalités peuvent évoluer pour améliorer le service.", cookies: "Politique des cookies", cookiesText: "Fatorati utilise uniquement les cookies nécessaires au fonctionnement de la session et aux préférences de l'interface. Nous ne vendons pas vos données de navigation." },
+    legal: {
+      privacy: "Politique de confidentialité",
+      privacyText: "Fatorati traite vos données personnelles avec un objectif simple : vous fournir un espace de gestion sécurisé — jamais les revendre, ni les utiliser à des fins publicitaires.\n\nDonnées collectées — Lorsque vous créez un compte, nous recueillons votre nom, votre adresse e-mail et les données professionnelles que vous saisissez (clients, projets, dépenses, contrats, etc.). Ces données sont stockées de façon sécurisée et protégées par des règles d'accès strictes (Row Level Security) : elles ne sont accessibles qu'à vous et aux membres de votre équipe que vous autorisez.\n\nAucune publicité — Fatorati ne diffuse aucune publicité et ne partage, ne loue ni ne vend vos données à des annonceurs ou des courtiers en données, sous quelque forme que ce soit.\n\nGoogle Analytics — Le seul outil tiers que nous utilisons est Google Analytics, uniquement pour comprendre comment notre site est utilisé (pages consultées, durée de visite, provenance du trafic) et faire grandir Fatorati. Ces statistiques sont exploitées de façon agrégée pour améliorer le site — jamais pour vous cibler publicitairement. Cet outil ne s'active que si vous acceptez les cookies de mesure d'audience via notre bandeau de consentement ; vous pouvez le refuser à tout moment (voir notre politique de cookies).\n\nDurée de conservation — Vos données sont conservées tant que votre compte est actif. En cas de suppression de compte, elles sont supprimées ou anonymisées dans un délai raisonnable, sauf obligation légale de conservation plus longue (comptabilité, fiscalité).\n\nSécurité — L'accès à vos données est protégé par une authentification sécurisée, un chiffrement en transit (HTTPS) et des contrôles d'accès au niveau de la base de données. Voir notre politique de sécurité pour plus de détails.\n\nMise à jour — Cette politique peut évoluer ; la date de dernière mise à jour est indiquée en bas de cette page.",
+      terms: "Conditions d'utilisation",
+      termsText: "En utilisant Fatorati, vous acceptez d'utiliser le service de manière légale et de conserver vos identifiants confidentiels. Les fonctionnalités peuvent évoluer pour améliorer le service.",
+      cookies: "Politique des cookies",
+      cookiesText: "Un cookie est un petit fichier déposé sur votre appareil lors de votre visite. Voici les cookies utilisés sur fatorati.tech, et à quoi ils servent.\n\nCookies strictement nécessaires — Utilisés pour faire fonctionner le site (mémoriser votre choix de langue, votre thème et votre consentement aux cookies). Ils ne peuvent pas être désactivés et ne nécessitent pas votre consentement.\n\nCookies de mesure d'audience (Google Analytics) — Le seul outil tiers que nous utilisons est Google Analytics, uniquement pour comprendre la fréquentation du site (pages visitées, durée de visite, appareil, provenance approximative) et l'aider à grandir. Ces cookies ne sont déposés que si vous cliquez sur « Accepter » dans notre bandeau ; vous pouvez refuser à tout moment sans perdre l'accès au site.\n\nAucun cookie publicitaire — Fatorati ne dépose aucun cookie publicitaire, ne fait aucun reciblage (retargeting) et ne partage aucune donnée de navigation avec des régies publicitaires ou des réseaux sociaux.\n\nGérer vos préférences — Vous pouvez accepter ou refuser les cookies de mesure d'audience via le bandeau affiché lors de votre première visite. Votre choix est conservé sur votre appareil ; vous pouvez le modifier en effaçant les données de ce site dans votre navigateur.\n\nPour toute question sur cette politique, contactez-nous à contact@fatorati.tech.",
+    },
   },
   en: {
     nav: { benefits: "Benefits", pricing: "Pricing", faq: "FAQ" },
@@ -245,7 +253,14 @@ const EXTRA: Record<Lang, ExtraCopy> = {
     blog: { eyebrow: "Resources", title: "The Fatorati journal.", posts: [{ tag: "Management", title: "5 deadlines worth never missing", desc: "A simple method for organizing monthly and quarterly obligations.", date: "Sep 12, 2026", iso: "2026-09-12" }, { tag: "Compliance", title: "Prepare contracts with more confidence", desc: "What to review before signing a service agreement in Morocco.", date: "Sep 04, 2026", iso: "2026-09-04" }, { tag: "Cash flow", title: "Where is your tools budget really going?", desc: "How to spot unused subscriptions and regain control of costs.", date: "Aug 28, 2026", iso: "2026-08-28" }] },
     faq: { eyebrow: "FAQ", title: "Frequently asked questions.", items: [{ q: "Is Fatorati made for Moroccan small businesses?", a: "Yes. It is designed for artisans, freelancers, small businesses and teams that want practical management without unnecessary complexity." }, { q: "Can I use Fatorati on mobile?", a: "Yes. The interface is mobile-first and comfortable on phones, tablets and desktops." }, { q: "Is my data protected?", a: "Fatorati applies access controls, secure sessions and audit trails for important actions. See our privacy policy for details." }, { q: "Can I change plans?", a: "Yes. You can adjust your plan as your business and needs evolve." }] },
     contact: { eyebrow: "Contact", title: "Let us talk about your business.", sub: "Questions about Fatorati, pricing or rollout? Our team will get back to you.", email: "contact@fatorati.tech", phone: "+212 0 20 00 00 00", city: "Tanger, Morocco", cta: "Email the team" },
-    legal: { privacy: "Privacy policy", privacyText: "We use your information only to provide, secure and improve Fatorati. You can request access, correction or deletion of your data.", terms: "Terms of use", termsText: "By using Fatorati, you agree to use the service lawfully and keep your credentials confidential. Features may evolve as the service improves.", cookies: "Cookie policy", cookiesText: "Fatorati uses only cookies necessary for session operation and interface preferences. We do not sell browsing data." },
+    legal: {
+      privacy: "Privacy policy",
+      privacyText: "Fatorati handles your personal data with one goal: to give you a secure workspace — never to resell it or use it for advertising.\n\nData we collect — When you create an account, we collect your name, email address, and the business data you enter (clients, projects, expenses, contracts, and so on). This data is stored securely and protected by strict access rules (Row Level Security): only you and the team members you authorize can access it.\n\nNo advertising — Fatorati shows no ads and never shares, rents, or sells your data to advertisers or data brokers, in any form.\n\nGoogle Analytics — The only third-party tool we use is Google Analytics, solely to understand how our site is used (pages viewed, time on page, traffic sources) and help Fatorati grow. This data is used in aggregate to guide the product — never to target you with ads. This tool only runs if you accept audience-measurement cookies through our consent banner; you can decline it at any time (see our cookie policy).\n\nRetention — Your data is kept for as long as your account is active. If you delete your account, your data is deleted or anonymized within a reasonable timeframe, except where longer retention is legally required (accounting, tax).\n\nSecurity — Access to your data is protected by secure authentication, encryption in transit (HTTPS), and database-level access controls. See our security policy for details.\n\nUpdates — This policy may change over time; the last-updated date is shown at the bottom of this page.",
+      terms: "Terms of use",
+      termsText: "By using Fatorati, you agree to use the service lawfully and keep your credentials confidential. Features may evolve as the service improves.",
+      cookies: "Cookie policy",
+      cookiesText: "A cookie is a small file placed on your device when you visit a site. Here's what we use on fatorati.tech, and why.\n\nStrictly necessary cookies — Used to run the site itself (remembering your language, theme, and cookie choice). These can't be turned off and don't require consent.\n\nAudience-measurement cookies (Google Analytics) — The only third-party tool we use is Google Analytics, solely to understand site traffic (pages visited, time on page, device, approximate origin) and help the site grow. These cookies are only set if you click \"Accept\" in our banner; you can decline at any time without losing access to the site.\n\nNo advertising cookies — Fatorati sets no advertising cookies, does no retargeting, and shares no browsing data with ad networks or social platforms.\n\nManaging your preferences — You can accept or decline audience-measurement cookies via the banner shown on your first visit. Your choice is stored on your device; you can change it by clearing this site's data in your browser.\n\nQuestions about this policy? Email us at contact@fatorati.tech.",
+    },
   },
   ar: {
     nav: { benefits: "المزايا", pricing: "الأسعار", faq: "الأسئلة" },
@@ -255,7 +270,14 @@ const EXTRA: Record<Lang, ExtraCopy> = {
     blog: { eyebrow: "الموارد", title: "مجلة فاتورتي.", posts: [{ tag: "الإدارة", title: "5 مواعيد لا يجب تفويتها", desc: "طريقة بسيطة لتنظيم التزاماتك الشهرية والفصلية.", date: "12 شتنبر 2026", iso: "2026-09-12" }, { tag: "الامتثال", title: "جهّز عقودك بثقة أكبر", desc: "ما يجب مراجعته قبل توقيع عقد خدمة في المغرب.", date: "04 شتنبر 2026", iso: "2026-09-04" }, { tag: "الخزينة", title: "أين تذهب ميزانية أدواتك؟", desc: "كيف تكتشف الاشتراكات غير المستخدمة وتتحكم في التكاليف.", date: "28 غشت 2026", iso: "2026-08-28" }] },
     faq: { eyebrow: "الأسئلة الشائعة", title: "أسئلة متكررة.", items: [{ q: "هل فاتورتي مناسبة للشركات المغربية الصغيرة؟", a: "نعم. صممت للحرفيين والمستقلين والشركات الصغيرة والفرق التي تريد إدارة عملية دون تعقيد." }, { q: "هل يمكنني استخدام فاتورتي على الهاتف؟", a: "نعم. الواجهة مصممة للهاتف وتعمل بشكل مريح على الهاتف واللوحة والحاسوب." }, { q: "هل بياناتي محمية؟", a: "تطبق فاتورتي صلاحيات وصول وجلسات آمنة وسجل تدقيق للإجراءات المهمة. راجع سياسة الخصوصية لمزيد من التفاصيل." }, { q: "هل يمكنني تغيير الخطة؟", a: "نعم. يمكنك تعديل خطتك مع تطور نشاطك واحتياجاتك." }] },
     contact: { eyebrow: "تواصل معنا", title: "لنتحدث عن نشاطك.", sub: "لديك سؤال حول فاتورتي أو الأسعار أو طريقة الانطلاق؟ فريقنا يجيبك.", email: "contact@fatorati.tech", phone: "+212 0 20 00 00 00", city: "طنجة، المغرب", cta: "راسل الفريق" },
-    legal: { privacy: "سياسة الخصوصية", privacyText: "نستخدم معلوماتك فقط لتقديم فاتورتي وتأمينها وتحسينها. يمكنك طلب الوصول إلى بياناتك أو تصحيحها أو حذفها.", terms: "شروط الاستخدام", termsText: "باستخدام فاتورتي، توافق على استعمال الخدمة بشكل قانوني والحفاظ على سرية بيانات الدخول. قد تتطور الميزات لتحسين الخدمة.", cookies: "سياسة ملفات الارتباط", cookiesText: "تستخدم فاتورتي فقط الملفات الضرورية للجلسة وتفضيلات الواجهة. لا نبيع بيانات التصفح." },
+    legal: {
+      privacy: "سياسة الخصوصية",
+      privacyText: "تتعامل فاتورتي مع بياناتك الشخصية بهدف واحد: منحك مساحة عمل آمنة، دون بيعها أو استخدامها لأغراض إعلانية أبداً.\n\nالبيانات التي نجمعها — عند إنشاء حساب، نجمع اسمك وبريدك الإلكتروني والبيانات المهنية التي تُدخلها (العملاء، المشاريع، المصاريف، العقود، إلخ). تُخزَّن هذه البيانات بشكل آمن وتحميها قواعد وصول صارمة (Row Level Security)، بحيث لا يصل إليها سواك وأعضاء فريقك الذين تُصرّح لهم بذلك.\n\nبدون إعلانات — لا تعرض فاتورتي أي إعلانات، ولا تشارك أو تؤجر أو تبيع بياناتك لأي معلنين أو وسطاء بيانات، تحت أي شكل.\n\nGoogle Analytics — نستخدم فقط أداة Google Analytics، وذلك حصراً لفهم كيفية استخدام موقعنا (الصفحات المُزارة، مدة الزيارة، مصدر الزيارات) من أجل تحسين فاتورتي. تُستخدم هذه الإحصاءات بشكل مُجمّع لتطوير الموقع، وليس لاستهدافك إعلانياً أبداً. لا تُفعَّل هذه الأداة إلا إذا وافقت على ملفات قياس الجمهور عبر شريط الموافقة، ويمكنك رفضها في أي وقت (راجع سياسة ملفات الارتباط).\n\nمدة الاحتفاظ — تُحفظ بياناتك طالما حسابك نشط. عند حذف حسابك، تُحذف بياناتك أو يُعمَّم إخفاء هويتها خلال مدة معقولة، إلا إذا فرض القانون مدة احتفاظ أطول (المحاسبة، الضرائب).\n\nالأمان — الوصول إلى بياناتك محمي بمصادقة آمنة وتشفير أثناء النقل (HTTPS) وضوابط وصول على مستوى قاعدة البيانات. راجع سياسة الأمان لدينا لمزيد من التفاصيل.\n\nالتحديثات — قد تتطور هذه السياسة مع الوقت؛ يظهر تاريخ آخر تحديث أسفل هذه الصفحة.",
+      terms: "شروط الاستخدام",
+      termsText: "باستخدام فاتورتي، توافق على استعمال الخدمة بشكل قانوني والحفاظ على سرية بيانات الدخول. قد تتطور الميزات لتحسين الخدمة.",
+      cookies: "سياسة ملفات الارتباط",
+      cookiesText: "ملف تعريف الارتباط (cookie) هو ملف صغير يُوضع على جهازك عند زيارتك للموقع. إليك الملفات التي نستخدمها على fatorati.tech، والغرض منها.\n\nملفات ضرورية بشكل صارم — تُستخدم لتشغيل الموقع نفسه (حفظ اختيارك للغة والمظهر وموافقتك على ملفات الارتباط). لا يمكن تعطيلها ولا تتطلب موافقتك.\n\nملفات قياس الجمهور (Google Analytics) — الأداة الخارجية الوحيدة التي نستخدمها هي Google Analytics، وذلك حصراً لفهم حركة الزوار على الموقع (الصفحات المُزارة، مدة الزيارة، نوع الجهاز، المصدر التقريبي) والمساعدة على نمو الموقع. لا تُوضع هذه الملفات إلا إذا ضغطت على «موافقة» في الشريط، ويمكنك الرفض في أي وقت دون أن يؤثر ذلك على وصولك للموقع.\n\nبدون ملفات إعلانية — لا تضع فاتورتي أي ملفات إعلانية، ولا تقوم بإعادة الاستهداف، ولا تشارك أي بيانات تصفح مع شبكات إعلانية أو منصات التواصل الاجتماعي.\n\nإدارة تفضيلاتك — يمكنك قبول أو رفض ملفات قياس الجمهور عبر الشريط الذي يظهر عند أول زيارة لك. يُحفظ اختيارك على جهازك، ويمكنك تغييره بمسح بيانات هذا الموقع من متصفحك.\n\nلأي سؤال حول هذه السياسة، راسلنا على contact@fatorati.tech.",
+    },
   },
 }
 
@@ -376,11 +398,45 @@ function ThemeToggle({ theme, setTheme }: { theme: Theme; setTheme: (t: Theme) =
 
 /* -------------------------------- Header -------------------------- */
 
+const MOBILE_NAV_LINKS: { href: string; key: keyof Dict["nav"] }[] = [
+  { href: "/features/", key: "features" },
+  { href: "/assistant/", key: "assistant" },
+  { href: "/benefits/", key: "benefits" },
+  { href: "/pricing/", key: "pricing" },
+  { href: "/faq/", key: "faq" },
+]
+
 function Header({ t, lang, setLang, theme, setTheme, onEnter }: { t: Dict; lang: Lang; setLang: (l: Lang) => void; theme: Theme; setTheme: (t: Theme) => void; onEnter: () => void }) {
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const menuId = useId()
+
+  // Lock body scroll while the mobile panel is open, and let Escape close it —
+  // both standard expectations for an overlay nav on a public marketing page.
+  useEffect(() => {
+    if (!mobileOpen) return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileOpen(false)
+    }
+    window.addEventListener("keydown", onKey)
+    return () => {
+      document.body.style.overflow = prevOverflow
+      window.removeEventListener("keydown", onKey)
+    }
+  }, [mobileOpen])
+
+  // Any client-side route change (nav link tap, "enter app") should close the panel.
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [])
+
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--l-border)] bg-[var(--l-header)] backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-5 sm:px-8">
-        <a href="/" aria-label="Fatorati accueil"><Logo light={theme === "dark"} size={32} /></a>
+        <a href="/" aria-label="Fatorati accueil" onClick={() => setMobileOpen(false)}>
+          <Logo light={theme === "dark"} size={32} />
+        </a>
         <nav className="hidden items-center gap-8 text-[13.5px] font-medium text-[var(--l-muted)] md:flex">
           <a href="/features/" className="transition-colors hover:text-[var(--l-heading)]">{t.nav.features}</a>
           <a href="/assistant/" className="transition-colors hover:text-[var(--l-heading)]">{t.nav.assistant}</a>
@@ -389,11 +445,62 @@ function Header({ t, lang, setLang, theme, setTheme, onEnter }: { t: Dict; lang:
           <a href="/faq/" className="transition-colors hover:text-[var(--l-heading)]">{t.nav.faq}</a>
         </nav>
         <div className="flex items-center gap-2">
-          <LangSwitcher lang={lang} setLang={setLang} />
-          <ThemeToggle theme={theme} setTheme={setTheme} />
-          <GlowButton onClick={onEnter} className="px-4 py-2.5 text-[13px]">{t.signup}</GlowButton>
+          <div className="hidden items-center gap-2 md:flex">
+            <LangSwitcher lang={lang} setLang={setLang} />
+            <ThemeToggle theme={theme} setTheme={setTheme} />
+          </div>
+          <GlowButton onClick={onEnter} className="hidden px-4 py-2.5 text-[13px] md:inline-flex">{t.signup}</GlowButton>
+          <button
+            type="button"
+            onClick={() => setMobileOpen((o) => !o)}
+            className="grid h-10 w-10 place-items-center rounded-lg border border-[var(--l-border-strong)] bg-[var(--l-chip)] text-[var(--l-heading)] transition-colors hover:border-violet-400/50 md:hidden"
+            aria-label={mobileOpen ? "Fermer le menu" : "Ouvrir le menu"}
+            aria-haspopup="true"
+            aria-expanded={mobileOpen}
+            aria-controls={menuId}
+          >
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
         </div>
       </div>
+
+      {mobileOpen && (
+        <>
+          <button
+            className="fixed inset-0 z-40 cursor-default bg-black/30 backdrop-blur-[1px] md:hidden"
+            aria-hidden="true"
+            onClick={() => setMobileOpen(false)}
+          />
+          <div
+            id={menuId}
+            className="absolute inset-x-0 top-full z-50 border-b border-[var(--l-border)] bg-[var(--l-panel)] px-5 pb-6 pt-2 shadow-2xl md:hidden"
+            style={{ animation: "mz-pop .15s ease-out" }}
+          >
+            <nav className="flex flex-col divide-y divide-[var(--l-border)]" aria-label="Navigation principale">
+              {MOBILE_NAV_LINKS.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileOpen(false)}
+                  className="py-3.5 text-[15px] font-medium text-[var(--l-text)] transition-colors hover:text-[var(--l-heading)]"
+                >
+                  {t.nav[link.key]}
+                </a>
+              ))}
+            </nav>
+            <div className="mt-4 flex items-center gap-2">
+              <LangSwitcher lang={lang} setLang={setLang} />
+              <ThemeToggle theme={theme} setTheme={setTheme} />
+            </div>
+            <GlowButton
+              onClick={() => { setMobileOpen(false); onEnter() }}
+              className="mt-4 w-full"
+            >
+              {t.signup}
+            </GlowButton>
+          </div>
+        </>
+      )}
     </header>
   )
 }
@@ -442,7 +549,7 @@ function DashboardPreview({ t }: { t: Dict }) {
           <span className="h-2.5 w-2.5 rounded-full bg-[var(--l-border-strong)]" />
           <span className="h-2.5 w-2.5 rounded-full bg-[var(--l-border-strong)]" />
           <span className="h-2.5 w-2.5 rounded-full bg-[var(--l-border-strong)]" />
-          <span className="mx-3 rounded-md bg-[var(--l-chip)] px-2 py-0.5 font-mono text-[10.5px] text-[var(--l-faint)]">fatorati.tech/tableau</span>
+          <span className="mx-3 rounded-md bg-[var(--l-chip)] px-2 py-0.5 font-mono text-[10.5px] text-[var(--l-faint)]">fatoriti.tech/tableau</span>
         </div>
 
         <div className="flex">
@@ -896,7 +1003,20 @@ function ContactSection({ copy }: { copy: ExtraCopy["contact"] }) {
 
 function LegalSection({ copy, active }: { copy: ExtraCopy["legal"]; active?: "privacy" | "terms" | "cookies" }) {
   const items = [{ id: "privacy", title: copy.privacy, text: copy.privacyText }, { id: "terms", title: copy.terms, text: copy.termsText }, { id: "cookies", title: copy.cookies, text: copy.cookiesText }]
-  return <section className="mx-auto max-w-6xl px-5 py-16 sm:px-8"><div className="mx-auto max-w-3xl border-t border-[var(--l-border)] pt-10">{items.filter((item) => !active || item.id === active).map((item) => <article id={item.id} key={item.id}><h2 className="font-display text-[24px] font-bold text-[var(--l-heading)]">{item.title}</h2><p className="mt-4 text-[14px] leading-relaxed text-[var(--l-muted)]">{item.text}</p></article>)}</div></section>
+  return (
+    <section className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
+      <div className="mx-auto max-w-3xl border-t border-[var(--l-border)] pt-10">
+        {items.filter((item) => !active || item.id === active).map((item) => (
+          <article id={item.id} key={item.id}>
+            <h2 className="font-display text-[24px] font-bold text-[var(--l-heading)]">{item.title}</h2>
+            {item.text.split("\n\n").map((para, i) => (
+              <p key={i} className="mt-4 text-[14px] leading-relaxed text-[var(--l-muted)]">{para}</p>
+            ))}
+          </article>
+        ))}
+      </div>
+    </section>
+  )
 }
 
 /* ----------------------------- Footer ----------------------------- */
@@ -945,9 +1065,9 @@ function Footer({ t, extra, onEnter }: { t: Dict; extra: ExtraCopy; onEnter: () 
 function CookieBanner({ lang }: { lang: Lang }) {
   const [visible, setVisible] = useState(false)
   const copy = {
-    fr: { text: "Nous utilisons des cookies nécessaires au fonctionnement du site et des mesures d'audience pour améliorer Fatorati.", accept: "Accepter", reject: "Refuser", link: "En savoir plus" },
-    en: { text: "We use necessary cookies and audience measurement to improve Fatorati.", accept: "Accept", reject: "Decline", link: "Learn more" },
-    ar: { text: "نستخدم ملفات ضرورية لتشغيل الموقع وقياس الجمهور لتحسين فاتورتي.", accept: "موافقة", reject: "رفض", link: "معرفة المزيد" },
+    fr: { text: "Nous utilisons des cookies nécessaires au fonctionnement du site et Google Analytics pour mesurer l'audience et améliorer Fatorati. Aucune publicité, aucune revente de données.", accept: "Accepter", reject: "Refuser", link: "En savoir plus" },
+    en: { text: "We use necessary cookies and Google Analytics to measure traffic and improve Fatorati. No ads, no data resale.", accept: "Accept", reject: "Decline", link: "Learn more" },
+    ar: { text: "نستخدم ملفات ضرورية لتشغيل الموقع وGoogle Analytics لقياس الزوار وتحسين فاتورتي. بدون إعلانات وبدون بيع البيانات.", accept: "موافقة", reject: "رفض", link: "معرفة المزيد" },
   }[lang]
 
   useEffect(() => {
