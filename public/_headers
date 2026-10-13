@@ -39,6 +39,21 @@
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
+# --------------------------------------------------------------------------
+# Language trees: the `hreflang` tags in every document are the primary signal
+# (see src/lib/locales.ts); Content-Language is the response-level signal for
+# crawlers and proxies that read headers without parsing the HTML. The
+# unprefixed French pages need no header — French is the document default.
+# --------------------------------------------------------------------------
+/ar
+  Content-Language: ar-MA
+/ar/*
+  Content-Language: ar-MA
+/en
+  Content-Language: en
+/en/*
+  Content-Language: en
+
 /*.js
   Cache-Control: public, max-age=31536000, immutable
 

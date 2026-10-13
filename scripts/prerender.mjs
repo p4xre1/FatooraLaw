@@ -9,10 +9,14 @@
 //
 // This script renders each public page with the real component tree
 // (`src/entry-server.tsx`), replaces the `figma:route-head-*` block with that
-// page's own title/description/canonical/Open Graph/JSON-LD, and injects the
-// markup between the `figma:prerender-*` markers inside #root. The client then
-// hydrates over it, so visitors get instant content and crawlers get a real
-// document.
+// page's own title/description/canonical/hreflang/Open Graph/JSON-LD, sets the
+// document language (`<html lang dir>`) and injects the markup between the
+// `figma:prerender-*` markers inside #root. The client then hydrates over it,
+// so visitors get instant content and crawlers get a real document.
+//
+// One document per page **per locale** (`/pricing`, `/ar/pricing`,
+// `/en/pricing`): `hreflang` only works when each language has its own URL, so
+// the localized pages are real files rather than a client-side swap.
 //
 // Run automatically as part of `pnpm build` — see package.json:
 //   vite build && vite build --ssr src/entry-server.tsx --outDir dist-ssr && node scripts/prerender.mjs
@@ -33,6 +37,8 @@ const ssrEntry = path.join(ssrDir, "entry-server.js")
 const indexPath = path.join(clientDir, "index.html")
 const routesFile = path.join(clientDir, "seo-routes.json")
 const HEAD_PATTERN = /<!-- figma:route-head-start -->[\s\S]*?<!-- figma:route-head-end -->/
+/** The opening `<html …>` tag, rewritten per document (lang + dir). */
+const HTML_TAG_PATTERN = /^<html\b[^>]*>/m
 const PRERENDER_SLOT = "<!-- figma:prerender-start -->"
 
 function writeRouteDocument(filePath, html) {
@@ -75,13 +81,16 @@ function visibleWords(html) {
   return text.split(/\s+/).filter(Boolean).length
 }
 
-function assertCrawlable(route, html) {
+function assertCrawlable(route, html, prefix = "") {
   const problems = []
   const h1s = html.match(/<h1\b/g) ?? []
   if (h1s.length !== 1) problems.push(`expected 1 <h1>, found ${h1s.length}`)
   if (!html.includes("<blockquote")) problems.push("missing <blockquote>")
-  if (!html.includes('href="/about"')) problems.push("missing /about link")
-  if (!html.includes('href="/contact"')) problems.push("missing /contact link")
+  // The links must stay inside the language tree being rendered: an Arabic
+  // document that sends readers to the French /about is a broken hreflang
+  // graph even though every tag is present.
+  if (!html.includes(`href="${prefix}/about"`)) problems.push(`missing ${prefix}/about link`)
+  if (!html.includes(`href="${prefix}/contact"`)) problems.push(`missing ${prefix}/contact link`)
   if (!/"(FAQPage|HowTo|Product|Article)"/.test(html) && !html.includes("FAQPage")) problems.push("missing content schema")
   if (!html.includes("sameAs")) problems.push("missing sameAs")
   const words = visibleWords(html)
@@ -124,7 +133,15 @@ async function main() {
   }
 
   let written = 0
-  for (const route of routes) {
+  for (const entry of routes) {
+    // Older builds wrote plain path strings; accept both so a stale manifest
+    // can never crash the build.
+    const route = typeof entry === "string" ? entry : entry.path
+    const htmlLang = typeof entry === "string" ? "fr" : entry.htmlLang
+    const dir = typeof entry === "string" ? "ltr" : entry.dir
+    // Which language tree this document belongs to ("" for the unprefixed French pages).
+    const prefix = typeof entry === "string" || !entry.locale || entry.locale === "fr" ? "" : `/${entry.locale}`
+
     let html
     let head
     try {
@@ -137,9 +154,12 @@ async function main() {
     }
 
     const document = breakHtmlLines(prettyJsonLd(shell
+      // The shell ships one language (`<html lang="fr">`); every localized
+      // document has to declare its own, plus its direction.
+      .replace(HTML_TAG_PATTERN, `<html lang="${htmlLang}" dir="${dir}">`)
       .replace(HEAD_PATTERN, `<!-- figma:route-head-start -->\n    ${head}\n    <!-- figma:route-head-end -->`)
       .replace(PRERENDER_SLOT, `${PRERENDER_SLOT}${html}`)))
-    assertCrawlable(route, document)
+    assertCrawlable(route, document, prefix)
 
     if (route === "/") {
       writeFileSync(indexPath, document, "utf-8")
@@ -151,7 +171,7 @@ async function main() {
       writeRouteDocument(path.join(clientDir, `${route.slice(1)}.html`), document)
     }
     written += 1
-    console.log(`[prerender] ${route} → ${document.length.toLocaleString()} chars`)
+    console.log(`[prerender] ${route} [${htmlLang}] → ${document.length.toLocaleString()} chars`)
   }
 
   console.log(`[prerender] Prerendered ${written}/${routes.length} public route(s).`)

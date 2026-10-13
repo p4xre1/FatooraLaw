@@ -45,6 +45,32 @@ it.each([
   else expect(text).toContain(expectedText)
 })
 
+it.each([
+  ["/ar/pricing", "ar", "rtl"],
+  ["/en/faq", "en", "ltr"],
+] as const)("serves the localized page at %s, not a 404", async (path, lang, dir) => {
+  window.history.replaceState({}, "", path)
+
+  const view = render(<App />)
+
+  await waitFor(() => expect(document.documentElement.lang).toBe(lang))
+  expect(window.location.pathname).toBe(path)
+  expect(document.documentElement.dir).toBe(dir)
+  // The landing tree rendered — the not-found screen did not take over.
+  expect(view.container.querySelector("#main-content")).not.toBeNull()
+  expect(screen.queryByRole("heading", { name: "Cette page n'existe pas" })).toBeNull()
+})
+
+it("keeps a locale prefix on a private screen an unknown path", async () => {
+  window.history.replaceState({}, "", "/ar/login")
+
+  render(<App />)
+
+  // `/ar/login` is not a second URL for the (French, noindex) login screen.
+  await waitFor(() => expect(screen.getByRole("heading", { name: "Cette page n'existe pas" })).toBeDefined())
+  expect(screen.queryByRole("heading", { name: "Connexion" })).toBeNull()
+})
+
 it("serves the login screen at /login instead of an anonymous homepage", async () => {
   window.history.replaceState({}, "", "/login")
 

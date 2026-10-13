@@ -22,6 +22,7 @@ import {
   DEFAULT_APP_PATH,
   authScreenFromPath,
   landingPageFromPath,
+  localeRoute,
   moduleFromPath,
   modulePath,
   type AuthScreen,
@@ -71,7 +72,9 @@ const VIEW_TO_AUTH_SCREEN = {
 /**
  * The application shell. Every screen it can show now has its own URL:
  *
- *   - public pages: `/`, `/features`, `/assistant`, `/pricing`, … (prerendered)
+ *   - public pages: `/`, `/features`, `/assistant`, `/pricing`, … (prerendered) —
+ *     each also published per language (`/ar/pricing`, `/en/pricing`); the
+ *     locale lives in the URL, so `<Landing/>` and the head tags follow it
  *   - auth screens: `/login`, `/signup`, `/forgot-password`, `/reset-password`
  *   - signed-in modules: `/dashboard`, `/projects`, … `/settings`
  *   - anything else: the not-found page
@@ -91,7 +94,11 @@ export default function App() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [idleSignedOut, setIdleSignedOut] = useState(false)
 
-  const landingPage = landingPageFromPath(path)
+  // Marketing pages exist once per language (`/pricing`, `/ar/pricing`,
+  // `/en/pricing`), so the *screen* comes from the path with its locale prefix
+  // stripped. `<Landing/>` then reads the locale back off the URL itself, and
+  // a prefix in front of a private screen stays an unknown path.
+  const landingPage = landingPageFromPath(localeRoute(path).path)
   const authScreen = authScreenFromPath(path)
   const routeModule = moduleFromPath(path)
   /** A path that belongs to no screen: `/404`, a typo, an old link. */
@@ -135,17 +142,18 @@ export default function App() {
       if (routeModule) navigate(AUTH_PATHS.login, { replace: true, state: { from: path } })
       return
     }
-    // Signed in: `/` and the auth screens belong to the dashboard now. Public
-    // marketing pages stay reachable (a signed-in visitor may want /pricing).
+    // Signed in: the home pages (`/`, `/ar`, `/en`) and the auth screens belong
+    // to the dashboard now. Public marketing pages stay reachable (a signed-in
+    // visitor may want /pricing).
     // If the visitor was sent here from a module URL (see the branch above, which
     // stores it as `state.from`), sign-in returns them to *that* screen.
     // An account with no module at all stays put and sees the "no access" screen.
-    if (path === "/" || authScreen) {
+    if (landingPage === "home" || authScreen) {
       const requested = typeof currentHistoryState()?.from === "string" ? moduleFromPath(String(currentHistoryState()?.from)) : null
       const home = requested && allowed[requested] ? requested : firstAllowedModule(auth, team)
       if (home) navigate(modulePath(home), { replace: true })
     }
-  }, [ready, recovery, auth, authScreen, routeModule, path, team, allowed])
+  }, [ready, recovery, auth, authScreen, landingPage, routeModule, path, team, allowed])
 
   if (!ready) {
     return <Fallback />

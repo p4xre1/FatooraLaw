@@ -1,4 +1,6 @@
 import { CONTENT_UPDATED, GITHUB_URL, SOURCES } from "./contentMeta"
+import { useLocaleHref } from "../lib/localeContext"
+import { onInternalLinkClick } from "../lib/router"
 
 export type RefLang = "fr" | "en" | "ar"
 
@@ -463,13 +465,14 @@ export function HeroQuote({ lang, className = "" }: { lang: RefLang; className?:
 }
 
 export function PageIntro({ lang, page }: { lang: RefLang; page: string }) {
+  const to = useLocaleHref()
   const copy = REFERENCE[lang]
   const lead = pageLead(lang, page)
   if (!lead) return null
   return (
     <header className="mx-auto max-w-3xl px-5 pt-12 sm:px-8">
       <nav aria-label={copy.breadcrumb} className="flex flex-wrap items-center gap-2 text-[12.5px] text-[var(--l-faint)]">
-        <a href="/" className="font-semibold text-[var(--l-muted)] hover:text-[var(--l-heading)]">{copy.home}</a>
+        <a href={to("/")} onClick={onInternalLinkClick} className="font-semibold text-[var(--l-muted)] hover:text-[var(--l-heading)]">{copy.home}</a>
         <span aria-hidden="true">/</span>
         <span>{lead.eyebrow}</span>
       </nav>
@@ -480,13 +483,14 @@ export function PageIntro({ lang, page }: { lang: RefLang; page: string }) {
       <p className="mt-3 text-[12.5px] text-[var(--l-faint)]">
         {copy.updated} <time dateTime={CONTENT_UPDATED}>{UPDATED_LABEL[lang]}</time>
         {" · "}
-        <a href="/about" className="font-semibold text-[var(--l-muted)] hover:text-[var(--l-heading)]">{copy.by}</a>
+        <a href={to("about")} onClick={onInternalLinkClick} className="font-semibold text-[var(--l-muted)] hover:text-[var(--l-heading)]">{copy.by}</a>
       </p>
     </header>
   )
 }
 
 export function ReferenceSection({ lang }: { lang: RefLang }) {
+  const to = useLocaleHref()
   const copy = REFERENCE[lang]
   return (
     <section id="reperes" aria-labelledby="reperes-title" className="landing-sources mx-auto max-w-3xl px-5 py-16 sm:px-8">
@@ -496,9 +500,9 @@ export function ReferenceSection({ lang }: { lang: RefLang }) {
       <p className="mt-3 text-[12.5px] text-[var(--l-faint)]">
         {copy.updated} <time dateTime={CONTENT_UPDATED}>{UPDATED_LABEL[lang]}</time>
         {" · "}
-        <a href="/about" className="font-semibold hover:text-[var(--l-heading)]">{copy.by}</a>
+        <a href={to("about")} onClick={onInternalLinkClick} className="font-semibold hover:text-[var(--l-heading)]">{copy.by}</a>
         {" · "}
-        <a href="/contact" className="font-semibold hover:text-[var(--l-heading)]">{lang === "fr" ? "Contact" : lang === "en" ? "Contact" : "تواصل معنا"}</a>
+        <a href={to("contact")} onClick={onInternalLinkClick} className="font-semibold hover:text-[var(--l-heading)]">{lang === "fr" ? "Contact" : lang === "en" ? "Contact" : "تواصل معنا"}</a>
         {" · "}
         <ExternalLink href={GITHUB_URL}><cite>GitHub</cite></ExternalLink>
       </p>

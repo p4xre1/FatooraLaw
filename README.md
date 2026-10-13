@@ -19,15 +19,17 @@ using real financial or client data.
 | [SUPABASE_OPERATIONS.md](SUPABASE_OPERATIONS.md) | database setup, permissions, migrations |
 
 Every screen has its own URL: the public pages (`/features`, `/assistant`,
-`/pricing`, `/blog`, `/faq`, `/contact`, `/privacy`, `/terms`, `/cookies`), the
-auth screens (`/login`, `/signup`, `/forgot-password`, `/reset-password`), the
-dashboard (`/dashboard`, `/projects`, … `/settings`), the CMS (`/admin/*`) and a
-real not-found page. **No URL contains a `#`**: the header/footer links are
-pages, not fragments, and every public page is prerendered into its own HTML
-document with its own title, canonical URL and structured data at build time
+`/pricing`, `/blog`, `/faq`, `/contact`, `/privacy`, `/terms`, `/cookies` — each
+also published as `/ar/…` and `/en/…`), the auth screens (`/login`, `/signup`,
+`/forgot-password`, `/reset-password`), the dashboard (`/dashboard`, `/projects`,
+… `/settings`), the CMS (`/admin/*`) and a real not-found page. **No URL
+contains a `#`**: the header/footer links are pages, not fragments, and every
+public page is prerendered into its own HTML document — per language — with its
+own title, canonical URL, `hreflang` alternates and structured data at build time
 (see `docs/SEO_GEO_AIO_SXO.md`). The routing contract lives in
-`src/lib/routes.ts`; the deploy configuration (`sitemap.xml`, `llms.txt`,
-`_redirects`, one document per route) is generated from it, so it cannot drift.
+`src/lib/routes.ts`, the language contract in `src/lib/locales.ts`; the deploy
+configuration (`sitemap.xml`, `llms.txt`, `_redirects`, one document per route
+per language) is generated from them, so it cannot drift.
 
 The public homepage contains the full landing content: features, assistant,
 about, benefits, pricing, resources, FAQ, contact and legal sections, plus the
@@ -112,11 +114,18 @@ schema and roles; they do not verify a hosted project's configuration.
 
 `pnpm build` runs three steps: the client build, an SSR build of
 `src/entry-server.tsx`, and `scripts/prerender.mjs`, which writes one real HTML
-document per public route (injected content **and** its own head) into `dist/`,
-together with the generated `sitemap.xml`, `llms.txt`, `_redirects` and the
+document per public route **per language** (injected content **and** its own
+head, `<html lang dir>` included) into `dist/`, together with the generated
+`sitemap.xml` (with `xhtml:link` alternates), `llms.txt`, `_redirects` and the
 `noindex` documents for private routes. The client hydrates over the prerendered
 markup, so a crawler that does not execute JavaScript sees the same page a
 visitor sees.
+
+French is the default locale and keeps the unprefixed URLs (`/pricing`); Arabic
+and English live at `/ar/…` and `/en/…`. Every document declares the full
+`hreflang` set (`fr-MA`, `ar-MA`, `en`, `x-default`) in both directions, and
+`src/lib/locales.ts` is the only place that knows those codes —
+see [docs/SEO_GEO_AIO_SXO.md](docs/SEO_GEO_AIO_SXO.md) §6.
 
 ## Database and admin setup
 

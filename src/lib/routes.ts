@@ -1,4 +1,5 @@
 import type { ModuleKey } from "../store/types.ts"
+import { DEFAULT_LOCALE, LOCALES, localeInfo, type LocaleId } from "./locales.ts"
 
 /**
  * Every URL this application can serve, in one place.
@@ -22,6 +23,10 @@ import type { ModuleKey } from "../store/types.ts"
  *     `scripts/prerender.mjs` writes `/<path>/index.html` so the host serves
  *     the same document for `/features` and `/features/`.
  *   - No URL in this application contains a `#` fragment.
+ *   - The default locale (French) keeps the unprefixed URLs. Every other
+ *     locale adds its prefix: `/ar/pricing`, `/en/pricing`. A prefix is only
+ *     honoured in front of a real public page, so `/ar/login` is an unknown
+ *     path rather than a second URL for the (French, `noindex`) login screen.
  */
 
 /** Public marketing pages. `home` is the only one served from `/`. */
@@ -108,6 +113,71 @@ export function landingPageFromPath(pathname: string | undefined | null): Landin
 /** Canonical path of a marketing page. Never contains a `#`. */
 export function landingPath(page: LandingPage): string {
   return page === "home" ? "/" : `/${page}`
+}
+
+/* ------------------------------- locales --------------------------------
+ * Marketing pages are published once per locale (see `src/lib/locales.ts`);
+ * the auth screens and the signed-in app are not — they stay French and
+ * `noindex` on a single URL each.
+ * ---------------------------------------------------------------------- */
+
+export type LocaleRoute = {
+  /** The locale the requested URL belongs to. */
+  locale: LocaleId
+  /** The marketing path with the locale prefix stripped (`/` for a locale home). */
+  path: string
+}
+
+/** Every public URL this build publishes, one per locale, in sitemap order. */
+export type LocaleEntry = { page: LandingPage; locale: LocaleId; path: string }
+
+/**
+ * Split a URL into its locale and its unprefixed marketing path:
+ *
+ *   `/pricing`     → `{ locale: "fr", path: "/pricing" }`
+ *   `/ar/pricing`  → `{ locale: "ar", path: "/pricing" }`
+ *   `/en`          → `{ locale: "en", path: "/" }`
+ *   `/ar/login`    → `{ locale: "fr", path: "/ar/login" }`  (unknown path → 404)
+ */
+export function localeRoute(pathname?: string | null): LocaleRoute {
+  const path = normalizePath(pathname)
+  for (const locale of LOCALES) {
+    if (!locale.prefix) continue
+    if (path === locale.prefix) return { locale: locale.id, path: "/" }
+    if (path.startsWith(`${locale.prefix}/`)) {
+      const rest = path.slice(locale.prefix.length)
+      if (landingPageFromPath(rest) !== null) return { locale: locale.id, path: rest }
+    }
+  }
+  return { locale: DEFAULT_LOCALE, path }
+}
+
+/**
+ * The same marketing path in another locale: `/pricing` + `ar` → `/ar/pricing`.
+ * Paths that are not public pages (auth, app modules, unknown) are returned
+ * untouched — those screens exist in one language only.
+ */
+export function localizedPath(path: string, locale: LocaleId = DEFAULT_LOCALE): string {
+  const normalized = normalizePath(path)
+  const { prefix } = localeInfo(locale)
+  if (!prefix || landingPageFromPath(normalized) === null) return normalized
+  return normalized === "/" ? prefix : `${prefix}${normalized}`
+}
+
+/** Canonical path of a marketing page in one locale. Never contains a `#`. */
+export function localizedLandingPath(page: LandingPage, locale: LocaleId = DEFAULT_LOCALE): string {
+  return localizedPath(landingPath(page), locale)
+}
+
+/** Every public page × locale, home first, locales in table order. */
+export function localeEntries(): LocaleEntry[] {
+  const entries: LocaleEntry[] = []
+  for (const page of LANDING_PAGES) {
+    for (const locale of LOCALES) {
+      entries.push({ page, locale: locale.id, path: localizedLandingPath(page, locale.id) })
+    }
+  }
+  return entries
 }
 
 /** The auth screen served at `pathname`, or null. */

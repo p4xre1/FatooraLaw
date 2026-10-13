@@ -10,7 +10,9 @@ import { SITE_URL } from "../lib/site"
 import { CONTACT_CITY, CONTACT_COUNTRY, CONTACT_EMAIL, CONTACT_PHONE, telHref } from "../lib/contact"
 import { readCookieConsent, writeCookieConsent, useMarketingAnalytics } from "../lib/cookieConsent"
 import { applyDocumentHead } from "../lib/seo"
-import { LANDING_PAGES, landingPath, landingPageFromPath, type LandingPage } from "../lib/routes"
+import { LANDING_PAGES, landingPath, landingPageFromPath, localeRoute, localizedLandingPath, type LandingPage } from "../lib/routes"
+import { LOCALES, isRTL, localeInfo, type LocaleId } from "../lib/locales"
+import { LocaleProvider, useLocaleHref } from "../lib/localeContext"
 import { currentHistoryState, navigate, onInternalLinkClick, useRoutePath } from "../lib/router"
 import useLandingMotion from "./useLandingMotion"
 import { CONTENT_PUBLISHED, CONTENT_UPDATED, GITHUB_URL } from "./contentMeta"
@@ -39,7 +41,7 @@ function priceDigits(price: string): string {
   return price.replace(/\D/g, "") || "0"
 }
 
-function offersFromPlans(plans: ExtraCopy["pricing"]["plans"]) {
+function offersFromPlans(plans: ExtraCopy["pricing"]["plans"], locale: LocaleId) {
   return plans.map((plan, i) => ({
     "@type": "Offer",
     position: i + 1,
@@ -47,7 +49,7 @@ function offersFromPlans(plans: ExtraCopy["pricing"]["plans"]) {
     description: plan.desc,
     price: priceDigits(plan.price),
     priceCurrency: "MAD",
-    url: `${SITE_URL}${landingPath("pricing")}`,
+    url: `${SITE_URL}${localizedLandingPath("pricing", locale)}`,
   }))
 }
 
@@ -60,7 +62,9 @@ function faqEntities(items: { q: string; a: string }[]) {
 }
 
 export function buildJsonLd(page: LandingPage, lang: Lang, t: Dict, extra: ExtraCopy): Record<string, unknown> {
-  const url = `${SITE_URL}${landingPath(page)}`
+  // The localized URL: the Arabic pricing page is a different document from
+  // the French one, and its schema must say so (`@id`, `url`, breadcrumbs).
+  const url = `${SITE_URL}${localizedLandingPath(page, lang)}`
   const questions = [
     ...referenceFaq(lang),
     ...(page === "home" || page === "faq" ? extra.faq.items : []),
@@ -69,7 +73,7 @@ export function buildJsonLd(page: LandingPage, lang: Lang, t: Dict, extra: Extra
   const base = {
     "@id": `${url}#content`,
     url,
-    inLanguage: lang,
+    inLanguage: localeInfo(lang).tag,
     isPartOf: { "@id": `${SITE_URL}/#website` },
     author: ORG_REF,
     publisher: ORG_REF,
@@ -87,7 +91,7 @@ export function buildJsonLd(page: LandingPage, lang: Lang, t: Dict, extra: Extra
           "@type": "WebPage",
           name: extra.pricing.title,
           description: extra.pricing.sub,
-          mainEntity: { "@type": "ItemList", itemListElement: offersFromPlans(extra.pricing.plans) },
+          mainEntity: { "@type": "ItemList", itemListElement: offersFromPlans(extra.pricing.plans, lang) },
         }
       case "home":
         return {
@@ -102,8 +106,8 @@ export function buildJsonLd(page: LandingPage, lang: Lang, t: Dict, extra: Extra
           applicationSubCategory: "Gestion d'entreprise",
           operatingSystem: "Web",
           softwareVersion: "1.0",
-          inLanguage: ["fr", "en", "ar"],
-          offers: offersFromPlans(extra.pricing.plans),
+          inLanguage: LOCALES.map((locale) => locale.tag),
+          offers: offersFromPlans(extra.pricing.plans, lang),
           featureList: [t.f1.title, t.f2.title, t.f3.title],
         }
       case "about":
@@ -145,7 +149,7 @@ export function buildJsonLd(page: LandingPage, lang: Lang, t: Dict, extra: Extra
       "@type": "FAQPage",
       "@id": `${url}#faq`,
       url,
-      inLanguage: lang,
+      inLanguage: localeInfo(lang).tag,
       mainEntity: faqEntities(questions),
     })
   }
@@ -154,7 +158,7 @@ export function buildJsonLd(page: LandingPage, lang: Lang, t: Dict, extra: Extra
     "@id": `${url}#howto`,
     name: howto.name,
     description: howto.description,
-    inLanguage: lang,
+    inLanguage: localeInfo(lang).tag,
     step: howto.steps.map((step, index) => ({
       "@type": "HowToStep",
       position: index + 1,
@@ -169,7 +173,7 @@ export function buildJsonLd(page: LandingPage, lang: Lang, t: Dict, extra: Extra
       name: "Fatorati",
       description: t.hero.sub,
       brand: { "@type": "Brand", name: "Fatorati" },
-      offers: offersFromPlans(extra.pricing.plans),
+      offers: offersFromPlans(extra.pricing.plans, lang),
     })
   }
   if (page === "home" || page === "blog") {
@@ -180,7 +184,7 @@ export function buildJsonLd(page: LandingPage, lang: Lang, t: Dict, extra: Extra
         description: post.desc,
         datePublished: post.iso,
         dateModified: CONTENT_UPDATED,
-        inLanguage: lang,
+        inLanguage: localeInfo(lang).tag,
         author: ORG_REF,
         publisher: ORG_REF,
         mainEntityOfPage: url,
@@ -211,7 +215,9 @@ export function buildJsonLd(page: LandingPage, lang: Lang, t: Dict, extra: Extra
  */
 function usePageHead(page: LandingPage, lang: Lang, t: Dict, extra: ExtraCopy) {
   useEffect(() => {
-    applyDocumentHead({ page, siteUrl: SITE_URL, jsonLd: buildJsonLd(page, lang, t, extra) })
+    // `locale` is passed explicitly: the canonical URL, the `hreflang`
+    // alternates and `og:locale` all depend on which language tree we are in.
+    applyDocumentHead({ page, locale: lang, siteUrl: SITE_URL, jsonLd: buildJsonLd(page, lang, t, extra) })
   }, [page, lang, t, extra])
 }
 
@@ -230,11 +236,8 @@ export type ExtraCopy = {
   legal: { privacy: string; privacyText: string; terms: string; termsText: string; cookies: string; cookiesText: string }
 }
 
-const LANGS: { code: Lang; label: string }[] = [
-  { code: "fr", label: "Français" },
-  { code: "en", label: "English" },
-  { code: "ar", label: "العربية" },
-]
+/** The switcher's options, straight from the locale table (same order). */
+const LANGS: { code: LocaleId; label: string }[] = LOCALES.map((locale) => ({ code: locale.id, label: locale.label }))
 
 export const T: Record<Lang, {
   nav: { features: string; assistant: string; benefits: string; pricing: string; faq: string; about: string; contact: string }
@@ -384,26 +387,40 @@ export const EXTRA: Record<Lang, ExtraCopy> = {
 }
 
 export default function Landing({ onEnter = () => {}, initialPage }: { onEnter?: () => void; initialPage?: LandingPage } = {}) {
-  const [lang, setLang] = useState<Lang>("fr")
   const [theme, setTheme] = useState<Theme>("light")
   const path = useRoutePath()
+  // The URL decides *both* the language and the page: `/ar/pricing` is the
+  // Arabic pricing page, `/pricing` the French one. Language used to be
+  // component state, which meant one URL served three languages and no
+  // `hreflang` was possible; now every language has its own document, its own
+  // canonical and a switcher that navigates (so the back button undoes it and
+  // the choice survives a reload or a share).
+  const route = localeRoute(path)
+  const lang: Lang = route.locale
   // `initialPage` only matters while prerendering (the server has no URL of
   // its own); in the browser the page always comes from the real URL, so
   // every screen keeps its own link, reload and share behaviour.
-  const page: LandingPage = initialPage ?? landingPageFromPath(path) ?? "home"
+  const page: LandingPage = initialPage ?? landingPageFromPath(route.path) ?? "home"
   const landingRef = useLandingMotion(page)
   const t = T[lang]
   const extra = EXTRA[lang]
-  const rtl = lang === "ar"
+  const rtl = isRTL(lang)
+
+  /** The language switcher is a navigation, not a re-render. */
+  function changeLocale(next: LocaleId) {
+    if (next === lang) return
+    navigate(localizedLandingPath(page, next))
+  }
 
   usePageHead(page, lang, t, extra)
   useMarketingAnalytics()
 
   useEffect(() => {
-    // The document language must follow the visitor's choice: `<html lang="fr">`
-    // on Arabic content makes screen readers read it with the wrong voice and
-    // tells crawlers the wrong thing. Restored on unmount (the signed-in app is
-    // French-only).
+    // The document language must follow the URL: `<html lang="fr">` on the
+    // Arabic tree makes screen readers read it with the wrong voice and tells
+    // crawlers the wrong thing. Restored on unmount (the signed-in app is
+    // French-only). `applyDocumentHead` sets the same two attributes — this
+    // effect exists to put them back if the visitor leaves the public site.
     const root = document.documentElement
     const previousLang = root.lang
     const previousDir = root.dir
@@ -430,7 +447,7 @@ export default function Landing({ onEnter = () => {}, initialPage }: { onEnter?:
         // Strip the fragment first: navigating keeps the query and fragment
         // (Supabase's callback relies on that), and this URL must end up clean.
         window.history.replaceState(window.history.state, "", `${window.location.pathname}${window.location.search}`)
-        navigate(landingPath(legacyPage), { replace: true })
+        navigate(localizedLandingPath(legacyPage, lang), { replace: true })
         return
       }
       const target = id ? document.getElementById(id) : null
@@ -453,8 +470,9 @@ export default function Landing({ onEnter = () => {}, initialPage }: { onEnter?:
 
   const home = page === "home"
   return (
+    <LocaleProvider locale={lang}>
     <div ref={landingRef} className="landing-root landing-atlas min-h-screen antialiased" data-theme={theme} dir={rtl ? "rtl" : "ltr"}>
-      <Header t={t} lang={lang} setLang={setLang} theme={theme} setTheme={setTheme} onEnter={onEnter} />
+      <Header t={t} lang={lang} onLocaleChange={changeLocale} theme={theme} setTheme={setTheme} onEnter={onEnter} />
       <main id="main-content">
         {home && <div className="landing-hero-backdrop relative">
           <div className="grid-veil pointer-events-none absolute inset-0 h-[720px]" />
@@ -475,6 +493,7 @@ export default function Landing({ onEnter = () => {}, initialPage }: { onEnter?:
       <Footer t={t} extra={extra} onEnter={onEnter} />
       <CookieBanner lang={lang} />
     </div>
+    </LocaleProvider>
   )
 }
 
@@ -501,7 +520,7 @@ function LandingBrand({ size = 32 }: { size?: number }) {
  * it; otherwise we navigate to `/features` and carry the target in history
  * state, which the `page` effect above honours after the render.
  */
-function goToFeaturePreview(event: React.MouseEvent<HTMLAnchorElement>, id: string): void {
+function goToFeaturePreview(event: React.MouseEvent<HTMLAnchorElement>, id: string, featuresHref: string): void {
   if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
   const link = event.currentTarget
   if ((link.target && link.target !== "_self") || link.hasAttribute("download")) return
@@ -511,12 +530,12 @@ function goToFeaturePreview(event: React.MouseEvent<HTMLAnchorElement>, id: stri
     target.scrollIntoView?.({ block: "start" })
     return
   }
-  navigate(landingPath("features"), { state: { focus: id } })
+  navigate(featuresHref, { state: { focus: id } })
 }
 
 /* ------------------------------- Controls ------------------------- */
 
-function LangSwitcher({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
+function LangSwitcher({ lang, onLocaleChange }: { lang: LocaleId; onLocaleChange: (next: LocaleId) => void }) {
   const [open, setOpen] = useState(false)
   const current = LANGS.find((l) => l.code === lang)!
   return (
@@ -527,7 +546,7 @@ function LangSwitcher({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => voi
         aria-haspopup="listbox" aria-expanded={open}
       >
         <Globe className="h-4 w-4" />
-        <span className="hidden sm:inline">{current.label}</span>
+        <span className="hidden sm:inline" lang={current.code}>{current.label}</span>
         <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
@@ -537,9 +556,9 @@ function LangSwitcher({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => voi
             {LANGS.map((l) => (
               <li key={l.code}>
                 <button
-                  onClick={() => { setLang(l.code); setOpen(false) }}
+                  onClick={() => { onLocaleChange(l.code); setOpen(false) }}
                   className={`flex w-full items-center justify-between px-3.5 py-2 text-[13px] transition-colors hover:bg-blue-500/10 ${l.code === lang ? "font-bold text-[var(--l-heading)]" : "text-[var(--l-muted)]"}`}
-                  role="option" aria-selected={l.code === lang}
+                  role="option" aria-selected={l.code === lang} lang={l.code}
                 >
                   {l.label} {l.code === lang && <Check className="h-3.5 w-3.5 text-blue-400" />}
                 </button>
@@ -583,7 +602,10 @@ const NAV_UI = {
   ar: { signIn: "تسجيل الدخول", expand: "استكشاف الميزات", overview: "جميع الميزات" },
 }
 
-function Header({ t, lang, setLang, theme, setTheme, onEnter }: { t: Dict; lang: Lang; setLang: (l: Lang) => void; theme: Theme; setTheme: (t: Theme) => void; onEnter: () => void }) {
+function Header({ t, lang, onLocaleChange, theme, setTheme, onEnter }: { t: Dict; lang: Lang; onLocaleChange: (next: LocaleId) => void; theme: Theme; setTheme: (t: Theme) => void; onEnter: () => void }) {
+  // Every internal link is built for the locale we are rendering, so a visitor
+  // reading the Arabic site never gets dropped back into the French one.
+  const to = useLocaleHref()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [desktopOpen, setDesktopOpen] = useState(false)
   const menuId = useId()
@@ -642,15 +664,17 @@ function Header({ t, lang, setLang, theme, setTheme, onEnter }: { t: Dict; lang:
 
   function enter() { setMobileOpen(false); setDesktopOpen(false); onEnter() }
 
+  const featuresHref = to("features")
+
   return (
     <header ref={headerRef} className="landing-header" onBlur={(event) => {
       if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDesktopOpen(false)
     }}>
       <div className="landing-nav-shell">
-        <a href="/" aria-label="Fatorati accueil" onClick={(event) => { onInternalLinkClick(event); setMobileOpen(false); setDesktopOpen(false) }}><LandingBrand /></a>
+        <a href={to("/")} aria-label="Fatorati accueil" onClick={(event) => { onInternalLinkClick(event); setMobileOpen(false); setDesktopOpen(false) }}><LandingBrand /></a>
         <nav className="landing-nav-desktop" aria-label="Navigation du site">
           <div className="landing-nav-feature">
-            <a href={landingPath("features")} onClick={(event) => { onInternalLinkClick(event); setDesktopOpen(false) }}>{t.nav.features}</a>
+            <a href={featuresHref} onClick={(event) => { onInternalLinkClick(event); setDesktopOpen(false) }}>{t.nav.features}</a>
             <button ref={desktopButton} type="button" className="landing-nav-expand" aria-label={ui.expand}
               aria-expanded={desktopOpen} aria-controls={desktopId} onClick={() => setDesktopOpen((open) => !open)}
               onKeyDown={(event) => {
@@ -661,11 +685,11 @@ function Header({ t, lang, setLang, theme, setTheme, onEnter }: { t: Dict; lang:
               }}><ChevronDown className="h-4 w-4" /></button>
           </div>
           {MOBILE_NAV_LINKS.filter((link) => link.key !== "features").map((link) => (
-            <a key={link.section} href={landingPath(link.section)} onClick={(event) => { onInternalLinkClick(event); setDesktopOpen(false) }}>{t.nav[link.key]}</a>
+            <a key={link.section} href={to(link.section)} onClick={(event) => { onInternalLinkClick(event); setDesktopOpen(false) }}>{t.nav[link.key]}</a>
           ))}
         </nav>
         <div className="landing-nav-actions">
-          <div className="landing-nav-preferences"><LangSwitcher lang={lang} setLang={setLang} /><ThemeToggle theme={theme} setTheme={setTheme} /></div>
+          <div className="landing-nav-preferences"><LangSwitcher lang={lang} onLocaleChange={onLocaleChange} /><ThemeToggle theme={theme} setTheme={setTheme} /></div>
           <button type="button" className="landing-login-link" onClick={enter}>{ui.signIn}</button>
           <GlowButton onClick={enter}>{t.signup}</GlowButton>
           <button ref={mobileButton} type="button" className="landing-menu-toggle"
@@ -677,9 +701,9 @@ function Header({ t, lang, setLang, theme, setTheme, onEnter }: { t: Dict; lang:
       </div>
       {desktopOpen && <div ref={desktopPanel} id={desktopId} className="landing-mega-menu" role="region" aria-label={t.nav.features}>
         <div className="landing-mega-inner">
-          <div className="landing-mega-intro"><p>{t.feat.title}</p><a href={landingPath("features")} onClick={(event) => { onInternalLinkClick(event); setDesktopOpen(false) }}>{ui.overview} <ArrowRight className="h-4 w-4" /></a></div>
+          <div className="landing-mega-intro"><p>{t.feat.title}</p><a href={featuresHref} onClick={(event) => { onInternalLinkClick(event); setDesktopOpen(false) }}>{ui.overview} <ArrowRight className="h-4 w-4" /></a></div>
           <div className="landing-mega-grid">{cards.map(({ id, icon: Icon, title, description }) => (
-            <a key={id} href={landingPath("features")} className="landing-mega-card" onClick={(event) => { setDesktopOpen(false); goToFeaturePreview(event, id) }}>
+            <a key={id} href={featuresHref} className="landing-mega-card" onClick={(event) => { setDesktopOpen(false); goToFeaturePreview(event, id, featuresHref) }}>
               <span className="landing-mega-icon"><Icon className="h-5 w-5" /></span><span><strong>{title}</strong><small>{description}</small></span>
             </a>
           ))}</div>
@@ -689,9 +713,9 @@ function Header({ t, lang, setLang, theme, setTheme, onEnter }: { t: Dict; lang:
         <button type="button" className="landing-mobile-overlay" aria-label="Fermer la navigation" tabIndex={-1} onClick={() => setMobileOpen(false)} />
         <div id={menuId} className="landing-mobile-panel">
           <nav aria-label="Navigation principale">{MOBILE_NAV_LINKS.map((link) => (
-            <a key={link.section} href={landingPath(link.section)} onClick={(event) => { onInternalLinkClick(event); setMobileOpen(false) }}>{t.nav[link.key]}</a>
+            <a key={link.section} href={to(link.section)} onClick={(event) => { onInternalLinkClick(event); setMobileOpen(false) }}>{t.nav[link.key]}</a>
           ))}</nav>
-          <div className="mt-5 flex items-center gap-3"><LangSwitcher lang={lang} setLang={setLang} /><ThemeToggle theme={theme} setTheme={setTheme} /></div>
+          <div className="mt-5 flex items-center gap-3"><LangSwitcher lang={lang} onLocaleChange={onLocaleChange} /><ThemeToggle theme={theme} setTheme={setTheme} /></div>
           <GlowButton onClick={enter} className="mt-5 w-full">{t.signup}</GlowButton>
         </div>
       </>}
@@ -702,6 +726,7 @@ function Header({ t, lang, setLang, theme, setTheme, onEnter }: { t: Dict; lang:
 /* --------------------------------- Hero --------------------------- */
 
 function Hero({ t, lang, onEnter }: { t: Dict; lang: Lang; onEnter: () => void }) {
+  const to = useLocaleHref()
   return (
     <section id="hero" className="landing-hero relative mx-auto max-w-6xl px-5 pb-8 pt-16 sm:px-8 sm:pt-24">
       <div className="landing-hero-copy mx-auto max-w-3xl text-center">
@@ -717,7 +742,7 @@ function Hero({ t, lang, onEnter }: { t: Dict; lang: Lang; onEnter: () => void }
           <GlowButton onClick={onEnter} className="w-full sm:w-auto">
             {t.signup} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 rtl:rotate-180" />
           </GlowButton>
-          <GhostLink href={landingPath("features")} className="w-full sm:w-auto">{t.explore}</GhostLink>
+          <GhostLink href={to("features")} className="w-full sm:w-auto">{t.explore}</GhostLink>
         </div>
         <p className="landing-hero-note mz-rise mt-4 inline-flex items-center gap-1.5 text-[12.5px] text-[var(--l-faint)]" style={{ animationDelay: "0.2s" }}>
           <Check className="h-3.5 w-3.5 text-blue-400" /> {t.hero.note}
@@ -1147,6 +1172,7 @@ function PricingSection({ copy, onEnter, showHeading = true }: { copy: ExtraCopy
 }
 
 function BlogSection({ copy, showHeading = true }: { copy: ExtraCopy["blog"]; showHeading?: boolean }) {
+  const to = useLocaleHref()
   return (
     <section id="blog" className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
       {showHeading && <div className="mx-auto max-w-2xl text-center">
@@ -1157,7 +1183,7 @@ function BlogSection({ copy, showHeading = true }: { copy: ExtraCopy["blog"]; sh
         {copy.posts.map((post) => <article key={post.title} className="landing-resource-card rounded-2xl border border-[var(--l-border)] bg-[var(--l-surface)] p-6 sm:p-7">
           <div className="flex flex-wrap items-center justify-between gap-2"><span className="rounded-full bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold text-blue-400">{post.tag}</span><time dateTime={post.iso} className="text-[11px] text-[var(--l-faint)]">{post.date}</time></div>
           <h3 className="font-display mt-4 text-[19px] font-bold text-[var(--l-heading)]">{post.title}</h3><p className="mt-2 max-w-2xl text-[13.5px] leading-relaxed text-[var(--l-muted)]">{post.desc}</p>
-          <a href="/contact" onClick={onInternalLinkClick} className="mt-4 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-blue-400">Lire l'article <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" /></a>
+          <a href={to("contact")} onClick={onInternalLinkClick} className="mt-4 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-blue-400">Lire l'article <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" /></a>
         </article>)}
       </div>
     </section>
@@ -1229,6 +1255,7 @@ function LegalSection({ copy, active, showHeading = true }: { copy: ExtraCopy["l
 /* ----------------------------- Footer ----------------------------- */
 
 function Footer({ t, extra, onEnter }: { t: Dict; extra: ExtraCopy; onEnter: () => void }) {
+  const to = useLocaleHref()
   return (
     <footer className="landing-footer border-t border-[var(--l-border)] bg-[var(--l-bg-solid)]">
       <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
@@ -1241,29 +1268,29 @@ function Footer({ t, extra, onEnter }: { t: Dict; extra: ExtraCopy; onEnter: () 
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--l-faint)]">{extra.about.eyebrow}</p>
             <div className="mt-4 flex flex-col items-start gap-3 text-[12.5px] text-[var(--l-muted)]">
-              <a href={landingPath("about")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{t.nav.about}</a>
-              <a href={landingPath("features")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{t.nav.features}</a>
-              <a href={landingPath("benefits")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{t.nav.benefits}</a>
-              <a href={landingPath("pricing")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{t.nav.pricing}</a>
-              <a href={landingPath("blog")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{extra.blog.eyebrow}</a>
+              <a href={to("about")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{t.nav.about}</a>
+              <a href={to("features")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{t.nav.features}</a>
+              <a href={to("benefits")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{t.nav.benefits}</a>
+              <a href={to("pricing")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{t.nav.pricing}</a>
+              <a href={to("blog")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{extra.blog.eyebrow}</a>
             </div>
           </div>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--l-faint)]">{extra.contact.eyebrow}</p>
             <div className="mt-4 flex flex-col items-start gap-3 text-[12.5px] text-[var(--l-muted)]">
-              <a href={landingPath("contact")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{t.nav.contact}</a>
+              <a href={to("contact")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{t.nav.contact}</a>
               <a href={`mailto:${extra.contact.email}`} className="hover:text-[var(--l-heading)]">{extra.contact.email}</a>
               <a href={GITHUB_URL} className="hover:text-[var(--l-heading)]" rel="noopener noreferrer">GitHub</a>
-              <a href={landingPath("faq")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{t.nav.faq}</a>
-              <a href={landingPath("privacy")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{extra.legal.privacy}</a>
-              <a href={landingPath("terms")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{extra.legal.terms}</a>
+              <a href={to("faq")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{t.nav.faq}</a>
+              <a href={to("privacy")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{extra.legal.privacy}</a>
+              <a href={to("terms")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{extra.legal.terms}</a>
             </div>
           </div>
         </div>
         <div className="mt-8 flex flex-col items-start justify-between gap-4 text-[12px] text-[var(--l-faint)] sm:flex-row sm:items-center">
           <p>{t.footer.copy}</p>
           <div className="flex flex-wrap items-center gap-4">
-            <a href={landingPath("cookies")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{extra.legal.cookies}</a>
+            <a href={to("cookies")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{extra.legal.cookies}</a>
             <p className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> {t.footer.compliance}</p>
           </div>
         </div>
@@ -1274,6 +1301,7 @@ function Footer({ t, extra, onEnter }: { t: Dict; extra: ExtraCopy; onEnter: () 
 
 function CookieBanner({ lang }: { lang: Lang }) {
   const [visible, setVisible] = useState(false)
+  const to = useLocaleHref()
   const copy = {
     fr: { text: "Nous utilisons des cookies nécessaires au fonctionnement du site et Google Analytics pour mesurer l'audience et améliorer Fatorati. Aucune publicité, aucune revente de données.", accept: "Accepter", reject: "Refuser", link: "En savoir plus" },
     en: { text: "We use necessary cookies and Google Analytics to measure traffic and improve Fatorati. No ads, no data resale.", accept: "Accept", reject: "Decline", link: "Learn more" },
@@ -1292,7 +1320,7 @@ function CookieBanner({ lang }: { lang: Lang }) {
   if (!visible) return null
   return (
     <aside className="landing-cookie-banner fixed inset-x-4 bottom-4 z-50 mx-auto max-w-3xl rounded-2xl border border-[var(--l-border-strong)] bg-[var(--l-panel)] p-4 shadow-2xl backdrop-blur-xl sm:flex sm:items-center sm:gap-5 sm:p-5" role="dialog" aria-label={copy.link}>
-      <p className="flex-1 text-[12.5px] leading-relaxed text-[var(--l-text)]">{copy.text} <a href="/cookies" onClick={onInternalLinkClick} className="font-semibold text-blue-400 hover:underline">{copy.link}</a></p>
+      <p className="flex-1 text-[12.5px] leading-relaxed text-[var(--l-text)]">{copy.text} <a href={to("cookies")} onClick={onInternalLinkClick} className="font-semibold text-blue-400 hover:underline">{copy.link}</a></p>
       <div className="mt-4 flex shrink-0 gap-2 sm:mt-0">
         <button type="button" onClick={() => choose("declined")} className="rounded-lg border border-[var(--l-border-strong)] px-3 py-2 text-[12px] font-semibold text-[var(--l-muted)] hover:text-[var(--l-heading)]">{copy.reject}</button>
         <button type="button" onClick={() => choose("accepted")} className="rounded-lg bg-blue-500 px-3 py-2 text-[12px] font-semibold text-white hover:bg-blue-400">{copy.accept}</button>

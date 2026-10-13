@@ -2,7 +2,7 @@ import { renderToString } from "react-dom/server"
 import Landing, { buildJsonLd, EXTRA, T } from "./marketing/Landing"
 import { setServerPath } from "./lib/router"
 import { SITE_URL } from "./lib/site"
-import { LANDING_PAGES, landingPageFromPath, normalizePath } from "./lib/routes"
+import { landingPageFromPath, localeEntries, localeRoute, normalizePath } from "./lib/routes"
 import { renderHeadTags, seoForPath, type SeoEntry } from "./lib/seo"
 
 /**
@@ -11,7 +11,12 @@ import { renderHeadTags, seoForPath, type SeoEntry } from "./lib/seo"
  * and its real head tags, so crawlers that don't execute JavaScript (most AI
  * and social bots) see the actual content instead of an empty
  * `<div id="root"></div>` — and so each URL has its own canonical, title,
- * description and structured data instead of all sharing the homepage's.
+ * description, `hreflang` alternates and structured data instead of all
+ * sharing the homepage's.
+ *
+ * There is one route per page **per locale** (`/pricing`, `/ar/pricing`,
+ * `/en/pricing`): `hreflang` is only usable when each language has its own
+ * URL, so the localized documents are real files, not a client-side swap.
  *
  * Deliberately renders only <Landing/>: the same component tree <App/>
  * renders for a signed-out visitor with the login form closed, which is every
@@ -20,15 +25,17 @@ import { renderHeadTags, seoForPath, type SeoEntry } from "./lib/seo"
  * re-attaches the real handler from <App/>.
  */
 
-/** Every public route, in sitemap order (`/` first). */
-export const ROUTES: string[] = LANDING_PAGES.map((page) => seoForPath(page === "home" ? "/" : `/${page}`).path)
+/** Every public route in every locale, in sitemap order (`/`, `/ar`, `/en`, `/features`, …). */
+export const ROUTES: string[] = localeEntries().map((entry) => entry.path)
 
-/** The document head (title, description, canonical, Open Graph, JSON-LD) for one route. */
+/** The document head (title, description, canonical, hreflang, Open Graph, JSON-LD) for one route. */
 export function head(pathname: string, siteUrl: string = SITE_URL, socialImage?: string): string {
-  const entry: SeoEntry = seoForPath(pathname)
-  const jsonLd = buildJsonLd(entry.page, "fr", T.fr, EXTRA.fr)
+  const { locale, path } = localeRoute(pathname)
+  const entry: SeoEntry = seoForPath(path, locale)
+  const jsonLd = buildJsonLd(entry.page, locale, T[locale], EXTRA[locale])
   return renderHeadTags({
     page: entry.page,
+    locale,
     siteUrl,
     socialImage: socialImage || undefined,
     jsonLd,
@@ -39,8 +46,10 @@ export function head(pathname: string, siteUrl: string = SITE_URL, socialImage?:
 /** HTML for the `#root` element of one public route. */
 export function render(pathname: string = "/"): string {
   const path = normalizePath(pathname)
-  const page = landingPageFromPath(path) ?? "home"
-  setServerPath(page === "home" ? "/" : `/${page}`)
+  const page = landingPageFromPath(localeRoute(path).path) ?? "home"
+  // The *localized* path: <Landing/> reads the current route and derives the
+  // locale from the prefix, exactly as it does in the browser.
+  setServerPath(path)
   return renderToString(<Landing initialPage={page} onEnter={() => {}} />)
 }
 
