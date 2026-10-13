@@ -16,6 +16,11 @@ function words(html: string): number {
 it("prerenders a citable homepage with one h1 and the content schema types", () => {
   const html = render("/")
   expect(html.match(/<h1\b/g)).toHaveLength(1)
+  const levels = [...html.matchAll(/<h([1-6])\b/g)].map((match) => Number(match[1]))
+  levels.reduce((previous, level) => {
+    expect(level, `h${level} skips after h${previous}`).toBeLessThanOrEqual(previous + 1)
+    return level
+  }, 0)
   expect(html).toContain("<blockquote")
   expect(html).toContain("<q>")
   expect(html).toContain("<cite>")

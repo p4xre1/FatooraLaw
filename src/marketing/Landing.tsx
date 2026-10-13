@@ -14,7 +14,7 @@ import { LANDING_PAGES, landingPath, landingPageFromPath, type LandingPage } fro
 import { currentHistoryState, navigate, onInternalLinkClick, useRoutePath } from "../lib/router"
 import useLandingMotion from "./useLandingMotion"
 import { CONTENT_PUBLISHED, CONTENT_UPDATED, GITHUB_URL } from "./contentMeta"
-import { InlineCitation, PageIntro, ReferenceSection, referenceFaq, referenceHowTo } from "./references"
+import { HeroQuote, InlineCitation, PageIntro, ReferenceSection, referenceFaq, referenceHowTo } from "./references"
 import "./landing.css"
 
 const GRAD = "linear-gradient(135deg, var(--l-primary), var(--l-primary-hover))"
@@ -712,6 +712,7 @@ function Hero({ t, lang, onEnter }: { t: Dict; lang: Lang; onEnter: () => void }
         </h1>
         <p className="mz-rise mx-auto mt-5 max-w-xl text-[15.5px] leading-relaxed text-[var(--l-muted)] sm:text-[17px]" style={{ animationDelay: "0.1s" }}>{t.hero.sub}</p>
         <InlineCitation lang={lang} className="mz-rise mx-auto mt-4 max-w-xl text-[13.5px] leading-relaxed text-[var(--l-muted)]" />
+        <HeroQuote lang={lang} className="mz-rise mt-4" />
         <div className="mz-rise mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row" style={{ animationDelay: "0.15s" }}>
           <GlowButton onClick={onEnter} className="w-full sm:w-auto">
             {t.signup} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 rtl:rotate-180" />
@@ -766,7 +767,7 @@ function DashboardPreview({ t }: { t: Dict }) {
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <p className="text-[11px] text-[var(--l-faint)]">{t.prev.greet}</p>
-                <h3 className="font-display text-[16px] font-bold text-[var(--l-heading)]">{t.prev.title}</h3>
+                <p className="font-display text-[16px] font-bold text-[var(--l-heading)]">{t.prev.title}</p>
               </div>
               <span className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11.5px] font-semibold text-white" style={{ backgroundImage: DASHBOARD_GRAD }}>
                 <Plus className="h-3.5 w-3.5" /> {t.prev.add}
@@ -1177,8 +1178,8 @@ function FaqSection({ copy, showHeading = true }: { copy: ExtraCopy["faq"]; show
       <div className="mx-auto mt-12 max-w-3xl divide-y divide-[var(--l-border)] rounded-2xl border border-[var(--l-border)] bg-[var(--l-surface)] px-5 sm:px-7">
         {copy.items.map((item, i) => (
           <details key={item.q} className="landing-faq" open={i === 0}>
-            <summary className="flex w-full items-center justify-between gap-4 py-5 text-start text-[14px] font-semibold text-[var(--l-heading)]">
-              <span>{item.q}</span>
+            <summary className="flex w-full items-center justify-between gap-4 py-5 text-start">
+              <h3 className="text-[14px] font-semibold text-[var(--l-heading)]">{item.q}</h3>
               <ChevronDown className="h-4 w-4 shrink-0 text-[var(--l-faint)]" aria-hidden="true" />
             </summary>
             <p className="pb-5 pe-8 text-[13.5px] leading-relaxed text-[var(--l-muted)]">{item.a}</p>
@@ -1210,7 +1211,7 @@ function ContactSection({ copy, showHeading = true }: { copy: ExtraCopy["contact
 function LegalSection({ copy, active, showHeading = true }: { copy: ExtraCopy["legal"]; active?: "privacy" | "terms" | "cookies"; showHeading?: boolean }) {
   const items = [{ id: "privacy", title: copy.privacy, text: copy.privacyText }, { id: "terms", title: copy.terms, text: copy.termsText }, { id: "cookies", title: copy.cookies, text: copy.cookiesText }]
   return (
-    <section className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
+    <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
       <div className="mx-auto max-w-3xl border-t border-[var(--l-border)] pt-10">
         {items.filter((item) => !active || item.id === active).map((item) => (
           <article id={item.id} key={item.id}>
@@ -1221,7 +1222,7 @@ function LegalSection({ copy, active, showHeading = true }: { copy: ExtraCopy["l
           </article>
         ))}
       </div>
-    </section>
+    </div>
   )
 }
 

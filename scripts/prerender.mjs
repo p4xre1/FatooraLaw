@@ -48,8 +48,22 @@ function writeRouteDocument(filePath, html) {
  */
 function breakHtmlLines(html) {
   // Tag boundaries only. Do not wrap mid-line: a newline inside a JSON-LD
-  // string (the head script is one long line) would make the schema invalid.
+  // string would make the schema invalid. Pretty-print JSON-LD first.
   return html.replace(/></g, ">\n<")
+}
+
+function prettyJsonLd(html) {
+  return html.replace(
+    /<script\b([^>]*\btype="application\/ld\+json"[^>]*)>([\s\S]*?)<\/script>/gi,
+    (full, attrs, body) => {
+      try {
+        const pretty = JSON.stringify(JSON.parse(body.trim()), null, 2)
+        return `<script${attrs}>\n${pretty}\n</script>`
+      } catch {
+        return full
+      }
+    },
+  )
 }
 
 function visibleWords(html) {
@@ -72,6 +86,17 @@ function assertCrawlable(route, html) {
   if (!html.includes("sameAs")) problems.push("missing sameAs")
   const words = visibleWords(html)
   if (words < 450) problems.push(`only ${words} server-rendered words`)
+  const levels = [...html.matchAll(/<h([1-6])\b/gi)].map((match) => Number(match[1]))
+  let previous = 0
+  for (const level of levels) {
+    if (previous && level > previous + 1) {
+      problems.push(`h${level} skips a level after h${previous}`)
+      break
+    }
+    previous = level
+  }
+  const longest = html.split("\n").reduce((max, line) => Math.max(max, line.length), 0)
+  if (longest > 2000) problems.push(`a line is ${longest} characters; a truncating crawler will miss the rest of it`)
   if (problems.length) throw new Error(`${route} is not GEO-ready: ${problems.join("; ")}`)
 }
 
@@ -111,9 +136,9 @@ async function main() {
       continue
     }
 
-    const document = breakHtmlLines(shell
+    const document = breakHtmlLines(prettyJsonLd(shell
       .replace(HEAD_PATTERN, `<!-- figma:route-head-start -->\n    ${head}\n    <!-- figma:route-head-end -->`)
-      .replace(PRERENDER_SLOT, `${PRERENDER_SLOT}${html}`))
+      .replace(PRERENDER_SLOT, `${PRERENDER_SLOT}${html}`)))
     assertCrawlable(route, document)
 
     if (route === "/") {
