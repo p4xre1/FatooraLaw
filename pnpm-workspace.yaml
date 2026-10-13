@@ -1,0 +1,21 @@
+# pnpm release-age (supply-chain cooldown) exclusions.
+#
+# Dependabot applies a default 3-day minimumReleaseAge gate to every pnpm
+# lockfile update (dependabot.yml `cooldown`, default-days: 3 -> 4320 minutes).
+# Packages whose newest allowed version was published inside that window cannot
+# be resolved while the gate is active and pnpm fails with
+# ERR_PNPM_NO_MATURE_MATCHING_VERSION, which fails the whole Dependabot job —
+# even when the job is only updating an unrelated dependency (e.g. typescript).
+#
+# The packages below are already trusted and committed to pnpm-lock.yaml, so
+# they are excluded from the gate. Everything else keeps the 3-day protection.
+# If a future dependency bump trips the same error, add the package name here
+# (the pnpm error message names it), or simply re-run the job after 72 hours.
+minimumReleaseAgeExclude:
+  - "@electric-sql/pglite"
+  - "@asamuzakjp/css-color"
+  - "@vitest/mocker"
+  - "@vitest/spy"
+  - postcss
+  - tinybench
+  - vitest
