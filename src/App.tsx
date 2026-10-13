@@ -9,7 +9,7 @@ import { useSupabaseAuth } from "./hooks/useSupabaseAuth"
 import { useOnboarding } from "./hooks/useOnboarding"
 import { allowedModules } from "./lib/permissions"
 import { useIdleLogout } from "./lib/useIdleLogout"
-import { forgetLocalDevSession, localDevSessionRequested, signInLocally } from "./lib/localDevMode"
+import { forgetLocalDevSession, localDevModeEnabled, localDevSessionRequested, signInLocally } from "./lib/localDevMode"
 import Sidebar from "./components/Sidebar"
 import Topbar from "./components/Topbar"
 import LocalSaveNotice from "./components/LocalSaveNotice"
@@ -60,8 +60,11 @@ export default function App() {
 
   // Development-only: restore the opt-in local session in this tab (no-op in
   // production builds and whenever Supabase is configured — see lib/localDevMode).
+  // When Supabase is not configured and no user is signed in, automatically enter
+  // local dev mode so the app is usable immediately without manual setup.
   useEffect(() => {
     if (localDevSessionRequested()) signInLocally()
+    else if (localDevModeEnabled() && !useMizan.getState().auth) signInLocally()
   }, [])
 
   useIdleLogout(!!auth, IDLE_TIMEOUT_MS, () => {
