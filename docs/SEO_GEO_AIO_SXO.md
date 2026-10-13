@@ -11,9 +11,10 @@ flagged checks are addressed in the public HTML, not only after JavaScript:
 | Citations | Visible `<blockquote>`, `<q>` and `<cite>` link the DGI VAT guide, CGI article 208 and the CNDP page on Law 09-08. A table repeats the figures. Demo numbers are labelled fictional. |
 | About and Contact | Both are links in the header and the footer (`/about`, `/contact`). |
 
-**Scope:** the public site (`https://fatorati.tech`) — its fourteen public URLs,
-their metadata, structured data, crawlability, and what a search engine or an
-AI assistant can do with them. Audit date: 13 October 2026.
+**Scope:** the public site (`https://fatorati.tech`) — its public URLs (12 pages
+× 3 languages = 36 addressable documents), their metadata, structured data,
+crawlability, and what a search engine or an AI assistant can do with them.
+Audit date: 13 October 2026; internationalisation added 13 October 2026.
 
 Legend — the four acronyms used here, since they overlap in practice:
 
@@ -39,7 +40,7 @@ Legend — the four acronyms used here, since they overlap in practice:
 | 7 | **Medium** | Open Graph image was a **1:1 SVG logo** declared `summary_large_image` with no dimensions — WhatsApp/Facebook/LinkedIn previews were unreliable. | A real 1200×630 JPEG (`public/og/fatorati-og.jpg`) with `og:image:width/height/alt`. |
 | 8 | **Medium** | FAQ answers were injected only after a click, so the answer text never reached a crawler — while `FAQPage` schema claimed the answers. | Native `<details>`: every answer is present in the HTML (and stays keyboard-accessible). |
 | 9 | **Medium** | Inconsistent entity data: `contact@fatorati.tech` on the page vs `bonjour@fatorati.tech` in the schema; "Tanger" in the contact section vs "Casablanca" in the footer and `addressLocality`; a placeholder phone (`+212 0 20 00 00 00`) published as a real `tel:` link and in the entity graph. | One source (`src/lib/contact.ts` ← `.figma/make/site.json`); placeholder numbers are refused; empty values are dropped from JSON-LD. |
-| 10 | **Medium** | `<html lang>` stayed `fr` (and `dir` stayed `ltr`) when the visitor switched to English or Arabic — wrong language for screen readers, wrong signal for crawlers. | The document language/direction now follows the choice (`src/marketing/Landing.tsx`). |
+| 10 | **Medium** | `<html lang>` stayed `fr` (and `dir` stayed `ltr`) when the visitor switched to English or Arabic — wrong language for screen readers, wrong signal for crawlers. The switch was also component state: one URL served three languages, so no `hreflang` was possible and a shared link always opened in French. | Each language now has its own URL tree with its own prerendered document, `<html lang dir>`, `Content-Language` header, self-referencing canonical and a full `hreflang` set (§6, *Internationalisation*). |
 | 11 | **Low** | In-app browser mockup showed the wrong domain (`fatoriti.tech/tableau`). | Corrected to `fatorati.tech/dashboard`. |
 | 12 | **Low** | `robots.txt` allowed AI crawlers but the *shell* they received was empty — an allow directive with nothing to index. | Now meaningful: real HTML per URL (§1.2 above) + `llms.txt` regenerated per build. |
 
@@ -254,21 +255,71 @@ They cite sources that are **easy to extract, unambiguous and verifiable**.
 | 6 | 3–4 genuinely useful blog articles (TVA, ICE/RC, coûts d'outils) with `BlogPosting` | 1–2 weeks | ★★★★★ |
 | 7 | `sameAs` profiles (LinkedIn, Google Business Profile) + listings | 1 day | ★★★★☆ |
 | 8 | Mirror pricing into `site.json` → schema + `llms.txt` + a `/.well-known/fatorati.json` | 3 h | ★★★☆☆ |
-| 9 | `/en/` and `/ar/` URL trees with `hreflang` | 2–3 days | ★★★☆☆ |
+| 9 | ~~`/en/` and `/ar/` URL trees with `hreflang`~~ — **done 13 Oct 2026** (§ below) | 2–3 days | ★★★☆☆ |
 | 10 | Enable `accessibility.addBypassLinks`, axe pass on the three main pages | 2 h | ★★☆☆☆ |
 | 11 | GA events for the signup funnel | 3 h | ★★★☆☆ |
 | 12 | Real product screenshots with descriptive `alt` | half day | ★★☆☆☆ |
 
-### Internationalisation (item 9) — what it requires
+### Internationalisation (item 9) — shipped 13 October 2026
 
-The site serves three languages from one URL today, with the language kept in
-component state. That is fine for visitors, invisible to crawlers. A proper
-setup means `/fr/…`, `/en/…`, `/ar/…` (or a subdomain per language), each with:
-its own prerendered document, `hreflang` links both ways plus `x-default`, a
-self-referencing canonical, a language switcher that changes the URL, and
-`Content-Language`. Given the audience (French primary, Arabic growing), start
-with Arabic: `/ar/` pages for `/`, `/features` and `/pricing` would capture the
-queries that currently have almost no competition.
+The language used to be component state, so one URL served French, Arabic and
+English and `hreflang` was impossible (an alternate that points at its own URL is
+not an alternate). Every public page now exists as three documents, one per
+language, and the language is read from the URL:
+
+| | Default (French) | Arabic | English |
+| --- | --- | --- | --- |
+| URL | `/pricing` (unprefixed) | `/ar/pricing` | `/en/pricing` |
+| `hreflang` | `fr-MA` | `ar-MA` | `en` |
+| `og:locale` | `fr_MA` | `ar_MA` | `en` |
+| `<html>` | `lang="fr" dir="ltr"` | `lang="ar" dir="rtl"` | `lang="en" dir="ltr"` |
+| `Content-Language` | (default, omitted) | `ar-MA` | `en` |
+| `x-default` | ✅ the unprefixed URL | → French | → French |
+
+What the implementation guarantees, and where each part lives:
+
+- **One source of truth for the codes** — `src/lib/locales.ts` holds the
+  language + region pairs (`fr-MA`, `ar-MA`, `en`), the URL prefix, the text
+  direction and the Open Graph locale. Routes, head tags, the sitemap, the
+  generated `_redirects` and `public/_headers` are all derived from it.
+- **36 prerendered documents** — `src/entry-server.tsx` + `scripts/prerender.mjs`
+  write `/pricing/index.html`, `/ar/pricing/index.html` and
+  `/en/pricing/index.html` (plus the `.html` mirrors the host may resolve).
+  Each carries its own `<title>`, description, canonical, `hreflang` set,
+  Open Graph locale and JSON-LD `inLanguage`.
+- **Symmetric `hreflang`** — every document lists all three languages *and*
+  `x-default`, and the sitemap repeats the same set as `xhtml:link` on all 36
+  URLs. Search engines discard alternate pairs they cannot verify in both
+  directions, so the symmetry is tested (`tests/i18n.test.tsx`,
+  `tests/routes.test.ts`).
+- **Self-referencing canonicals** — `/ar/pricing` is canonical for itself, not
+  for `/pricing`; the French pages keep the exact URLs they always had, so no
+  existing link, ranking or Search Console record moves.
+- **The switcher navigates** — choosing a language pushes the same page in the
+  other tree, so the choice survives a reload, can be shared and is undone by
+  the back button. Internal links inside a tree stay in that tree
+  (`useLocaleHref`), which is also what the build assertion checks: an Arabic
+  document that links to the French `/about` is a broken cluster even when
+  every tag is present.
+- **`/fr/…` redirects** to the unprefixed URL (`_redirects`), so the French
+  pages never exist at two addresses.
+- **Auth and the signed-in app stay French and unprefixed** — they are
+  `noindex` private screens with a single URL each; `/ar/login` is a 404, not a
+  second URL for `/login`.
+
+Still open on this item:
+
+1. Confirm in Search Console that each language is indexed under its own URL
+   (*International targeting* → check for "no return tags" / "different
+   canonical" errors after the first crawl).
+2. Re-check the `x-default` choice with real traffic: today it points at the
+   French page. If the English tree turns out to convert better for
+   non-Moroccan visitors, switching `x-default` to `/en` is a one-line change
+   in `hreflangAlternates()` — never a reason to break the symmetry.
+3. Arabic and English `hreflang` are declared for Morocco (`ar-MA`) and
+   internationally (`en`, region-less on purpose: there is no English *Morocco*
+   audience to target). If a `fr-FR` audience becomes material, add one entry
+   to `src/lib/locales.ts` — nothing else needs to change.
 
 ---
 
@@ -277,10 +328,18 @@ queries that currently have almost no competition.
 ```sh
 # 1. Build and inspect the generated documents
 pnpm build
-ls dist/*/index.html            # one document per public route
+ls dist/*/index.html dist/ar/*/index.html dist/en/*/index.html   # 36 documents
 grep -c canonical dist/pricing/index.html          # exactly 1
+grep -c 'rel="alternate"' dist/ar/pricing/index.html   # 4 (fr-MA, ar-MA, en, x-default)
 grep -o '<title>[^<]*' dist/faq/index.html         # its own title
+grep -o '<title>[^<]*' dist/ar/faq/index.html      # …its own title in Arabic
 grep -c 'noindex' dist/login/index.html            # 1 (private)
+
+# 1b. The hreflang cluster must be symmetric and self-referencing
+grep -c 'hreflang="ar-MA"' dist/sitemap.xml        # 36 (one per URL)
+grep -c '<xhtml:link' dist/sitemap.xml             # 144 = 36 URLs × 4 alternates
+grep -o 'hreflang="[a-z-]*"' dist/en/pricing/index.html | sort -u   # en, ar-MA, fr-MA, x-default
+grep -o 'hreflang="[a-z-]*"' dist/ar/pricing/index.html | sort -u   # same set (symmetry)
 
 # 2. The machine files
 curl -s https://fatorati.tech/sitemap.xml | head
