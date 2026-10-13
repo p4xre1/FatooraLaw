@@ -64,57 +64,99 @@ function triggerDownload(content: string, filename: string, mime: string) {
   const a = document.createElement("a")
   a.href = url
   a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
+  document.body.appendChild(a)
+  try {
+    a.click()
+  } finally {
+    a.remove()
+    // Let the browser consume the URL before releasing it (Firefox in
+    // particular can cancel the download if it is revoked synchronously).
+    setTimeout(() => URL.revokeObjectURL(url), 0)
+  }
+}
+
+export function toJSON(data: unknown, filename = "backup.json") {
+  triggerDownload(JSON.stringify(data, null, 2), filename, "application/json;charset=utf-8")
+}
+
+/** Spreadsheet applications execute formula-looking strings, even in quoted CSV. */
+function spreadsheetText(value: unknown): string {
+  const text = String(value ?? "")
+  // Actual numbers (including negative balances) must remain numeric.
+  return typeof value === "string" && /^[\s\u0000-\u001f]*[=+\-@]/.test(text) ? "'" + text : text
+}
+
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;")
 }
 
 export function toCSV(rows: Record<string, unknown>[], filename = "export.csv") {
   if (!rows.length) return
   const headers = Object.keys(rows[0])
   const escape = (v: unknown) => {
-    const s = String(v ?? "")
-    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+    const s = spreadsheetText(v)
+    return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
   }
-  const csv = [headers.join(","), ...rows.map((r) => headers.map((h) => escape(r[h])).join(","))].join("\n")
-  triggerDownload("﻿" + csv, filename, "text/csv;charset=utf-8")
+  const csv = [headers.map(escape).join(","), ...rows.map((r) => headers.map((h) => escape(r[h])).join(","))].join("\n")
+  triggerDownload("\uFEFF" + csv, filename, "text/csv;charset=utf-8")
 }
 
-/** Excel opens CSV natively; we label it .xls via a simple HTML table for richer import. */
+/** Excel-compatible HTML table; this is not a binary XLS workbook. */
 export function toExcel(rows: Record<string, unknown>[], filename = "export.xls") {
   if (!rows.length) return
   const headers = Object.keys(rows[0])
-  const th = headers.map((h) => `<th>${h}</th>`).join("")
+  const cell = (value: unknown) => escapeHtml(spreadsheetText(value))
+  const th = headers.map((h) => `<th>${cell(h)}</th>`).join("")
   const trs = rows
-    .map((r) => `<tr>${headers.map((h) => `<td>${String(r[h] ?? "")}</td>`).join("")}</tr>`)
+    .map((r) => `<tr>${headers.map((h) => `<td>${cell(r[h])}</td>`).join("")}</tr>`)
     .join("")
-  const html = `<html><head><meta charset="utf-8"></head><body><table border="1">${`<tr>${th}</tr>`}${trs}</table></body></html>`
+  const html = `<html><head><meta charset="utf-8"></head><body><table border="1"><tr>${th}</tr>${trs}</table></body></html>`
   triggerDownload(html, filename, "application/vnd.ms-excel")
 }
 
+/** Parse records, not individual lines: quoted fields may contain newlines. */
 export function parseCSV(text: string): string[][] {
-  return text
-    .trim()
-    .split(/\r?\n/)
-    .map((line) => {
-      const out: string[] = []
-      let cur = ""
-      let inQ = false
-      for (let i = 0; i < line.length; i++) {
-        const ch = line[i]
-        if (ch === '"') {
-          if (inQ && line[i + 1] === '"') { cur += '"'; i++ }
-          else inQ = !inQ
-        } else if (ch === "," && !inQ) { out.push(cur); cur = "" }
-        else cur += ch
-      }
-      out.push(cur)
-      return out
-    })
+  const source = text.replace(/^\uFEFF/, "")
+  if (!source) return []
+  const rows: string[][] = []
+  let row: string[] = []
+  let field = ""
+  let quoted = false
+  let recordStarted = false
+
+  for (let i = 0; i < source.length; i++) {
+    const ch = source[i]
+    if (ch === '"') {
+      recordStarted = true
+      if (quoted && source[i + 1] === '"') { field += '"'; i++ }
+      else quoted = !quoted
+    } else if (ch === "," && !quoted) {
+      row.push(field)
+      field = ""
+      recordStarted = true
+    } else if ((ch === "\r" || ch === "\n") && !quoted) {
+      rows.push([...row, field])
+      row = []
+      field = ""
+      recordStarted = false
+      if (ch === "\r" && source[i + 1] === "\n") i++
+    } else {
+      field += ch
+      recordStarted = true
+    }
+  }
+  if (quoted) throw new Error("CSV invalide : guillemets non fermés.")
+  if (recordStarted) rows.push([...row, field])
+  return rows
 }
 
-/** Simulate a heavy async task off the main paint (keeps UI responsive). */
+/** Run deferred work without blocking the current paint; failures reject normally. */
 export function runAsync<T>(work: () => T, ms = 650): Promise<T> {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(work()), ms)
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      try { resolve(work()) }
+      catch (error) { reject(error) }
+    }, ms)
   })
 }

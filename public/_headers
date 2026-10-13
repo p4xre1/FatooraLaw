@@ -3,7 +3,7 @@
 #
 # This app is a static, client-only SPA — no server the app itself
 # controls — that talks directly to Supabase for auth and data, plus
-# Google Fonts and data: URIs for user-uploaded logos. The CSP below is
+# consent-gated Google Analytics, Google Fonts and data: URIs for user-uploaded logos. The CSP below is
 # scoped to exactly that. Tighten/loosen only if you actually add a new
 # external dependency (a new API, an embed, an analytics script, etc.).
 #
@@ -31,7 +31,7 @@
   X-XSS-Protection: 0
   X-Permitted-Cross-Domain-Policies: none
   X-DNS-Prefetch-Control: off
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.supabase.co; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; frame-src 'none'; object-src 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.supabase.co https://*.google-analytics.com https://www.google-analytics.com https://www.googletagmanager.com; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; frame-src 'none'; object-src 'none'; upgrade-insecure-requests
 
 /admin/*
   X-Robots-Tag: noindex, nofollow

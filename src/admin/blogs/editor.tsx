@@ -8,6 +8,7 @@ import { createPost, getPost, updatePost } from "./client"
 import {
   MAX_CONTENT_LENGTH,
   MAX_TITLE_LENGTH,
+  MAX_SLUG_LENGTH,
   isValidSlug,
   sanitizeContent,
   sanitizeTitle,
@@ -48,6 +49,13 @@ export default function BlogEditorView() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    setTitle("")
+    setSlug("")
+    setSlugTouched(false)
+    setContent("")
+    setPublishedState(false)
+    setError(null)
+    setLoading(!isNew)
     if (isNew || !id) return
     let cancelled = false
     getPost(id)
@@ -59,7 +67,9 @@ export default function BlogEditorView() {
         setContent(post.content)
         setPublishedState(post.published)
       })
-      .catch((err) => setError(err instanceof Error ? err.message : "تعذر تحميل المقال."))
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : "تعذر تحميل المقال.")
+      })
       .finally(() => {
         if (!cancelled) setLoading(false)
       })
@@ -75,6 +85,7 @@ export default function BlogEditorView() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
+    if (saving || loading) return
     setError(null)
 
     const cleanTitle = sanitizeTitle(title)
@@ -126,6 +137,7 @@ export default function BlogEditorView() {
 
         <Field label="الرابط المختصر (Slug)" hint="يُستخدم في رابط المقال — أحرف لاتينية صغيرة وأرقام وشرطات فقط.">
           <Input
+            maxLength={MAX_SLUG_LENGTH}
             value={slug}
             onChange={(e) => {
               setSlugTouched(true)

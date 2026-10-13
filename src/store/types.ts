@@ -110,3 +110,11 @@ export type Settings = {
   headerNote: string
   footerNote: string
 }
+
+export type SubscriptionTool = {
+  id: string
+  name: string
+  cost: number // planned monthly cost, not a recorded payment
+  start: string // ISO date, empty means no known start
+  expiry: string // ISO date, empty means no expiry
+}

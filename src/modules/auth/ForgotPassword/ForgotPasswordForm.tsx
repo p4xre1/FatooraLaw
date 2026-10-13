@@ -44,19 +44,16 @@ export function ForgotPasswordForm({ onBack, redirectTo }: ForgotPasswordFormPro
     }
 
     setLoading(true)
-    const { error: authError } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-      redirectTo: redirectTo ?? window.location.origin,
-    })
-    setLoading(false)
+    try {
+      const { error: authError } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo: redirectTo ?? window.location.origin,
+      })
+      if (authError) setError(mapAuthError(authError.message, t))
+      else setSent(true)
+    } catch {
+      setError(t.errors.network)
+    } finally { setLoading(false) }
 
-    if (authError) {
-      // Note: Supabase already avoids confirming/denying account existence
-      // for this endpoint, so surfacing real errors (e.g. rate limiting)
-      // here does not leak whether a given email is registered.
-      setError(mapAuthError(authError.message, t))
-      return
-    }
-    setSent(true)
   }
 
   if (sent) {

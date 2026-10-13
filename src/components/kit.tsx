@@ -40,6 +40,7 @@ export function Btn({
   const sizes = { sm: "px-2.5 py-1.5 text-[12px]", md: "px-3.5 py-2 text-[13px]" }
   return (
     <button
+      type="button"
       {...rest}
       className={`inline-flex items-center justify-center gap-1.5 rounded-lg font-semibold transition-all active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40 ${styles[variant]} ${sizes[size]} ${className}`}
     >
@@ -50,7 +51,7 @@ export function Btn({
 
 export function IconBtn({ children, className = "", ...rest }: { children: ReactNode } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
-    <button {...rest} className={`grid h-8 w-8 place-items-center rounded-lg text-muted transition-colors hover:bg-ink/[0.06] hover:text-ink ${className}`}>
+    <button type="button" {...rest} className={`grid h-8 w-8 place-items-center rounded-lg text-muted transition-colors hover:bg-ink/[0.06] hover:text-ink ${className}`}>
       {children}
     </button>
   )
@@ -113,6 +114,7 @@ export function Progress({ value, tone: tn = "brand" }: { value: number; tone?: 
 export function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <button
+      type="button"
       onClick={() => onChange(!checked)}
       className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${checked ? "bg-brand" : "bg-line-strong"}`}
       role="switch"

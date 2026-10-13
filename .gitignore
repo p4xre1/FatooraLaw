@@ -3,6 +3,7 @@ dist/
 build/
 .cache/
 .env*
+!.env.example
 .vite/
 vite.config.*.timestamp-*
 *.tsbuildinfo
@@ -18,3 +19,5 @@ logs/
 # beside it.
 /.plugins/
 /.opencode-skills/
+
+dist-ssr/

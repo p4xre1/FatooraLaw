@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react"
 import { Plus, Search, Minus, AlertTriangle, Package, Wrench, Boxes } from "lucide-react"
 import type { StockItem } from "../store/types"
+import { MAX_QUANTITY, parseAmount } from "../lib/businessValidation"
 import { useMizan } from "../store/useMizan"
 import { Card, SectionTitle, Btn, Badge, Table, Th, Td, Modal, Field, Input, Select, EmptyState, IconBtn, Progress } from "../components/kit"
 
@@ -9,6 +10,11 @@ export default function Inventory() {
   const [q, setQ] = useState("")
   const [kind, setKind] = useState<"all" | StockItem["type"]>("all")
   const [creating, setCreating] = useState(false)
+  const [adjustError, setAdjustError] = useState<string | null>(null)
+  function adjust(id: string, delta: number) {
+    try { adjustStock(id, delta); setAdjustError(null) }
+    catch (err) { setAdjustError(err instanceof Error ? err.message : "Impossible d'ajuster le stock.") }
+  }
 
   const projName = (id: string | null) => (id ? projects.find((p) => p.id === id)?.name ?? "—" : null)
 
@@ -26,6 +32,7 @@ export default function Inventory() {
     <div className="mz-view space-y-5">
       <SectionTitle title="Stock & Matériel" sub={`${stock.length} références · ${lowStock.length} sous le seuil`} action={<Btn onClick={() => setCreating(true)}><Plus className="h-4 w-4" /> Nouvel article</Btn>} />
 
+      {adjustError && <p role="alert" className="text-sm text-serious">{adjustError}</p>}
       {lowStock.length > 0 && (
         <Card className="flex items-start gap-3 border-warn/30 bg-warn-50 p-4">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warn" />
@@ -76,8 +83,8 @@ export default function Inventory() {
                   </Td>
                   <Td>
                     <div className="flex items-center justify-center gap-1">
-                      <IconBtn title="Retirer" onClick={() => adjustStock(i.id, -1)}><Minus className="h-4 w-4" /></IconBtn>
-                      <IconBtn title="Ajouter" onClick={() => adjustStock(i.id, +1)}><Plus className="h-4 w-4" /></IconBtn>
+                      <IconBtn title="Retirer" disabled={i.qty <= 0} onClick={() => adjust(i.id, -1)}><Minus className="h-4 w-4" /></IconBtn>
+                      <IconBtn title="Ajouter" disabled={i.qty + 1 > MAX_QUANTITY} onClick={() => adjust(i.id, +1)}><Plus className="h-4 w-4" /></IconBtn>
                     </div>
                   </Td>
                 </tr>
@@ -94,18 +101,29 @@ export default function Inventory() {
 
 function CreateStock({ onClose, onCreate }: { onClose: () => void; onCreate: (s: Omit<StockItem, "id">) => void }) {
   const [f, setF] = useState<Omit<StockItem, "id">>({ name: "", sku: "", qty: 0, minQty: 0, unit: "unité", assignedProjectId: null, type: "material" })
+  const [qty, setQty] = useState("0")
+  const [minQty, setMinQty] = useState("0")
+  const [error, setError] = useState<string | null>(null)
+  const quantity = parseAmount(qty, false, MAX_QUANTITY)
+  const minimum = parseAmount(minQty, false, MAX_QUANTITY)
   return (
     <Modal title="Nouvel article" onClose={onClose}>
       <div className="space-y-4">
+        {error && <p role="alert" className="text-sm text-serious">{error}</p>}
         <Field label="Désignation"><Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
         <div className="grid grid-cols-2 gap-4">
           <Field label="SKU / Référence"><Input value={f.sku} onChange={(e) => setF({ ...f, sku: e.target.value })} /></Field>
           <Field label="Type"><Select value={f.type} onChange={(e) => setF({ ...f, type: e.target.value as StockItem["type"] })}><option value="material">Matériau</option><option value="equipment">Matériel</option></Select></Field>
-          <Field label="Quantité"><Input type="number" className="tnum" value={f.qty} onChange={(e) => setF({ ...f, qty: Number(e.target.value) })} /></Field>
-          <Field label="Seuil minimum"><Input type="number" className="tnum" value={f.minQty} onChange={(e) => setF({ ...f, minQty: Number(e.target.value) })} /></Field>
+          <Field label="Quantité"><Input type="number" min={0} max={MAX_QUANTITY} step="0.001" className="tnum" value={qty} onChange={(e) => setQty(e.target.value)} /></Field>
+          <Field label="Seuil minimum"><Input type="number" min={0} max={MAX_QUANTITY} step="0.001" className="tnum" value={minQty} onChange={(e) => setMinQty(e.target.value)} /></Field>
           <Field label="Unité"><Input value={f.unit} onChange={(e) => setF({ ...f, unit: e.target.value })} /></Field>
         </div>
-        <Btn className="w-full" disabled={!f.name.trim()} onClick={() => onCreate(f)}>Ajouter au stock</Btn>
+        {(quantity === null || minimum === null) && <p role="alert" className="text-sm text-serious">La quantité et le seuil doivent être positifs ou nuls et dans la limite autorisée.</p>}
+        <Btn className="w-full" disabled={!f.name.trim() || quantity === null || minimum === null} onClick={() => {
+          if (quantity === null || minimum === null) return
+          try { onCreate({ ...f, qty: quantity, minQty: minimum }) }
+          catch (err) { setError(err instanceof Error ? err.message : "Impossible d'ajouter l'article.") }
+        }}>Ajouter au stock</Btn>
       </div>
     </Modal>
   )

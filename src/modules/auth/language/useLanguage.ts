@@ -37,6 +37,13 @@ export const useLanguageStore = create<LanguageState>()(
     {
       name: "fatoora.auth.language",
       version: 1,
+      partialize: (state) => ({ language: state.language }),
+      // migrate() only runs for different versions. Validate same-version
+      // storage too, otherwise a bad locale crashes every auth translation.
+      merge: (persisted, current) => {
+        const state = persisted as Partial<LanguageState> | undefined
+        return { ...current, language: isSupportedLanguage(state?.language) ? state.language : DEFAULT_LANGUAGE }
+      },
       // Guard against a corrupted/old value in localStorage forcing an unsupported language.
       migrate: (persisted) => {
         const state = persisted as Partial<LanguageState> | undefined

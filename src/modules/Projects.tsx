@@ -2,6 +2,8 @@ import { useMemo, useState } from "react"
 import { Plus, FolderKanban, Boxes, CheckCircle2, Circle, TrendingUp } from "lucide-react"
 import type { Project } from "../store/types"
 import { useMizan } from "../store/useMizan"
+import { MAX_AMOUNT, parseAmount } from "../lib/businessValidation"
+import { addCalendarDays, todayISO } from "../lib/calendarDates"
 import { money, fmtDate } from "../lib/mizan"
 import { uid } from "../store/seed"
 import { Card, SectionTitle, Btn, Badge, Progress, Table, Th, Td, Modal, Field, Input, Select, EmptyState } from "../components/kit"
@@ -15,7 +17,8 @@ const statusMap = {
 
 export default function Projects() {
   const { projects, contacts, stock, addProject, toggleMilestone, assignStock } = useMizan()
-  const [open, setOpen] = useState<Project | null>(null)
+  const [openId, setOpenId] = useState<string | null>(null)
+  const open = projects.find((p) => p.id === openId) ?? null
   const [assign, setAssign] = useState<Project | null>(null)
   const [creating, setCreating] = useState(false)
   const clients = contacts.filter((c) => c.type === "client")
@@ -49,7 +52,7 @@ export default function Projects() {
                 <Td><Badge tone={statusMap[p.status].tone} dot>{statusMap[p.status].label}</Badge></Td>
                 <Td>
                   <div className="flex justify-end gap-1">
-                    <Btn variant="ghost" size="sm" onClick={() => setOpen(p)}>Jalons</Btn>
+                    <Btn variant="ghost" size="sm" onClick={() => setOpenId(p.id)}>Jalons</Btn>
                     <Btn variant="ghost" size="sm" onClick={() => setAssign(p)}><Boxes className="h-4 w-4" /></Btn>
                   </div>
                 </Td>
@@ -61,7 +64,7 @@ export default function Projects() {
 
       {/* Milestones modal */}
       {open && (
-        <Modal title={open.name} onClose={() => setOpen(null)}>
+        <Modal title={open.name} onClose={() => setOpenId(null)}>
           <div className="mb-4 grid grid-cols-3 gap-3">
             <Stat label="Budget" value={money(open.budget)} />
             <Stat label="Coût réel" value={money(open.cost)} />
@@ -118,27 +121,34 @@ function CreateProject({ clients, onClose, onCreate }: { clients: { id: string; 
   const [budget, setBudget] = useState("")
   const [cost, setCost] = useState("")
 
-  const margin = (Number(budget) || 0) - (Number(cost) || 0)
+  const [error, setError] = useState<string | null>(null)
+  const parsedBudget = parseAmount(budget, true)
+  const parsedCost = parseAmount(cost, true)
+  const margin = parsedBudget !== null && parsedCost !== null ? parsedBudget - parsedCost : null
 
   return (
     <Modal title="Nouveau projet" onClose={onClose}>
       <div className="space-y-4">
+        {error && <p role="alert" className="text-sm text-serious">{error}</p>}
         <Field label="Nom du projet"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Villa R+2 — …" /></Field>
         <Field label="Client"><Select value={clientId} onChange={(e) => setClientId(e.target.value)}>{clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select></Field>
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Budget (MAD)"><Input type="number" className="tnum" value={budget} onChange={(e) => setBudget(e.target.value)} /></Field>
-          <Field label="Coût estimé (MAD)"><Input type="number" className="tnum" value={cost} onChange={(e) => setCost(e.target.value)} /></Field>
+          <Field label="Budget (MAD)" hint="Facultatif : 0 par défaut"><Input type="number" min={0} max={MAX_AMOUNT} step="0.01" className="tnum" value={budget} onChange={(e) => setBudget(e.target.value)} /></Field>
+          <Field label="Coût estimé (MAD)" hint="Facultatif : 0 par défaut"><Input type="number" min={0} max={MAX_AMOUNT} step="0.01" className="tnum" value={cost} onChange={(e) => setCost(e.target.value)} /></Field>
         </div>
         <div className="flex items-center justify-between rounded-lg bg-good-50 px-3 py-2.5">
           <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-emerald-700"><TrendingUp className="h-4 w-4" /> Marge automatique</span>
-          <span className="tnum text-[15px] font-bold text-emerald-700">{money(margin)}</span>
+          <span className="tnum text-[15px] font-bold text-emerald-700">{margin === null ? "—" : money(margin)}</span>
         </div>
-        <Btn className="w-full" disabled={!name.trim() || !clientId} onClick={() => onCreate({
-          name, clientId, budget: Number(budget) || 0, cost: Number(cost) || 0, paid: 0,
-          status: "planning", progress: 0, start: new Date().toISOString().slice(0, 10),
-          end: new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10),
-          milestones: [{ id: uid(), label: "Démarrage", done: false }], equipmentIds: [],
-        })}>
+        {margin === null && <p role="alert" className="text-sm text-serious">Les montants doivent être positifs ou nuls et dans la limite autorisée.</p>}
+        <Btn className="w-full" disabled={!name.trim() || !clientId || margin === null} onClick={() => {
+          if (parsedBudget === null || parsedCost === null) return
+          try { onCreate({
+            name, clientId, budget: parsedBudget, cost: parsedCost, paid: 0,
+            status: "planning", progress: 0, start: todayISO(), end: addCalendarDays(todayISO(), 90),
+            milestones: [{ id: uid(), label: "Démarrage", done: false }], equipmentIds: [],
+          }) } catch (err) { setError(err instanceof Error ? err.message : "Impossible de créer le projet.") }
+        }}>
           <FolderKanban className="h-4 w-4" /> Créer le projet
         </Btn>
       </div>

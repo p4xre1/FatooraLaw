@@ -1,13 +1,12 @@
 import { useState } from "react"
 import type { FormEvent } from "react"
 import {
-  ArrowRight, ArrowLeft, ShieldCheck, Lock, Eye, EyeOff, CheckCircle2, AlertCircle, KeyRound, Loader2,
+  ArrowRight, ArrowLeft, ShieldCheck, ShieldAlert, Lock, Eye, EyeOff, CheckCircle2, AlertCircle, KeyRound, Loader2,
 } from "lucide-react"
-import type { Role } from "../store/types"
-import { roleLabels } from "../lib/mizan"
+import { checkPassword, MAX_NAME_LENGTH, sanitizeInput } from "../modules/auth/lib/validation"
 import { isSupabaseConfigured, supabase } from "../lib/supabase"
 import { Logo } from "./nav"
-import { Btn, Field, Input, Select, Checkbox, Modal } from "./kit"
+import { Btn, Field, Input, Checkbox, Modal } from "./kit"
 
 type View = "login" | "signup" | "forgot" | "reset"
 
@@ -30,16 +29,16 @@ const BRAND_PANEL: Record<View, { title: string; sub: string }> = {
   },
 }
 
-/** Translate common Supabase auth error messages to French; fall back to the raw message. */
+/** Translate common Supabase auth error messages to French; never expose raw provider errors. */
 function friendlyError(message: string): string {
   const m = message.toLowerCase()
   if (m.includes("invalid login credentials")) return "E-mail ou mot de passe incorrect."
   if (m.includes("already registered") || m.includes("already exists")) return "Un compte existe déjà avec cet e-mail."
-  if (m.includes("password should be at least")) return "Le mot de passe doit contenir au moins 6 caractères."
+  if (m.includes("password should be at least")) return "Le mot de passe doit contenir au moins 8 caractères."
   if (m.includes("email not confirmed")) return "Veuillez confirmer votre e-mail avant de vous connecter."
   if (m.includes("rate limit") || m.includes("too many")) return "Trop de tentatives. Réessayez dans quelques minutes."
   if (m.includes("network")) return "Problème de connexion. Vérifiez votre réseau et réessayez."
-  return message
+  return "Une erreur est survenue. Vérifiez votre connexion et réessayez."
 }
 
 function PasswordInput({
@@ -98,8 +97,8 @@ function PrivacyModal({ onClose }: { onClose: () => void }) {
 }
 
 export default function Auth({
-  onBack, initialView = "login", onRecoveryDone,
-}: { onBack: () => void; initialView?: View; onRecoveryDone?: () => void }) {
+  onBack, initialView = "login", onRecoveryDone, idleSignedOut = false,
+}: { onBack: () => void; initialView?: View; onRecoveryDone?: () => void; idleSignedOut?: boolean }) {
   const [view, setView] = useState<View>(initialView)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -115,7 +114,6 @@ export default function Auth({
   const [signupEmail, setSignupEmail] = useState("")
   const [signupPassword, setSignupPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
-  const [role, setRole] = useState<Role>("owner")
   const [agree, setAgree] = useState(false)
 
   // Forgot
@@ -137,82 +135,91 @@ export default function Auth({
     return false
   }
 
+  function validateNewPassword(password: string, confirmation: string) {
+    const issue = checkPassword(password)
+    if (issue === "required" || issue === "tooShort") {
+      setError("Le mot de passe doit contenir au moins 8 caractères.")
+      return false
+    }
+    if (issue === "tooLong") {
+      setError("Le mot de passe doit contenir au maximum 72 octets UTF-8.")
+      return false
+    }
+    if (password !== confirmation) {
+      setError("Les mots de passe ne correspondent pas.")
+      return false
+    }
+    return true
+  }
+
   async function handleLogin(e: FormEvent) {
     e.preventDefault()
+    if (loading) return
     setError(null)
     if (!requireSupabase()) return
     setLoading(true)
-    const { error: err } = await supabase.auth.signInWithPassword({ email: loginEmail.trim(), password: loginPassword })
-    setLoading(false)
-    if (err) setError(friendlyError(err.message))
-    // On success, onAuthStateChange (SIGNED_IN) hydrates the store and App.tsx moves past this screen.
+    try {
+      const { error: err } = await supabase.auth.signInWithPassword({ email: loginEmail.trim(), password: loginPassword })
+      if (err) setError(friendlyError(err.message))
+    } catch {
+      setError("Problème de connexion. Vérifiez votre réseau et réessayez.")
+    } finally { setLoading(false) }
   }
 
   async function handleSignup(e: FormEvent) {
     e.preventDefault()
+    if (loading) return
     setError(null)
-    if (!requireSupabase()) return
-    if (signupPassword.length < 6) return setError("Le mot de passe doit contenir au moins 6 caractères.")
-    if (signupPassword !== confirmPassword) return setError("Les mots de passe ne correspondent pas.")
+    if (!requireSupabase() || !validateNewPassword(signupPassword, confirmPassword)) return
     if (!agree) return setError("Veuillez accepter la politique de confidentialité pour continuer.")
-
     setLoading(true)
-    const { data, error: err } = await supabase.auth.signUp({
-      email: signupEmail.trim(),
-      password: signupPassword,
-      options: {
-        data: { name: name.trim(), role },
-        emailRedirectTo: window.location.origin,
-      },
-    })
-    setLoading(false)
-    if (err) return setError(friendlyError(err.message))
-
-    if (!data.session) {
-      // Email confirmation is required before the account can sign in.
-      setNotice("Compte créé ! Vérifiez votre boîte mail pour confirmer votre adresse, puis connectez-vous.")
-      switchViewKeepNotice("login")
-      return
-    }
-    // If a session came back immediately (email confirmations disabled), onAuthStateChange handles the rest.
-  }
-
-  function switchViewKeepNotice(v: View) {
-    setError(null)
-    setView(v)
+    try {
+      const { data, error: err } = await supabase.auth.signUp({
+        email: signupEmail.trim(), password: signupPassword,
+        options: { data: { name: sanitizeInput(name).slice(0, MAX_NAME_LENGTH) }, emailRedirectTo: window.location.origin },
+      })
+      if (err) return setError(friendlyError(err.message))
+      if (!data.session) {
+        setNotice("Compte créé ! Vérifiez votre boîte mail pour confirmer votre adresse, puis connectez-vous.")
+        setView("login")
+      }
+    } catch {
+      setError("Problème de connexion. Vérifiez votre réseau et réessayez.")
+    } finally { setLoading(false) }
   }
 
   async function handleForgot(e: FormEvent) {
     e.preventDefault()
+    if (loading) return
     setError(null)
     if (!requireSupabase()) return
     setLoading(true)
-    const { error: err } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
-      redirectTo: window.location.origin,
-    })
-    setLoading(false)
-    if (err) return setError(friendlyError(err.message))
-    setNotice("Si un compte existe avec cet e-mail, un lien de réinitialisation vient d'être envoyé.")
+    try {
+      const { error: err } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), { redirectTo: window.location.origin })
+      if (err) setError(friendlyError(err.message))
+      else setNotice("Si un compte existe avec cet e-mail, un lien de réinitialisation vient d'être envoyé.")
+    } catch {
+      setError("Problème de connexion. Vérifiez votre réseau et réessayez.")
+    } finally { setLoading(false) }
   }
 
   async function handleReset(e: FormEvent) {
     e.preventDefault()
+    if (loading) return
     setError(null)
-    if (!requireSupabase()) return
-    if (newPassword.length < 6) return setError("Le mot de passe doit contenir au moins 6 caractères.")
-    if (newPassword !== confirmNewPassword) return setError("Les mots de passe ne correspondent pas.")
-
+    if (!requireSupabase() || !validateNewPassword(newPassword, confirmNewPassword)) return
     setLoading(true)
-    const { error: err } = await supabase.auth.updateUser({ password: newPassword })
-    if (err) {
-      setLoading(false)
-      return setError(friendlyError(err.message))
-    }
-    await supabase.auth.signOut()
-    setLoading(false)
-    onRecoveryDone?.()
-    setNotice("Mot de passe mis à jour avec succès. Connectez-vous avec votre nouveau mot de passe.")
-    setView("login")
+    try {
+      const { error: err } = await supabase.auth.updateUser({ password: newPassword })
+      if (err) return setError(friendlyError(err.message))
+      const { error: logoutError } = await supabase.auth.signOut({ scope: "local" })
+      if (logoutError) return setError("Mot de passe mis à jour. La déconnexion a échoué ; réessayez.")
+      onRecoveryDone?.()
+      setNotice("Mot de passe mis à jour avec succès. Connectez-vous avec votre nouveau mot de passe.")
+      setView("login")
+    } catch {
+      setError("Problème de connexion. Vérifiez votre réseau et réessayez.")
+    } finally { setLoading(false) }
   }
 
   const panel = BRAND_PANEL[view]
@@ -257,6 +264,12 @@ export default function Auth({
             <>
               <h2 className="mt-3 text-[24px] font-bold tracking-tight text-ink">Connexion</h2>
               <p className="mt-1 text-[13.5px] text-muted">Accédez à votre tableau de bord.</p>
+              {idleSignedOut && (
+                <div className="mt-4 flex items-start gap-2 rounded-lg border border-warn/30 bg-warn-50 px-3 py-2.5 text-[12.5px] text-warn" role="status">
+                  <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>Vous avez été déconnecté automatiquement après une période d'inactivité, pour protéger vos données.</span>
+                </div>
+              )}
               <form className="mt-7 space-y-4" onSubmit={handleLogin}>
                 {error && <Notice kind="error">{error}</Notice>}
                 {notice && <Notice kind="success">{notice}</Notice>}
@@ -289,21 +302,16 @@ export default function Auth({
               <form className="mt-7 space-y-4" onSubmit={handleSignup}>
                 {error && <Notice kind="error">{error}</Notice>}
                 <Field label="Nom complet">
-                  <Input required value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" autoFocus />
+                  <Input required maxLength={MAX_NAME_LENGTH} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" autoFocus />
                 </Field>
                 <Field label="Email professionnel">
                   <Input type="email" required value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} autoComplete="email" />
                 </Field>
-                <Field label="Mot de passe" hint="6 caractères minimum.">
+                <Field label="Mot de passe" hint="8 caractères minimum (72 octets UTF-8 maximum).">
                   <PasswordInput value={signupPassword} onChange={setSignupPassword} autoComplete="new-password" />
                 </Field>
                 <Field label="Confirmer le mot de passe">
                   <PasswordInput value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" />
-                </Field>
-                <Field label="Rôle" hint="Détermine les modules accessibles.">
-                  <Select value={role} onChange={(e) => setRole(e.target.value as Role)}>
-                    {(Object.keys(roleLabels) as Role[]).map((r) => <option key={r} value={r}>{roleLabels[r]}</option>)}
-                  </Select>
                 </Field>
                 <Checkbox checked={agree} onChange={setAgree} id="agree-privacy">
                   J'accepte la{" "}
@@ -350,7 +358,7 @@ export default function Auth({
               <p className="mt-1 text-[13.5px] text-muted">{panel.sub}</p>
               <form className="mt-7 space-y-4" onSubmit={handleReset}>
                 {error && <Notice kind="error">{error}</Notice>}
-                <Field label="Nouveau mot de passe" hint="6 caractères minimum.">
+                <Field label="Nouveau mot de passe" hint="8 caractères minimum (72 octets UTF-8 maximum).">
                   <PasswordInput value={newPassword} onChange={setNewPassword} autoComplete="new-password" />
                 </Field>
                 <Field label="Confirmer le mot de passe">

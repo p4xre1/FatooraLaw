@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Plus, Search, Upload, Download, MessageCircle, Mail, Trash2, Users } from "lucide-react"
 import type { Contact } from "../store/types"
 import { useMizan } from "../store/useMizan"
@@ -6,11 +6,21 @@ import { money, fmtDate, toCSV, parseCSV } from "../lib/mizan"
 import { Card, SectionTitle, Btn, Badge, Table, Th, Td, Modal, Field, Input, Select, EmptyState, IconBtn } from "../components/kit"
 
 export default function Contacts() {
-  const { contacts, projects, contracts, addContact, removeContact, importContacts } = useMizan()
+  const { auth, contacts, projects, contracts, addContact, removeContact, importContacts } = useMizan()
   const [q, setQ] = useState("")
   const [facet, setFacet] = useState<"all" | "client" | "supplier">("all")
   const [ledger, setLedger] = useState<Contact | null>(null)
   const [creating, setCreating] = useState(false)
+  const [importError, setImportError] = useState<string | null>(null)
+  const [exportError, setExportError] = useState<string | null>(null)
+  const [importing, setImporting] = useState(false)
+  const importRevision = useRef(0)
+  useEffect(() => {
+    importRevision.current++
+    setImporting(false)
+    setImportError(null)
+    return () => { importRevision.current++ }
+  }, [auth?.id])
   const fileRef = useRef<HTMLInputElement>(null)
 
   const filtered = useMemo(() => {
@@ -22,16 +32,39 @@ export default function Contacts() {
   }, [contacts, q, facet])
 
   function exportCsv() {
-    toCSV(filtered.map((c) => ({ Nom: c.name, Type: c.type, ICE: c.ice, Téléphone: c.phone, Email: c.email, Ville: c.city, Solde: c.balance })), "fatorati-contacts.csv")
+    try {
+      toCSV(filtered.map((c) => ({ Nom: c.name, Type: c.type, ICE: c.ice, Téléphone: c.phone, Email: c.email, Ville: c.city, Solde: c.balance })), "fatorati-contacts.csv")
+      setExportError(null)
+    } catch { setExportError("Impossible d'exporter les contacts. Réessayez.") }
   }
-  function onImport(e: React.ChangeEvent<HTMLInputElement>) {
+  async function onImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (!file) return
-    file.text().then((txt) => {
-      const rows = parseCSV(txt).slice(1).filter((r) => r[0])
-      importContacts(rows.map((r) => ({ name: r[0] ?? "", type: (r[1] === "supplier" ? "supplier" : "client"), ice: r[2] ?? "—", phone: r[3] ?? "", email: r[4] ?? "", city: r[5] ?? "", balance: Number(r[6]) || 0 })))
-    })
     e.target.value = ""
+    if (!file) return
+    const revision = ++importRevision.current
+    const ownerId = auth?.id
+    setImportError(null)
+    setImporting(true)
+    try {
+      if (file.size > 2 * 1024 * 1024) throw new Error("Le fichier CSV ne doit pas dépasser 2 Mo.")
+      const text = await file.text()
+      if (revision !== importRevision.current || useMizan.getState().auth?.id !== ownerId) return
+      const rows = parseCSV(text).slice(1).filter((r) => r[0]?.trim())
+      if (rows.length > 10_000) throw new Error("Import limité à 10 000 contacts par fichier.")
+      const contacts = rows.map((r) => {
+        if (r.length !== 7) throw new Error("Le CSV doit contenir 7 colonnes : Nom, Type, ICE, Téléphone, Email, Ville, Solde.")
+        const balance = Number(r[6])
+        if (!Number.isFinite(balance)) throw new Error("Le CSV contient un solde invalide.")
+        return { name: r[0], type: r[1] === "supplier" ? "supplier" as const : "client" as const, ice: r[2], phone: r[3], email: r[4], city: r[5], balance }
+      })
+      importContacts(contacts)
+    } catch (error) {
+      if (revision === importRevision.current && useMizan.getState().auth?.id === ownerId) {
+        setImportError(error instanceof Error ? error.message : "Impossible de lire le fichier CSV.")
+      }
+    } finally {
+      if (revision === importRevision.current) setImporting(false)
+    }
   }
 
   const historyFor = (id: string) => [
@@ -41,10 +74,12 @@ export default function Contacts() {
 
   return (
     <div className="mz-view space-y-5">
+      {exportError && <p role="alert" className="text-sm text-serious">{exportError}</p>}
+      {importError && <p role="alert" className="text-sm text-serious">{importError}</p>}
       <SectionTitle title="Clients & Fournisseurs" sub="CRM & grand livre des tiers" action={
         <div className="flex flex-wrap gap-2">
-          <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={onImport} />
-          <Btn variant="outline" size="sm" onClick={() => fileRef.current?.click()}><Upload className="h-4 w-4" /> Importer CSV</Btn>
+          <input aria-label="Fichier CSV" ref={fileRef} type="file" accept=".csv" className="hidden" onChange={onImport} />
+          <Btn variant="outline" size="sm" disabled={importing} onClick={() => fileRef.current?.click()}><Upload className="h-4 w-4" /> {importing ? "Import en cours…" : "Importer CSV"}</Btn>
           <Btn variant="outline" size="sm" onClick={exportCsv}><Download className="h-4 w-4" /> Exporter</Btn>
           <Btn onClick={() => setCreating(true)}><Plus className="h-4 w-4" /> Ajouter</Btn>
         </div>

@@ -1,21 +1,8 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { isSupabaseConfigured, supabase } from "../lib/supabase"
 
-export type ReferralSource =
-  | "google_search"
-  | "social_media"
-  | "word_of_mouth"
-  | "online_ad"
-  | "blog_article"
-  | "other"
-
-export type BusinessProfile =
-  | "small_company"
-  | "self_employed"
-  | "professional"
-  | "tradesperson"
-  | "individual"
-
+export type ReferralSource = "google_search" | "social_media" | "word_of_mouth" | "online_ad" | "blog_article" | "other"
+export type BusinessProfile = "small_company" | "self_employed" | "professional" | "tradesperson" | "individual"
 export type OnboardingAnswers = {
   referralSource: ReferralSource
   referralSourceOther: string
@@ -31,7 +18,6 @@ export const referralSourceLabels: Record<ReferralSource, string> = {
   blog_article: "Article ou blog",
   other: "Autre",
 }
-
 export const businessProfileLabels: Record<BusinessProfile, string> = {
   small_company: "Petite entreprise / PME",
   self_employed: "Indépendant / Auto-entrepreneur",
@@ -40,74 +26,65 @@ export const businessProfileLabels: Record<BusinessProfile, string> = {
   individual: "Particulier",
 }
 
-/**
- * Drives the one-time onboarding questionnaire shown the first time a
- * signed-in user reaches the dashboard. A row in `onboarding_responses`
- * is the only signal that a user has already answered — sign-up doesn't
- * create one (see supabase/schema.sql), so its absence after sign-in
- * means "ask them".
- */
-export function useOnboarding(signedIn: boolean) {
+/** A response row, not account creation, marks completion. Always scoped to the current user. */
+export function useOnboarding(userId: string | null) {
   const [checked, setChecked] = useState(false)
   const [needsOnboarding, setNeedsOnboarding] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [userId, setUserId] = useState<string | null>(null)
+  const revision = useRef(0)
 
   useEffect(() => {
-    let mounted = true
-
-    if (!isSupabaseConfigured || !signedIn) {
+    const request = ++revision.current
+    const isCurrent = () => request === revision.current
+    setNeedsOnboarding(false)
+    setSubmitting(false)
+    setError(null)
+    if (!isSupabaseConfigured || !userId) {
       setChecked(true)
-      setNeedsOnboarding(false)
-      setUserId(null)
-      return () => { mounted = false }
+      return () => { revision.current++ }
     }
 
     setChecked(false)
-    supabase.auth.getUser().then(({ data }) => {
-      if (!mounted) return
-      const uid = data.user?.id ?? null
-      setUserId(uid)
-      if (!uid) {
-        setNeedsOnboarding(false)
-        setChecked(true)
-        return
+    async function check() {
+      try {
+        const { data: row, error: err } = await supabase.from("onboarding_responses")
+          .select("user_id").eq("user_id", userId).maybeSingle()
+        // Fail open: an unavailable questionnaire must not block the dashboard.
+        if (isCurrent()) setNeedsOnboarding(!err && !row)
+      } catch {
+        if (isCurrent()) setNeedsOnboarding(false)
+      } finally {
+        if (isCurrent()) setChecked(true)
       }
-      supabase
-        .from("onboarding_responses")
-        .select("user_id")
-        .eq("user_id", uid)
-        .maybeSingle()
-        .then(({ data: row, error: err }) => {
-          if (!mounted) return
-          // Fail open on error (missing table, RLS hiccup, offline...):
-          // never block access to the dashboard over the onboarding check.
-          setNeedsOnboarding(!err && !row)
-          setChecked(true)
-        })
-    })
-
-    return () => { mounted = false }
-  }, [signedIn])
+    }
+    void check()
+    return () => { revision.current++ }
+  }, [userId])
 
   async function submit(answers: OnboardingAnswers) {
-    if (!userId) return
+    if (!userId || submitting) return
+    const request = revision.current
     setSubmitting(true)
     setError(null)
-    const { error: err } = await supabase.from("onboarding_responses").insert({
-      user_id: userId,
-      referral_source: answers.referralSource,
-      referral_source_other: answers.referralSourceOther.trim().slice(0, 200),
-      business_profile: answers.businessProfile,
-      wants_notifications: answers.wantsNotifications,
-    })
-    setSubmitting(false)
-    if (err) {
-      setError("Une erreur est survenue. Veuillez réessayer.")
-      return
+    try {
+      // Retry-safe across tabs and lost responses: update our own answer row
+      // if another successful submission has already created it.
+      const { error: err } = await supabase.from("onboarding_responses").upsert({
+        user_id: userId,
+        referral_source: answers.referralSource,
+        referral_source_other: answers.referralSource === "other" ? answers.referralSourceOther.trim().slice(0, 200) : "",
+        business_profile: answers.businessProfile,
+        wants_notifications: answers.wantsNotifications,
+      }, { onConflict: "user_id" })
+      if (request !== revision.current) return
+      if (err) setError("Une erreur est survenue. Veuillez réessayer.")
+      else setNeedsOnboarding(false)
+    } catch {
+      if (request === revision.current) setError("Une erreur est survenue. Veuillez réessayer.")
+    } finally {
+      if (request === revision.current) setSubmitting(false)
     }
-    setNeedsOnboarding(false)
   }
 
   return { checked, needsOnboarding, submitting, error, submit }

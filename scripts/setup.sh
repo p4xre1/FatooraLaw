@@ -9,7 +9,7 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 if ! command -v node >/dev/null 2>&1; then
-  echo "error: Node.js is not installed. Install Node 22+ first (see .mise.toml)." >&2
+  echo "error: Node.js is not installed. Install Node 22.22.2+ (or a supported newer LTS) first (see .mise.toml)." >&2
   exit 1
 fi
 

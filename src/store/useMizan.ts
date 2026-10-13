@@ -1,11 +1,15 @@
 import { create } from "zustand"
-import { persist } from "zustand/middleware"
+import { createJSONStorage, persist } from "zustand/middleware"
 import type {
-  AuditEvent, Contact, Contract, Expense, ModuleKey, Project, Settings, Severity, StockItem, TeamMember, Role,
+  AuditEvent, Contact, Contract, Expense, ModuleKey, Project, Settings, Severity, StockItem, TeamMember, Role, SubscriptionTool,
 } from "./types"
-import {
-  seedAudit, seedContacts, seedContracts, seedExpenses, seedProjects, seedSettings, seedStock, seedTeam, uid,
-} from "./seed"
+import { uid } from "./seed"
+import { emptyBusinessData } from "./defaults"
+
+import { MAX_QUANTITY, requireAmount, requireBalance, isTaxRate } from "../lib/businessValidation"
+import { validDateRange, calendarDay, dateFromDay } from "../lib/calendarDates"
+import { validateLogoDataURL } from "../lib/logoValidation"
+import { businessStorage } from "../lib/localSaveStatus"
 
 /** Guard stored strings against XSS / injection before they enter state. */
 export function sanitize(input: string): string {
@@ -17,7 +21,7 @@ export function sanitize(input: string): string {
   return out.trim().slice(0, 400)
 }
 
-type Auth = { name: string; email: string; role: Role } | null
+export type Auth = { id: string; name: string; email: string; role: Role } | null
 
 type State = {
   auth: Auth
@@ -28,9 +32,10 @@ type State = {
   stock: StockItem[]
   contracts: Contract[]
   team: TeamMember[]
+  tools: SubscriptionTool[]
   audit: AuditEvent[]
 
-  signIn: (name: string, email: string, role?: Role) => void
+  signIn: (name: string, email: string, role: Role, userId: string) => void
   signOut: () => void
 
   log: (action: string, target: string, module: ModuleKey, severity?: Severity) => void
@@ -60,29 +65,51 @@ type State = {
   setPermission: (id: string, module: ModuleKey, value: boolean) => void
   setMemberRole: (id: string, role: Role) => void
 
+  addTool: (tool: Omit<SubscriptionTool, "id">) => void
+  removeTool: (id: string) => void
+
   updateSettings: (patch: Partial<Settings>) => void
 }
+
+type LocalData = Pick<State, "settings" | "projects" | "contacts" | "expenses" | "stock" | "contracts" | "team" | "tools" | "audit">
+
+function initialData(): LocalData {
+  return emptyBusinessData()
+}
+
+export function businessSnapshot(state: State): LocalData {
+  const { settings, projects, contacts, expenses, stock, contracts, team, tools, audit } = state
+  return { settings, projects, contacts, expenses, stock, contracts, team, tools, audit }
+}
+
+const SIGNED_OUT_STORAGE = "mizan.store.v2.signed-out"
+export const accountStorageKey = (userId: string) => `mizan.store.v2.${encodeURIComponent(userId)}`
 
 export const useMizan = create<State>()(
   persist(
     (set, get) => ({
       auth: null,
-      settings: seedSettings,
-      projects: seedProjects,
-      contacts: seedContacts,
-      expenses: seedExpenses,
-      stock: seedStock,
-      contracts: seedContracts,
-      team: seedTeam,
-      audit: seedAudit,
+      ...initialData(),
 
-      signIn: (name, email, role = "owner") => {
-        set({ auth: { name: sanitize(name), email: sanitize(email), role } })
-        get().log("s'est connecté", "Session authentifiée", "settings", "info")
+      signIn: (name, email, role, userId) => {
+        const previous = get().auth
+        if (previous?.id !== userId) {
+          // localStorage hydration is synchronous. Its merge resets missing
+          // data to empty defaults, so a new account cannot inherit another account or demo records.
+          useMizan.persist.setOptions({ name: SIGNED_OUT_STORAGE })
+          set({ auth: null, ...initialData() })
+          useMizan.persist.setOptions({ name: accountStorageKey(userId) })
+          void useMizan.persist.rehydrate()
+        }
+        set({ auth: { id: userId, name: sanitize(name), email: sanitize(email), role } })
+        if (previous?.id !== userId) get().log("s'est connecté", "Session authentifiée", "settings", "info")
       },
       signOut: () => {
-        get().log("s'est déconnecté", "Fin de session", "settings", "info")
-        set({ auth: null })
+        if (get().auth) get().log("s'est déconnecté", "Fin de session", "settings", "info")
+        // Keep the account's saved records, but remove them from memory and
+        // stop writing into that account's storage after logout.
+        useMizan.persist.setOptions({ name: SIGNED_OUT_STORAGE })
+        set({ auth: null, ...initialData() })
       },
 
       log: (action, target, module, severity = "info") =>
@@ -94,12 +121,25 @@ export const useMizan = create<State>()(
         })),
 
       addProject: (p) => {
+        requireAmount(p.budget, "Le budget")
+        requireAmount(p.paid, "Le montant encaissé")
+        requireAmount(p.cost, "Le coût")
+        if (!isTaxRate(p.progress) || !Number.isInteger(p.progress)) throw new Error("L'avancement doit être un entier entre 0 et 100.")
         const proj: Project = { ...p, id: uid(), name: sanitize(p.name) }
         set((s) => ({ projects: [proj, ...s.projects] }))
         get().log("a créé le projet", proj.name, "projects", "info")
       },
-      updateProject: (id, patch) =>
-        set((s) => ({ projects: s.projects.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),
+      updateProject: (id, patch) => {
+        const current = get().projects.find((p) => p.id === id)
+        if (!current) return
+        const updated = { ...current, ...patch, id: current.id }
+        requireAmount(updated.budget, "Le budget")
+        requireAmount(updated.paid, "Le montant encaissé")
+        requireAmount(updated.cost, "Le coût")
+        if (!isTaxRate(updated.progress) || !Number.isInteger(updated.progress)) throw new Error("L'avancement doit être un entier entre 0 et 100.")
+        updated.name = sanitize(updated.name)
+        set((s) => ({ projects: s.projects.map((p) => p.id === id ? updated : p) }))
+      },
       toggleMilestone: (pid, mid) =>
         set((s) => ({
           projects: s.projects.map((p) =>
@@ -110,24 +150,33 @@ export const useMizan = create<State>()(
         })),
 
       addContact: (c) => {
-        const ct: Contact = { ...c, id: uid(), name: sanitize(c.name), email: sanitize(c.email), city: sanitize(c.city) }
+        requireBalance(c.balance)
+        const ct: Contact = { ...c, id: uid(), name: sanitize(c.name), ice: sanitize(c.ice), phone: sanitize(c.phone), email: sanitize(c.email), city: sanitize(c.city) }
         set((s) => ({ contacts: [ct, ...s.contacts] }))
         get().log("a ajouté", `${ct.type === "client" ? "Client" : "Fournisseur"} · ${ct.name}`, "contacts", "info")
       },
-      updateContact: (id, patch) =>
-        set((s) => ({ contacts: s.contacts.map((c) => (c.id === id ? { ...c, ...patch } : c)) })),
+      updateContact: (id, patch) => {
+        const current = get().contacts.find((c) => c.id === id)
+        if (!current) return
+        const updated = { ...current, ...patch, id: current.id }
+        requireBalance(updated.balance)
+        for (const field of ["name", "ice", "phone", "email", "city"] as const) updated[field] = sanitize(updated[field])
+        set((s) => ({ contacts: s.contacts.map((c) => c.id === id ? updated : c) }))
+      },
       removeContact: (id) => {
         const c = get().contacts.find((x) => x.id === id)
         set((s) => ({ contacts: s.contacts.filter((x) => x.id !== id) }))
         if (c) get().log("a supprimé", `Contact · ${c.name}`, "contacts", "critical")
       },
       importContacts: (rows) => {
-        const items = rows.map((r) => ({ ...r, id: uid(), name: sanitize(r.name) }))
+        rows.forEach((row) => requireBalance(row.balance)) // validate every row before mutating any state
+        const items = rows.map((r) => ({ ...r, id: uid(), name: sanitize(r.name), ice: sanitize(r.ice), phone: sanitize(r.phone), email: sanitize(r.email), city: sanitize(r.city) }))
         set((s) => ({ contacts: [...items, ...s.contacts] }))
         get().log("a importé", `${items.length} contacts (CSV)`, "contacts", "warning")
       },
 
       addExpense: (e) => {
+        requireAmount(e.amount, "Le montant")
         const ex: Expense = { ...e, id: uid(), note: sanitize(e.note) }
         set((s) => ({ expenses: [ex, ...s.expenses] }))
         get().log("a enregistré une dépense", `${ex.note} (${ex.amount} MAD)`, "procurement", "info")
@@ -144,7 +193,12 @@ export const useMizan = create<State>()(
       },
 
       adjustStock: (id, delta) => {
-        set((s) => ({ stock: s.stock.map((i) => (i.id === id ? { ...i, qty: Math.max(0, i.qty + delta) } : i)) }))
+        requireBalance(delta)
+        const current = get().stock.find((i) => i.id === id)
+        if (!current) return
+        const quantity = Math.max(0, current.qty + delta)
+        requireAmount(quantity, "La quantité", MAX_QUANTITY)
+        set((s) => ({ stock: s.stock.map((i) => i.id === id ? { ...i, qty: quantity } : i) }))
         const i = get().stock.find((x) => x.id === id)
         if (i) get().log("a ajusté le stock", `${i.name} → ${i.qty} ${i.unit}`, "inventory", "info")
       },
@@ -153,10 +207,14 @@ export const useMizan = create<State>()(
         const i = get().stock.find((x) => x.id === id)
         if (i) get().log("a affecté le matériel", i.name, "inventory", "info")
       },
-      addStock: (item) =>
-        set((s) => ({ stock: [{ ...item, id: uid(), name: sanitize(item.name) }, ...s.stock] })),
+      addStock: (item) => {
+        requireAmount(item.qty, "La quantité", MAX_QUANTITY)
+        requireAmount(item.minQty, "Le seuil minimum", MAX_QUANTITY)
+        set((s) => ({ stock: [{ ...item, id: uid(), name: sanitize(item.name), sku: sanitize(item.sku), unit: sanitize(item.unit) }, ...s.stock] }))
+      },
 
       addContract: (c) => {
+        requireAmount(c.value, "La valeur")
         const co: Contract = { ...c, id: uid(), title: sanitize(c.title) }
         set((s) => ({ contracts: [co, ...s.contracts] }))
         get().log("a généré un contrat", co.title, "legal", "warning")
@@ -164,7 +222,8 @@ export const useMizan = create<State>()(
       setContractStatus: (id, status) => {
         set((s) => ({ contracts: s.contracts.map((c) => (c.id === id ? { ...c, status } : c)) }))
         const c = get().contracts.find((x) => x.id === id)
-        if (c && status === "signed") get().log("a signé le contrat", c.title, "legal", "critical")
+        if (c && status === "signed") get().log("a marqué le contrat comme signé", c.title, "legal", "warning")
+        if (c && status === "sent") get().log("a marqué le contrat comme envoyé", c.title, "legal", "info")
       },
 
       inviteMember: (m) => {
@@ -175,7 +234,7 @@ export const useMizan = create<State>()(
       toggleMemberActive: (id) => {
         set((s) => ({ team: s.team.map((m) => (m.id === id ? { ...m, active: !m.active } : m)) }))
         const m = get().team.find((x) => x.id === id)
-        if (m) get().log(m.active ? "a désactivé le compte" : "a réactivé le compte", m.name, "team", "critical")
+        if (m) get().log(m.active ? "a réactivé le compte" : "a désactivé le compte", m.name, "team", "critical")
       },
       setPermission: (id, module, value) =>
         set((s) => ({
@@ -184,11 +243,54 @@ export const useMizan = create<State>()(
       setMemberRole: (id, role) =>
         set((s) => ({ team: s.team.map((m) => (m.id === id ? { ...m, role } : m)) })),
 
+      addTool: (tool) => {
+        requireAmount(tool.cost, "Le coût mensuel")
+        if (!validDateRange(tool.start, tool.expiry)) throw new Error("Les dates sont invalides ou l'expiration précède la date de début.")
+        const name = sanitize(tool.name)
+        if (!name) throw new Error("Le nom de l'outil est requis.")
+        const record = { ...tool, name, id: uid(), start: tool.start ? dateFromDay(calendarDay(tool.start)!) : "", expiry: tool.expiry ? dateFromDay(calendarDay(tool.expiry)!) : "" }
+        set((s) => ({ tools: [record, ...s.tools] }))
+        get().log("a ajouté un abonnement", record.name, "tools", "info")
+      },
+      removeTool: (id) => {
+        const tool = get().tools.find((t) => t.id === id)
+        if (!tool) return
+        set((s) => ({ tools: s.tools.filter((t) => t.id !== id) }))
+        get().log("a supprimé un abonnement", tool.name, "tools", "warning")
+      },
+
       updateSettings: (patch) => {
+        if ("taxRate" in patch && !isTaxRate(patch.taxRate)) throw new Error("Le taux de TVA doit être compris entre 0 et 100 %.")
+        if ("logo" in patch) validateLogoDataURL(patch.logo)
+        if ("currency" in patch && !["MAD", "EUR", "USD"].includes(patch.currency ?? "")) throw new Error("Devise invalide.")
+        // Preserve document text/newlines; React escapes display text. Numeric/logo
+        // validation is not a reason to silently truncate or rewrite existing notes.
         set((s) => ({ settings: { ...s.settings, ...patch } }))
         get().log("a modifié les paramètres", "Configuration entreprise", "settings", "warning")
       },
     }),
-    { name: "mizan.store.v1" },
+    {
+      name: SIGNED_OUT_STORAGE,
+      skipHydration: true,
+      storage: createJSONStorage(() => businessStorage),
+      partialize: businessSnapshot,
+      merge: (persisted, current) => {
+        const defaults = initialData()
+        const saved = persisted as Partial<LocalData> | undefined
+        // Never hydrate auth or action functions, even from tampered storage.
+        return {
+          ...current, ...defaults, auth: null,
+          settings: saved?.settings ? { ...defaults.settings, ...saved.settings } : defaults.settings,
+          projects: Array.isArray(saved?.projects) ? saved.projects : defaults.projects,
+          contacts: Array.isArray(saved?.contacts) ? saved.contacts : defaults.contacts,
+          expenses: Array.isArray(saved?.expenses) ? saved.expenses : defaults.expenses,
+          stock: Array.isArray(saved?.stock) ? saved.stock : defaults.stock,
+          contracts: Array.isArray(saved?.contracts) ? saved.contracts : defaults.contracts,
+          tools: Array.isArray(saved?.tools) ? saved.tools : defaults.tools,
+          team: Array.isArray(saved?.team) ? saved.team : defaults.team,
+          audit: Array.isArray(saved?.audit) ? saved.audit : defaults.audit,
+        }
+      },
+    },
   ),
 )
