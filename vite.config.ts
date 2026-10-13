@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'node:path'
 
-import siteConfiguration from './.figma/make/site.json'
+import siteConfiguration from './.figma/make/site.json' with { type: 'json' }
 
 // Vite config — https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -26,17 +26,19 @@ export default defineConfig(({ mode }) => {
     ],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, './src'),
+        '@': path.resolve(import.meta.dirname, './src'),
       },
     },
     server: {
       host: process.env.FIGMA_DEV_SERVER_HOST || '0.0.0.0',
+      allowedHosts: ['.e2b.app'],
       port: parseInt(process.env.PORT || '5173'), // <-- Changed default to 5173
       strictPort: false, // <-- Changed to false so Vite won't crash if port is taken
       watch: { ignored: ['**/.figma/**'] },
     },
     preview: {
       host: process.env.FIGMA_DEV_SERVER_HOST || '0.0.0.0',
+      allowedHosts: ['.e2b.app'],
       port: parseInt(process.env.PORT || '5173'), // <-- Changed default to 5173
     },
   }
@@ -114,7 +116,6 @@ function figmaSiteConfiguration(config: FigmaSiteConfiguration): Plugin {
   const org = config.organization
   const buildDate = new Date().toISOString().slice(0, 10)
   const language = sanitizeHtmlValue(config.language) || 'en'
-  const googleAnalyticsId = sanitizeHtmlValue(config.analytics?.googleAnalyticsId)
   const headStart = config.customScripts?.headStart ?? ''
   const headEnd = config.customScripts?.headEnd ?? ''
   const bodyStart = config.customScripts?.bodyStart ?? ''
@@ -228,28 +229,8 @@ function figmaSiteConfiguration(config: FigmaSiteConfiguration): Plugin {
           )
         }
 
-        if (googleAnalyticsId) {
-          tags.push(
-            {
-              tag: 'script',
-              attrs: {
-                async: true,
-                src: `https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsId}`,
-              },
-              injectTo: 'head',
-            },
-            {
-              tag: 'script',
-              children: `
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', ${JSON.stringify(googleAnalyticsId)});
-`,
-              injectTo: 'head',
-            },
-          )
-        }
+        // Google Analytics is loaded by src/lib/cookieConsent.ts only after
+        // explicit consent. Never emit tracking scripts into the HTML shell.
 
         if (config.accessibility?.addBypassLinks) {
           tags.push(

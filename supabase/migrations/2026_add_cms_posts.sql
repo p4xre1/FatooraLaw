@@ -32,8 +32,28 @@
 -- tables above are — this is one shared site's content, edited
 -- collaboratively by any admin, not per-tenant data.
 
+-- Restrict profile writes before exposing the admin-flag check.
 alter table public.profiles
   add column if not exists is_admin boolean not null default false;
+
+drop policy if exists profiles_insert_own on public.profiles;
+drop policy if exists profiles_delete_own on public.profiles;
+
+revoke insert, update, delete on public.profiles from public, anon, authenticated;
+-- Clear pre-existing column grants too (revoking a table grant alone does
+-- not revoke column-level privileges from an older/custom installation).
+do $$ declare columns text; begin
+  select string_agg(quote_ident(attname), ', ' order by attnum) into columns
+    from pg_attribute
+   where attrelid = 'public.profiles'::regclass and attnum > 0 and not attisdropped;
+  execute format('revoke insert (%s), update (%s) on public.profiles from public, anon, authenticated', columns, columns);
+end $$;
+
+grant select on public.profiles to authenticated;
+grant update (name) on public.profiles to authenticated;
+-- Existing profiles_select_own / profiles_update_own policies still restrict
+-- reads and permitted name updates to auth.uid(). Admin flags/roles/email
+-- remain writable only by trusted SQL operators / the service role.
 
 -- security definer so this can be called from another table's RLS policy
 -- without that policy needing its own read access to `profiles` — same

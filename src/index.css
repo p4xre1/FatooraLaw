@@ -192,6 +192,12 @@ body {
   --l-accent-text: #c4b5fd;
   color: var(--l-text);
 }
+/* Keep anchored sections visible below the sticky landing navigation. */
+.landing-root section[id],
+.landing-root article[id] {
+  scroll-margin-top: 5rem;
+}
+
 .landing-root[data-theme='light'] {
   --l-bg-solid: #f6f6fc;
   --l-header: rgba(255, 255, 255, 0.78);

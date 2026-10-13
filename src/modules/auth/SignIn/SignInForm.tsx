@@ -90,18 +90,17 @@ export function SignInForm({ onForgotPassword, onSignUp, onSuccess, captchaToken
       return
     }
 
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email: cleanEmail,
-      password,
-      ...(captchaToken ? { options: { captchaToken } } : {}),
-    })
-    setLoading(false)
+    try {
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: cleanEmail, password,
+        ...(captchaToken ? { options: { captchaToken } } : {}),
+      })
+      if (authError) setError(mapAuthError(authError.message, t))
+      else onSuccess?.()
+    } catch {
+      setError(t.errors.network)
+    } finally { setLoading(false) }
 
-    if (authError) {
-      setError(mapAuthError(authError.message, t))
-      return
-    }
-    onSuccess?.()
   }
 
   return (

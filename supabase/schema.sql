@@ -232,11 +232,9 @@ begin
     new.id,
     coalesce(new.raw_user_meta_data ->> 'name', ''),
     coalesce(new.email, ''),
-    case
-      when new.raw_user_meta_data ->> 'role' in ('owner', 'accountant', 'supervisor', 'assistant')
-        then (new.raw_user_meta_data ->> 'role')::public.app_role
-      else 'owner'::public.app_role
-    end
+    -- A self-created account owns its own workspace. Team roles must be
+    -- assigned by a trusted server, never copied from editable user metadata.
+    'owner'::public.app_role
   )
   on conflict (id) do update set email = excluded.email;
 
@@ -519,3 +517,211 @@ for each row execute function public.enforce_plan_limit();
 -- insert into public.platform_admins (user_id)
 -- select id from auth.users where email = 'contact@fatorati.tech'
 -- on conflict do nothing;
+
+-- ---------------------------------------------------------------------------
+-- CMS: public content module (blog / legal-article posts)
+--
+-- Note on `platform_admins`: this schema already has a `platform_admins`
+-- table + `is_platform_admin()` function, and SUPABASE_OPERATIONS.md
+-- documents it as being for "protected CMS operators" — i.e. this may be
+-- what was originally intended for exactly this feature. The brief for
+-- this module asked specifically for admin privileges to be verified
+-- against the `profiles` table, so that's what's implemented below
+-- (`profiles.is_admin`, not `platform_admins`), to follow that literally
+-- rather than assume. If you'd rather consolidate on the pre-existing
+-- mechanism instead, it's a two-line swap: drop the `is_admin` column
+-- below and make `public.is_admin()` call `public.is_platform_admin()`
+-- (or just reference `is_platform_admin()` directly in the policies and
+-- in src/admin/lib/adminAuth.ts) — nothing else here depends on which one
+-- you pick.
+--
+-- A boolean flag on `profiles`, rather than adding a value to the
+-- existing `app_role` enum (owner/accountant/supervisor/assistant): that
+-- enum models per-tenant business roles inside a single company's
+-- Fatorati account and has nothing to do with who may publish site
+-- content, so overloading it would conflate two unrelated permission
+-- systems. `posts` also isn't scoped by user_id the way the tenant
+-- tables above are — this is one shared site's content, edited
+-- collaboratively by any admin, not per-tenant data.
+
+-- Restrict profile writes before exposing the admin-flag check.
+alter table public.profiles
+  add column if not exists is_admin boolean not null default false;
+
+drop policy if exists profiles_insert_own on public.profiles;
+drop policy if exists profiles_delete_own on public.profiles;
+
+revoke insert, update, delete on public.profiles from public, anon, authenticated;
+-- Clear pre-existing column grants too (revoking a table grant alone does
+-- not revoke column-level privileges from an older/custom installation).
+do $$ declare columns text; begin
+  select string_agg(quote_ident(attname), ', ' order by attnum) into columns
+    from pg_attribute
+   where attrelid = 'public.profiles'::regclass and attnum > 0 and not attisdropped;
+  execute format('revoke insert (%s), update (%s) on public.profiles from public, anon, authenticated', columns, columns);
+end $$;
+
+grant select on public.profiles to authenticated;
+grant update (name) on public.profiles to authenticated;
+-- Existing profiles_select_own / profiles_update_own policies still restrict
+-- reads and permitted name updates to auth.uid(). Admin flags/roles/email
+-- remain writable only by trusted SQL operators / the service role.
+
+-- security definer so this can be called from another table's RLS policy
+-- without that policy needing its own read access to `profiles` — same
+-- pattern already used by `is_platform_admin()` above. `set search_path`
+-- pins name resolution and blocks a search_path-hijacking attack against
+-- a security definer function.
+create or replace function public.is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(
+    (select p.is_admin from public.profiles p where p.id = auth.uid()),
+    false
+  );
+$$;
+
+create table if not exists public.posts (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  title text not null check (char_length(title) between 1 and 200),
+  slug text not null check (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$' and char_length(slug) <= 200),
+  content text not null default '' check (char_length(content) <= 200000),
+  published boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint posts_slug_unique unique (slug)
+);
+
+create index if not exists posts_published_created_idx on public.posts (published, created_at desc);
+create index if not exists posts_user_id_idx on public.posts (user_id);
+
+drop trigger if exists set_posts_updated_at on public.posts;
+create trigger set_posts_updated_at
+before update on public.posts
+for each row execute function public.set_updated_at();
+
+alter table public.posts enable row level security;
+
+-- Public (including signed-out) visitors only ever see published posts.
+-- This policy applies to `anon` too, so a public marketing page can read
+-- posts directly with the anon key — no separate "public API" needed.
+drop policy if exists posts_public_read_published on public.posts;
+create policy posts_public_read_published on public.posts
+for select to anon, authenticated
+using (published = true);
+
+-- Admins can additionally read drafts. Postgres OR's multiple permissive
+-- policies for the same command together, so an admin matches this policy
+-- in addition to the one above, on top of whatever `published` already
+-- allows.
+drop policy if exists posts_admin_read_all on public.posts;
+create policy posts_admin_read_all on public.posts
+for select to authenticated
+using (public.is_admin());
+
+-- Only admins may create, edit, or delete posts. `with check` re-validates
+-- is_admin() against every row an insert/update would produce, so this
+-- can't be bypassed by a request that only satisfies the `using` clause.
+drop policy if exists posts_admin_insert on public.posts;
+create policy posts_admin_insert on public.posts
+for insert to authenticated
+with check (public.is_admin() and user_id = auth.uid());
+
+drop policy if exists posts_admin_update on public.posts;
+create policy posts_admin_update on public.posts
+for update to authenticated
+using (public.is_admin())
+with check (public.is_admin());
+
+drop policy if exists posts_admin_delete on public.posts;
+create policy posts_admin_delete on public.posts
+for delete to authenticated
+using (public.is_admin());
+
+-- Table-level grants are necessary (not redundant with the earlier
+-- `grant ... on all tables in schema public to authenticated`), because
+-- that statement only covers tables that already existed at the point in
+-- this script where it ran — `posts` is created below it. Every other
+-- table added after that point (plan_catalog, purchase_requests, etc.)
+-- follows the same explicit-grant pattern for the same reason.
+grant select on public.posts to anon, authenticated;
+grant insert, update, delete on public.posts to authenticated;
+
+-- Bootstrap the first CMS content admin after they've created a normal
+-- Auth account (sign up once through the app, then run this):
+-- update public.profiles set is_admin = true where email = 'editor@fatorati.tech';
+
+-- ---------------------------------------------------------------------------
+-- Onboarding: one-time "welcome" questionnaire
+--
+-- Shown the first time a user reaches the dashboard after creating an
+-- account. Three questions: where they heard about Fatorati, what kind
+-- of activity they run, and whether they want update notifications.
+--
+-- Deliberately NOT auto-created by `handle_new_user()` the way `profiles`
+-- and `company_settings` are: the presence of a row here is itself the
+-- "has this user been onboarded?" flag the frontend checks on sign-in.
+-- An auto-inserted default row would defeat that — there would be no way
+-- to tell "answered" apart from "never asked".
+
+do $$ begin
+  create type public.referral_source as enum (
+    'google_search',
+    'social_media',
+    'word_of_mouth',
+    'online_ad',
+    'blog_article',
+    'other'
+  );
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  create type public.business_profile as enum (
+    'small_company',
+    'self_employed',
+    'professional',
+    'tradesperson',
+    'individual'
+  );
+exception when duplicate_object then null; end $$;
+
+create table if not exists public.onboarding_responses (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  referral_source public.referral_source not null,
+  referral_source_other text not null default '' check (char_length(referral_source_other) <= 200),
+  business_profile public.business_profile not null,
+  wants_notifications boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+drop trigger if exists set_onboarding_responses_updated_at on public.onboarding_responses;
+create trigger set_onboarding_responses_updated_at
+before update on public.onboarding_responses
+for each row execute function public.set_updated_at();
+
+alter table public.onboarding_responses enable row level security;
+
+drop policy if exists onboarding_responses_select_own on public.onboarding_responses;
+drop policy if exists onboarding_responses_insert_own on public.onboarding_responses;
+drop policy if exists onboarding_responses_update_own on public.onboarding_responses;
+drop policy if exists onboarding_responses_delete_own on public.onboarding_responses;
+create policy onboarding_responses_select_own on public.onboarding_responses
+for select to authenticated using (user_id = auth.uid());
+create policy onboarding_responses_insert_own on public.onboarding_responses
+for insert to authenticated with check (user_id = auth.uid());
+create policy onboarding_responses_update_own on public.onboarding_responses
+for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy onboarding_responses_delete_own on public.onboarding_responses
+for delete to authenticated using (user_id = auth.uid());
+
+-- Explicit grant needed: this table is created after the schema's initial
+-- blanket `grant ... on all tables in schema public to authenticated`,
+-- which only covers tables that already existed at that point — same
+-- reasoning as `posts` and the SaaS-control-layer tables above it.
+grant select, insert, update, delete on public.onboarding_responses to authenticated;

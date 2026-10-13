@@ -76,26 +76,17 @@ export function SignUpForm({ onSignIn, onViewPrivacyPolicy, onSuccess }: SignUpF
     }
 
     setLoading(true)
-    const { error: authError } = await supabase.auth.signUp({
-      email: cleanEmail,
-      password,
-      options: {
-        data: { name: cleanName },
-        emailRedirectTo: window.location.origin,
-      },
-    })
-    setLoading(false)
+    try {
+      const { error: authError } = await supabase.auth.signUp({
+        email: cleanEmail, password,
+        options: { data: { name: cleanName.slice(0, MAX_NAME_LENGTH) }, emailRedirectTo: window.location.origin },
+      })
+      if (authError) setError(mapAuthError(authError.message, t))
+      else { setDone(true); onSuccess?.() }
+    } catch {
+      setError(t.errors.network)
+    } finally { setLoading(false) }
 
-    if (authError) {
-      setError(mapAuthError(authError.message, t))
-      return
-    }
-
-    setDone(true)
-    onSuccess?.()
-    // If email confirmation is disabled on the Supabase project, a session
-    // is created immediately and picked up by the app's auth listener; the
-    // success screen below still gives the user clear confirmation either way.
   }
 
   if (done) {

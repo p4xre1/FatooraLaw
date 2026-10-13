@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 import {
   ArrowRight, Sparkles, ShieldCheck, CalendarDays, ShieldAlert, Wrench, FileText,
   Check, TrendingUp, Zap, Plus, Bell, ScrollText, LayoutDashboard, ChevronRight,
@@ -6,9 +6,13 @@ import {
   Menu, X,
 } from "lucide-react"
 import { Logo } from "../components/nav"
+import { SITE_URL } from "../lib/site"
+import { readCookieConsent, writeCookieConsent, useMarketingAnalytics } from "../lib/cookieConsent"
+import useLandingMotion from "./useLandingMotion"
+import "./landing.css"
 
-const GRAD = "linear-gradient(135deg, #7c3aed 0%, #9333ea 100%)"
-const DASHBOARD_GRAD = "linear-gradient(135deg, #2563eb 0%, #10b981 100%)"
+const GRAD = "linear-gradient(135deg, var(--l-primary), var(--l-primary-hover))"
+const DASHBOARD_GRAD = "linear-gradient(135deg, var(--l-primary), #4f9bf7)"
 
 /* --------------------------- Structured data ------------------------
  * Per-page JSON-LD ("Content Schema") that complements the site-wide
@@ -16,12 +20,11 @@ const DASHBOARD_GRAD = "linear-gradient(135deg, #2563eb 0%, #10b981 100%)"
  * Kept next to the copy it describes so it can never drift from what's
  * actually rendered on the page.
  * ---------------------------------------------------------------- */
-const SITE_URL = "https://fatoriti.tech"
 const ORG_REF = { "@id": `${SITE_URL}/#organization` }
 /** Assumption — same as `organization.foundingDate` in .figma/make/site.json. Correct both if wrong. */
 const CONTENT_PUBLISHED = "2026-01-01"
 /** Bump this whenever the copy in this file changes materially. */
-const CONTENT_UPDATED = "2026-09-08"
+const CONTENT_UPDATED = "2026-10-12"
 
 function pagePath(page: LandingPage): string {
   return page === "home" ? "/" : `/${page}/`
@@ -161,7 +164,7 @@ const LANGS: { code: Lang; label: string }[] = [
 const T: Record<Lang, {
   nav: { features: string; assistant: string; benefits: string; pricing: string; faq: string }
   signup: string; explore: string
-  hero: { badge: string; headline: Seg[]; sub: string; note: string }
+  hero: { headline: Seg[]; sub: string; note: string }
   feat: { eyebrow: string; title: string; sub: string }
   f1: { tag: string; title: string; desc: string }
   f2: { tag: string; title: string; desc: string; items: { label: string; desc: string; level: string }[] }
@@ -175,7 +178,6 @@ const T: Record<Lang, {
     nav: { features: "Fonctionnalités", assistant: "Assistant", benefits: "Avantages", pricing: "Tarifs", faq: "FAQ" },
     signup: "S'inscrire", explore: "Explorer",
     hero: {
-      badge: "Pensé pour les artisans, freelances & TPE marocaines",
       headline: [{ t: "Le logiciel simple qui pilote vos " }, { t: "finances", hi: true }, { t: ", vos " }, { t: "abonnements", hi: true }, { t: " et vos " }, { t: "risques", hi: true }, { t: "." }],
       sub: "Conçu mobile-first pour les artisans, freelances et petites entreprises marocaines : suivez vos échéances, maîtrisez vos coûts d'outils et restez conforme, depuis votre poche.",
       note: "Sans carte bancaire · Conforme Loi 09-08",
@@ -193,7 +195,6 @@ const T: Record<Lang, {
     nav: { features: "Features", assistant: "Assistant", benefits: "Benefits", pricing: "Pricing", faq: "FAQ" },
     signup: "Sign up", explore: "Explore",
     hero: {
-      badge: "Built for Moroccan artisans, freelancers & small businesses",
       headline: [{ t: "The simple software that runs your " }, { t: "finances", hi: true }, { t: ", your " }, { t: "subscriptions", hi: true }, { t: " and your " }, { t: "risks", hi: true }, { t: "." }],
       sub: "Built mobile-first for Moroccan artisans, freelancers and small businesses: track your deadlines, control your tool costs and stay compliant — right from your pocket.",
       note: "No credit card · Law 09-08 compliant",
@@ -211,7 +212,6 @@ const T: Record<Lang, {
     nav: { features: "الميزات", assistant: "المساعد", benefits: "المزايا", pricing: "الأسعار", faq: "الأسئلة" },
     signup: "إنشاء حساب", explore: "استكشاف",
     hero: {
-      badge: "مصمم للحرفيين والمستقلين والشركات الصغيرة في المغرب",
       headline: [{ t: "البرنامج البسيط الذي يدير " }, { t: "أموالك", hi: true }, { t: " و" }, { t: "اشتراكاتك", hi: true }, { t: " و" }, { t: "مخاطرك", hi: true }, { t: "." }],
       sub: "مصمم للهاتف أولاً للحرفيين والمستقلين والشركات الصغيرة في المغرب: تابع مواعيدك، وتحكّم في تكاليف أدواتك، وابقَ ممتثلاً — من جيبك.",
       note: "بدون بطاقة بنكية · متوافق مع القانون 09-08",
@@ -283,8 +283,9 @@ const EXTRA: Record<Lang, ExtraCopy> = {
 
 export default function Landing({ onEnter }: { onEnter: () => void }) {
   const [lang, setLang] = useState<Lang>("fr")
-  const [theme, setTheme] = useState<Theme>("dark")
+  const [theme, setTheme] = useState<Theme>("light")
   const [page, setPage] = useState<LandingPage>("home")
+  const landingRef = useLandingMotion(page)
   const t = T[lang]
   const extra = EXTRA[lang]
   const rtl = lang === "ar"
@@ -294,24 +295,36 @@ export default function Landing({ onEnter }: { onEnter: () => void }) {
   }, [])
 
   usePageStructuredData(page, lang, t, extra)
+  useMarketingAnalytics()
 
+  // Cross-page /#section links may arrive before React has mounted their target.
+  useEffect(() => {
+    if (page !== "home" || getLandingPage() !== "home" || !window.location.hash) return
+    let id: string
+    try { id = decodeURIComponent(window.location.hash.slice(1)) } catch { return }
+    document.getElementById(id)?.scrollIntoView?.({ block: "start" })
+  }, [page])
+
+  const home = page === "home"
   return (
-    <div className="landing-root aurora min-h-screen font-sans antialiased" data-theme={theme} dir={rtl ? "rtl" : "ltr"}>
-      <div className="relative">
-        <div className="grid-veil pointer-events-none absolute inset-0 h-[720px]" />
-        <Header t={t} lang={lang} setLang={setLang} theme={theme} setTheme={setTheme} onEnter={onEnter} />
-        {page === "home" && <Hero t={t} onEnter={onEnter} />}
-      </div>
-      {page === "features" && <Features t={t} />}
-      {page === "assistant" && <Assistant t={t} onEnter={onEnter} />}
-      {page === "about" && <AboutSection copy={extra.about} />}
-      {page === "benefits" && <BenefitsSection copy={extra.benefits} />}
-      {page === "pricing" && <PricingSection copy={extra.pricing} onEnter={onEnter} />}
-      {page === "blog" && <BlogSection copy={extra.blog} />}
-      {page === "faq" && <FaqSection copy={extra.faq} />}
-      {page === "contact" && <ContactSection copy={extra.contact} />}
-      {(page === "privacy" || page === "terms" || page === "cookies") && <LegalSection copy={extra.legal} active={page} />}
-      <Footer t={t} extra={extra} onEnter={onEnter} />
+    <div ref={landingRef} className="landing-root landing-atlas min-h-screen antialiased" data-theme={theme} dir={rtl ? "rtl" : "ltr"}>
+      <Header t={t} lang={lang} setLang={setLang} theme={theme} setTheme={setTheme} home={home} onEnter={onEnter} />
+      <main id="main-content">
+        {home && <div className="landing-hero-backdrop relative">
+          <div className="grid-veil pointer-events-none absolute inset-0 h-[720px]" />
+          <Hero t={t} onEnter={onEnter} />
+        </div>}
+        {(home || page === "features") && <Features t={t} />}
+        {(home || page === "assistant") && <Assistant t={t} onEnter={onEnter} />}
+        {(home || page === "about") && <AboutSection copy={extra.about} />}
+        {(home || page === "benefits") && <BenefitsSection copy={extra.benefits} />}
+        {(home || page === "pricing") && <PricingSection copy={extra.pricing} onEnter={onEnter} />}
+        {(home || page === "blog") && <BlogSection copy={extra.blog} />}
+        {(home || page === "faq") && <FaqSection copy={extra.faq} />}
+        {(home || page === "contact") && <ContactSection copy={extra.contact} />}
+        {(page === "home" || page === "privacy" || page === "terms" || page === "cookies") && <LegalSection copy={extra.legal} active={page === "home" ? undefined : page} />}
+      </main>
+      <Footer t={t} extra={extra} home={home} onEnter={onEnter} />
       <CookieBanner lang={lang} />
     </div>
   )
@@ -322,27 +335,15 @@ type Dict = (typeof T)["fr"]
 /* ------------------------------- Buttons -------------------------- */
 
 function GlowButton({ children, onClick, className = "" }: { children: React.ReactNode; onClick?: () => void; className?: string }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{ backgroundImage: GRAD }}
-      className={`group relative inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-[14px] font-semibold text-white shadow-[0_10px_40px_-8px_rgba(124,58,237,0.7)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_50px_-6px_rgba(147,51,234,0.85)] focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--l-bg-solid)] active:translate-y-0 ${className}`}
-    >
-      <span className="pointer-events-none absolute inset-0 rounded-xl bg-white/0 transition-colors group-hover:bg-white/10" />
-      {children}
-    </button>
-  )
+  return <button type="button" onClick={onClick} className={`landing-primary ${className}`}>{children}</button>
 }
 
-function GhostButton({ children, onClick, className = "" }: { children: React.ReactNode; onClick?: () => void; className?: string }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--l-border-strong)] bg-[var(--l-chip)] px-5 py-3 text-[14px] font-semibold text-[var(--l-heading)] backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:border-violet-400/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/60 ${className}`}
-    >
-      {children}
-    </button>
-  )
+function GhostLink({ children, href, className = "" }: { children: React.ReactNode; href: string; className?: string }) {
+  return <a href={href} className={`landing-secondary inline-flex items-center justify-center gap-2 ${className}`}>{children}</a>
+}
+
+function LandingBrand({ size = 32 }: { size?: number }) {
+  return <span className="landing-brand"><Logo size={size} /></span>
 }
 
 /* ------------------------------- Controls ------------------------- */
@@ -354,7 +355,7 @@ function LangSwitcher({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => voi
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--l-border-strong)] bg-[var(--l-chip)] px-2.5 py-2 text-[12.5px] font-semibold text-[var(--l-text)] transition-colors hover:border-violet-400/50"
+        className="landing-control inline-flex items-center gap-1.5 rounded-lg border border-[var(--l-border-strong)] bg-[var(--l-chip)] px-2.5 py-2 text-[12.5px] font-semibold text-[var(--l-text)] transition-colors hover:border-blue-400/50"
         aria-haspopup="listbox" aria-expanded={open}
       >
         <Globe className="h-4 w-4" />
@@ -369,10 +370,10 @@ function LangSwitcher({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => voi
               <li key={l.code}>
                 <button
                   onClick={() => { setLang(l.code); setOpen(false) }}
-                  className={`flex w-full items-center justify-between px-3.5 py-2 text-[13px] transition-colors hover:bg-violet-500/10 ${l.code === lang ? "font-bold text-[var(--l-heading)]" : "text-[var(--l-muted)]"}`}
+                  className={`flex w-full items-center justify-between px-3.5 py-2 text-[13px] transition-colors hover:bg-blue-500/10 ${l.code === lang ? "font-bold text-[var(--l-heading)]" : "text-[var(--l-muted)]"}`}
                   role="option" aria-selected={l.code === lang}
                 >
-                  {l.label} {l.code === lang && <Check className="h-3.5 w-3.5 text-violet-400" />}
+                  {l.label} {l.code === lang && <Check className="h-3.5 w-3.5 text-blue-400" />}
                 </button>
               </li>
             ))}
@@ -388,7 +389,7 @@ function ThemeToggle({ theme, setTheme }: { theme: Theme; setTheme: (t: Theme) =
   return (
     <button
       onClick={() => setTheme(dark ? "light" : "dark")}
-      className="grid h-9 w-9 place-items-center rounded-lg border border-[var(--l-border-strong)] bg-[var(--l-chip)] text-[var(--l-text)] transition-all hover:border-violet-400/50 hover:text-[var(--l-heading)]"
+      className="landing-control grid h-9 w-9 place-items-center rounded-lg border border-[var(--l-border-strong)] bg-[var(--l-chip)] text-[var(--l-text)] transition-all hover:border-blue-400/50 hover:text-[var(--l-heading)]"
       title={dark ? "Mode clair" : "Mode sombre"} aria-label="Basculer le thème"
     >
       {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -398,109 +399,136 @@ function ThemeToggle({ theme, setTheme }: { theme: Theme; setTheme: (t: Theme) =
 
 /* -------------------------------- Header -------------------------- */
 
-const MOBILE_NAV_LINKS: { href: string; key: keyof Dict["nav"] }[] = [
-  { href: "/features/", key: "features" },
-  { href: "/assistant/", key: "assistant" },
-  { href: "/benefits/", key: "benefits" },
-  { href: "/pricing/", key: "pricing" },
-  { href: "/faq/", key: "faq" },
+function sectionHref(section: Exclude<LandingPage, "home">, home: boolean): string {
+  return `${home ? "" : "/"}#${section}`
+}
+
+const MOBILE_NAV_LINKS: { section: Exclude<LandingPage, "home">; key: keyof Dict["nav"] }[] = [
+  { section: "features", key: "features" },
+  { section: "assistant", key: "assistant" },
+  { section: "benefits", key: "benefits" },
+  { section: "pricing", key: "pricing" },
+  { section: "faq", key: "faq" },
 ]
 
-function Header({ t, lang, setLang, theme, setTheme, onEnter }: { t: Dict; lang: Lang; setLang: (l: Lang) => void; theme: Theme; setTheme: (t: Theme) => void; onEnter: () => void }) {
+const NAV_UI = {
+  fr: { signIn: "Se connecter", expand: "Explorer les fonctionnalités", overview: "Toutes les fonctionnalités" },
+  en: { signIn: "Sign in", expand: "Explore features", overview: "All features" },
+  ar: { signIn: "تسجيل الدخول", expand: "استكشاف الميزات", overview: "جميع الميزات" },
+}
+
+function Header({ t, lang, setLang, theme, setTheme, home, onEnter }: { t: Dict; lang: Lang; setLang: (l: Lang) => void; theme: Theme; setTheme: (t: Theme) => void; home: boolean; onEnter: () => void }) {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [desktopOpen, setDesktopOpen] = useState(false)
   const menuId = useId()
+  const desktopId = useId()
+  const headerRef = useRef<HTMLElement>(null)
+  const mobileButton = useRef<HTMLButtonElement>(null)
+  const desktopButton = useRef<HTMLButtonElement>(null)
+  const desktopPanel = useRef<HTMLDivElement>(null)
+  const focusDesktop = useRef(false)
+  const ui = NAV_UI[lang]
+  const cards = [
+    { id: "calendar-preview", icon: CalendarDays, title: t.f1.title, description: t.f1.desc },
+    { id: "risk-preview", icon: ShieldAlert, title: t.f2.title, description: t.f2.desc },
+    { id: "tools-preview", icon: Wrench, title: t.f3.title, description: t.f3.desc },
+  ]
 
-  // Lock body scroll while the mobile panel is open, and let Escape close it —
-  // both standard expectations for an overlay nav on a public marketing page.
   useEffect(() => {
-    if (!mobileOpen) return
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = "hidden"
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMobileOpen(false)
-    }
-    window.addEventListener("keydown", onKey)
-    return () => {
-      document.body.style.overflow = prevOverflow
-      window.removeEventListener("keydown", onKey)
-    }
-  }, [mobileOpen])
-
-  // Any client-side route change (nav link tap, "enter app") should close the panel.
-  useEffect(() => {
-    setMobileOpen(false)
+    const wide = window.matchMedia?.("(min-width: 1160px)")
+    if (!wide) return
+    const closeHiddenMenu = () => { if (wide.matches) setMobileOpen(false); else setDesktopOpen(false) }
+    wide.addEventListener?.("change", closeHiddenMenu)
+    return () => wide.removeEventListener?.("change", closeHiddenMenu)
   }, [])
 
+  useEffect(() => {
+    if (!mobileOpen) return
+    const previous = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => { document.body.style.overflow = previous }
+  }, [mobileOpen])
+
+  useEffect(() => {
+    if (!mobileOpen && !desktopOpen) return
+    function onKey(event: KeyboardEvent) {
+      if (event.key !== "Escape") return
+      if (mobileOpen) { setMobileOpen(false); mobileButton.current?.focus() }
+      if (desktopOpen) { setDesktopOpen(false); desktopButton.current?.focus() }
+    }
+    function onOutside(event: PointerEvent) {
+      if (event.target instanceof Node && !headerRef.current?.contains(event.target)) setDesktopOpen(false)
+    }
+    window.addEventListener("keydown", onKey)
+    document.addEventListener("pointerdown", onOutside)
+    return () => {
+      window.removeEventListener("keydown", onKey)
+      document.removeEventListener("pointerdown", onOutside)
+    }
+  }, [mobileOpen, desktopOpen])
+
+  useEffect(() => {
+    if (desktopOpen && focusDesktop.current) {
+      desktopPanel.current?.querySelector<HTMLAnchorElement>("a")?.focus()
+      focusDesktop.current = false
+    }
+  }, [desktopOpen])
+
+  function enter() { setMobileOpen(false); setDesktopOpen(false); onEnter() }
+
   return (
-    <header className="sticky top-0 z-40 border-b border-[var(--l-border)] bg-[var(--l-header)] backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-5 sm:px-8">
-        <a href="/" aria-label="Fatorati accueil" onClick={() => setMobileOpen(false)}>
-          <Logo light={theme === "dark"} size={32} />
-        </a>
-        <nav className="hidden items-center gap-8 text-[13.5px] font-medium text-[var(--l-muted)] md:flex">
-          <a href="/features/" className="transition-colors hover:text-[var(--l-heading)]">{t.nav.features}</a>
-          <a href="/assistant/" className="transition-colors hover:text-[var(--l-heading)]">{t.nav.assistant}</a>
-          <a href="/benefits/" className="transition-colors hover:text-[var(--l-heading)]">{t.nav.benefits}</a>
-          <a href="/pricing/" className="transition-colors hover:text-[var(--l-heading)]">{t.nav.pricing}</a>
-          <a href="/faq/" className="transition-colors hover:text-[var(--l-heading)]">{t.nav.faq}</a>
-        </nav>
-        <div className="flex items-center gap-2">
-          <div className="hidden items-center gap-2 md:flex">
-            <LangSwitcher lang={lang} setLang={setLang} />
-            <ThemeToggle theme={theme} setTheme={setTheme} />
+    <header ref={headerRef} className="landing-header" onBlur={(event) => {
+      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDesktopOpen(false)
+    }}>
+      <div className="landing-nav-shell">
+        <a href="/" aria-label="Fatorati accueil" onClick={() => { setMobileOpen(false); setDesktopOpen(false) }}><LandingBrand /></a>
+        <nav className="landing-nav-desktop" aria-label="Navigation du site">
+          <div className="landing-nav-feature">
+            <a href={sectionHref("features", home)} onClick={() => setDesktopOpen(false)}>{t.nav.features}</a>
+            <button ref={desktopButton} type="button" className="landing-nav-expand" aria-label={ui.expand}
+              aria-expanded={desktopOpen} aria-controls={desktopId} onClick={() => setDesktopOpen((open) => !open)}
+              onKeyDown={(event) => {
+                if (event.key !== "ArrowDown") return
+                event.preventDefault()
+                if (desktopOpen) desktopPanel.current?.querySelector<HTMLAnchorElement>("a")?.focus()
+                else { focusDesktop.current = true; setDesktopOpen(true) }
+              }}><ChevronDown className="h-4 w-4" /></button>
           </div>
-          <GlowButton onClick={onEnter} className="hidden px-4 py-2.5 text-[13px] md:inline-flex">{t.signup}</GlowButton>
-          <button
-            type="button"
-            onClick={() => setMobileOpen((o) => !o)}
-            className="grid h-10 w-10 place-items-center rounded-lg border border-[var(--l-border-strong)] bg-[var(--l-chip)] text-[var(--l-heading)] transition-colors hover:border-violet-400/50 md:hidden"
-            aria-label={mobileOpen ? "Fermer le menu" : "Ouvrir le menu"}
-            aria-haspopup="true"
-            aria-expanded={mobileOpen}
-            aria-controls={menuId}
-          >
+          {MOBILE_NAV_LINKS.filter((link) => link.key !== "features").map((link) => (
+            <a key={link.section} href={sectionHref(link.section, home)} onClick={() => setDesktopOpen(false)}>{t.nav[link.key]}</a>
+          ))}
+        </nav>
+        <div className="landing-nav-actions">
+          <div className="landing-nav-preferences"><LangSwitcher lang={lang} setLang={setLang} /><ThemeToggle theme={theme} setTheme={setTheme} /></div>
+          <button type="button" className="landing-login-link" onClick={enter}>{ui.signIn}</button>
+          <GlowButton onClick={enter}>{t.signup}</GlowButton>
+          <button ref={mobileButton} type="button" className="landing-menu-toggle"
+            aria-label={mobileOpen ? "Fermer le menu" : "Ouvrir le menu"} aria-expanded={mobileOpen} aria-controls={menuId}
+            onClick={() => { setDesktopOpen(false); setMobileOpen((open) => !open) }}>
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
       </div>
-
-      {mobileOpen && (
-        <>
-          <button
-            className="fixed inset-0 z-40 cursor-default bg-black/30 backdrop-blur-[1px] md:hidden"
-            aria-hidden="true"
-            onClick={() => setMobileOpen(false)}
-          />
-          <div
-            id={menuId}
-            className="absolute inset-x-0 top-full z-50 border-b border-[var(--l-border)] bg-[var(--l-panel)] px-5 pb-6 pt-2 shadow-2xl md:hidden"
-            style={{ animation: "mz-pop .15s ease-out" }}
-          >
-            <nav className="flex flex-col divide-y divide-[var(--l-border)]" aria-label="Navigation principale">
-              {MOBILE_NAV_LINKS.map((link) => (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileOpen(false)}
-                  className="py-3.5 text-[15px] font-medium text-[var(--l-text)] transition-colors hover:text-[var(--l-heading)]"
-                >
-                  {t.nav[link.key]}
-                </a>
-              ))}
-            </nav>
-            <div className="mt-4 flex items-center gap-2">
-              <LangSwitcher lang={lang} setLang={setLang} />
-              <ThemeToggle theme={theme} setTheme={setTheme} />
-            </div>
-            <GlowButton
-              onClick={() => { setMobileOpen(false); onEnter() }}
-              className="mt-4 w-full"
-            >
-              {t.signup}
-            </GlowButton>
-          </div>
-        </>
-      )}
+      {desktopOpen && <div ref={desktopPanel} id={desktopId} className="landing-mega-menu" role="region" aria-label={t.nav.features}>
+        <div className="landing-mega-inner">
+          <div className="landing-mega-intro"><p>{t.feat.title}</p><a href={sectionHref("features", home)} onClick={() => setDesktopOpen(false)}>{ui.overview} <ArrowRight className="h-4 w-4" /></a></div>
+          <div className="landing-mega-grid">{cards.map(({ id, icon: Icon, title, description }) => (
+            <a key={id} href={`${home ? "" : "/"}#${id}`} className="landing-mega-card" onClick={() => setDesktopOpen(false)}>
+              <span className="landing-mega-icon"><Icon className="h-5 w-5" /></span><span><strong>{title}</strong><small>{description}</small></span>
+            </a>
+          ))}</div>
+        </div>
+      </div>}
+      {mobileOpen && <>
+        <button type="button" className="landing-mobile-overlay" aria-label="Fermer la navigation" tabIndex={-1} onClick={() => setMobileOpen(false)} />
+        <div id={menuId} className="landing-mobile-panel">
+          <nav aria-label="Navigation principale">{MOBILE_NAV_LINKS.map((link) => (
+            <a key={link.section} href={sectionHref(link.section, home)} onClick={() => setMobileOpen(false)}>{t.nav[link.key]}</a>
+          ))}</nav>
+          <div className="mt-5 flex items-center gap-3"><LangSwitcher lang={lang} setLang={setLang} /><ThemeToggle theme={theme} setTheme={setTheme} /></div>
+          <GlowButton onClick={enter} className="mt-5 w-full">{t.signup}</GlowButton>
+        </div>
+      </>}
     </header>
   )
 }
@@ -509,14 +537,11 @@ function Header({ t, lang, setLang, theme, setTheme, onEnter }: { t: Dict; lang:
 
 function Hero({ t, onEnter }: { t: Dict; onEnter: () => void }) {
   return (
-    <section className="relative mx-auto max-w-6xl px-5 pb-8 pt-16 sm:px-8 sm:pt-24">
-      <div className="mx-auto max-w-3xl text-center">
-        <span className="mz-rise inline-flex items-center gap-2 rounded-full border border-violet-400/25 bg-violet-500/10 px-3.5 py-1.5 text-[12.5px] font-medium text-[var(--l-accent-text)]">
-          <Sparkles className="h-3.5 w-3.5" /> {t.hero.badge}
-        </span>
-        <h1 className="mz-rise font-display mt-6 text-[34px] font-extrabold leading-[1.12] tracking-tight text-[var(--l-heading)] sm:text-[52px]" style={{ animationDelay: "0.05s" }}>
+    <section id="hero" className="landing-hero relative mx-auto max-w-6xl px-5 pb-8 pt-16 sm:px-8 sm:pt-24">
+      <div className="landing-hero-copy mx-auto max-w-3xl text-center">
+        <h1 className="mz-rise font-display text-[34px] font-extrabold leading-[1.12] tracking-tight text-[var(--l-heading)] sm:text-[52px]" style={{ animationDelay: "0.05s" }}>
           {t.hero.headline.map((s, i) => s.hi
-            ? <span key={i} className="bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">{s.t}</span>
+            ? <span key={i} className="landing-hero-highlight">{s.t}</span>
             : <span key={i}>{s.t}</span>)}
         </h1>
         <p className="mz-rise mx-auto mt-5 max-w-xl text-[15.5px] leading-relaxed text-[var(--l-muted)] sm:text-[17px]" style={{ animationDelay: "0.1s" }}>{t.hero.sub}</p>
@@ -524,10 +549,10 @@ function Hero({ t, onEnter }: { t: Dict; onEnter: () => void }) {
           <GlowButton onClick={onEnter} className="w-full sm:w-auto">
             {t.signup} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 rtl:rotate-180" />
           </GlowButton>
-          <GhostButton onClick={onEnter} className="w-full sm:w-auto">{t.explore}</GhostButton>
+          <GhostLink href="#features" className="w-full sm:w-auto">{t.explore}</GhostLink>
         </div>
-        <p className="mz-rise mt-4 inline-flex items-center gap-1.5 text-[12.5px] text-[var(--l-faint)]" style={{ animationDelay: "0.2s" }}>
-          <Check className="h-3.5 w-3.5 text-violet-400" /> {t.hero.note}
+        <p className="landing-hero-note mz-rise mt-4 inline-flex items-center gap-1.5 text-[12.5px] text-[var(--l-faint)]" style={{ animationDelay: "0.2s" }}>
+          <Check className="h-3.5 w-3.5 text-blue-400" /> {t.hero.note}
         </p>
       </div>
 
@@ -542,9 +567,9 @@ const previewIcons = [LayoutDashboard, FileText, CalendarDays, ShieldAlert, Wren
 
 function DashboardPreview({ t }: { t: Dict }) {
   return (
-    <div className="mz-rise relative mt-14 sm:mt-20" style={{ animationDelay: "0.25s" }}>
-      <div className="mz-glow pointer-events-none absolute -inset-x-10 -top-10 bottom-0 -z-10 rounded-[40px] blur-3xl" style={{ background: "radial-gradient(50% 50% at 50% 30%, rgba(37,99,235,0.3), transparent 70%)" }} />
-      <div className="overflow-hidden rounded-2xl border border-[var(--l-border-strong)] bg-[var(--l-panel)] shadow-[0_40px_120px_-30px_rgba(0,0,0,0.55)] backdrop-blur-xl">
+    <div className="landing-demo mz-rise relative mt-14 sm:mt-20" style={{ animationDelay: "0.25s" }}>
+      <div className="landing-demo-glow mz-glow pointer-events-none absolute -inset-x-10 -top-10 bottom-0 -z-10 rounded-[40px] blur-3xl" style={{ background: "radial-gradient(50% 50% at 50% 30%, rgba(37,99,235,0.3), transparent 70%)" }} />
+      <div className="landing-demo-window overflow-hidden rounded-2xl border border-[var(--l-border-strong)] bg-[var(--l-panel)] shadow-[0_40px_120px_-30px_rgba(0,0,0,0.55)] backdrop-blur-xl">
         <div className="flex items-center gap-1.5 border-b border-[var(--l-border)] px-4 py-3">
           <span className="h-2.5 w-2.5 rounded-full bg-[var(--l-border-strong)]" />
           <span className="h-2.5 w-2.5 rounded-full bg-[var(--l-border-strong)]" />
@@ -554,7 +579,7 @@ function DashboardPreview({ t }: { t: Dict }) {
 
         <div className="flex">
           <aside className="hidden w-[184px] shrink-0 flex-col gap-1 border-e border-[var(--l-border)] bg-[var(--l-surface)] p-3 sm:flex">
-            <div className="px-2 pb-3"><Logo light={false} size={26} /></div>
+            <div className="px-2 pb-3"><LandingBrand size={26} /></div>
             {t.prev.nav.map((label, i) => {
               const Icon = previewIcons[i]
               const active = i === 4
@@ -651,8 +676,8 @@ function TrendChart({ height = 120 }: { height?: number }) {
         <path d={line} fill="none" stroke={`url(#${gid}-stroke)`} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
         {hover !== null && (
           <g>
-            <line x1={x(hover)} x2={x(hover)} y1={padTop} y2={padTop + ih} stroke="rgba(217,70,239,0.5)" strokeWidth={1} strokeDasharray="3 3" />
-            <circle cx={x(hover)} cy={y(SPEND[hover])} r={4} fill="var(--l-panel)" stroke="#d946ef" strokeWidth={2.5} />
+            <line x1={x(hover)} x2={x(hover)} y1={padTop} y2={padTop + ih} stroke="rgba(24,104,219,0.5)" strokeWidth={1} strokeDasharray="3 3" />
+            <circle cx={x(hover)} cy={y(SPEND[hover])} r={4} fill="var(--l-panel)" stroke="#4a9df5" strokeWidth={2.5} />
           </g>
         )}
       </svg>
@@ -672,23 +697,23 @@ function Features({ t }: { t: Dict }) {
   return (
     <section id="features" className="relative mx-auto max-w-6xl px-5 py-24 sm:px-8">
       <div className="mx-auto max-w-2xl text-center">
-        <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-violet-400">{t.feat.eyebrow}</p>
+        <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-blue-400">{t.feat.eyebrow}</p>
         <h2 className="font-display mt-3 text-[30px] font-bold tracking-tight text-[var(--l-heading)] sm:text-[38px]">{t.feat.title}</h2>
         <p className="mt-3 text-[15px] text-[var(--l-muted)]">{t.feat.sub}</p>
       </div>
 
       <div className="mt-14 flex w-full flex-col gap-5">
-        <FeatureCard icon={CalendarDays} title={t.f1.title} tag={t.f1.tag}>
+        <FeatureCard id="calendar-preview" icon={CalendarDays} title={t.f1.title} tag={t.f1.tag}>
           <p className="text-[13.5px] leading-relaxed text-[var(--l-muted)]">{t.f1.desc}</p>
           <CalendarWidget t={t} />
         </FeatureCard>
 
-        <FeatureCard icon={ShieldAlert} title={t.f2.title} tag={t.f2.tag}>
+        <FeatureCard id="risk-preview" icon={ShieldAlert} title={t.f2.title} tag={t.f2.tag}>
           <p className="text-[13.5px] leading-relaxed text-[var(--l-muted)]">{t.f2.desc}</p>
           <RiskWidget t={t} />
         </FeatureCard>
 
-        <FeatureCard icon={Wrench} title={t.f3.title} tag={t.f3.tag}>
+        <FeatureCard id="tools-preview" icon={Wrench} title={t.f3.title} tag={t.f3.tag}>
           <p className="text-[13.5px] leading-relaxed text-[var(--l-muted)]">{t.f3.desc}</p>
           <SubscriptionWidget t={t} />
         </FeatureCard>
@@ -697,10 +722,10 @@ function Features({ t }: { t: Dict }) {
   )
 }
 
-function FeatureCard({ icon: Icon, title, tag, children }: { icon: typeof Wrench; title: string; tag: string; children: React.ReactNode }) {
+function FeatureCard({ id, icon: Icon, title, tag, children }: { id: string; icon: typeof Wrench; title: string; tag: string; children: React.ReactNode }) {
   return (
-    <div className="group relative flex h-full w-full flex-col overflow-hidden rounded-2xl border border-[var(--l-border)] bg-[var(--l-surface)] p-6 transition-all duration-300 hover:border-violet-400/30">
-      <div className="pointer-events-none absolute -end-16 -top-16 h-40 w-40 rounded-full bg-violet-600/10 blur-3xl transition-opacity duration-300 group-hover:bg-violet-500/20" />
+    <div id={id} className="landing-feature-card group relative flex h-full w-full flex-col overflow-hidden rounded-2xl border border-[var(--l-border)] bg-[var(--l-surface)] p-6 transition-all duration-300 hover:border-blue-400/30">
+      <div className="pointer-events-none absolute -end-16 -top-16 h-40 w-40 rounded-full bg-blue-600/10 blur-3xl transition-opacity duration-300 group-hover:bg-blue-500/20" />
       <div className="relative flex items-center gap-3">
         <span className="grid h-11 w-11 place-items-center rounded-xl text-white shadow-[0_8px_24px_-6px_rgba(124,58,237,0.6)]" style={{ backgroundImage: GRAD }}>
           <Icon className="h-5 w-5" />
@@ -743,7 +768,7 @@ function CalendarWidget({ t }: { t: Dict }) {
               <button
                 key={i}
                 onClick={() => setSel(d)}
-                className={`relative flex aspect-square items-center justify-center rounded-md text-[10.5px] transition-all ${on ? "font-bold text-white ring-2 ring-violet-400/60" : mark ? "font-semibold text-[var(--l-heading)]" : "text-[var(--l-muted)] hover:bg-[var(--l-chip)]"}`}
+                className={`relative flex aspect-square items-center justify-center rounded-md text-[10.5px] transition-all ${on ? "font-bold text-white ring-2 ring-blue-400/60" : mark ? "font-semibold text-[var(--l-heading)]" : "text-[var(--l-muted)] hover:bg-[var(--l-chip)]"}`}
                 style={on ? { backgroundImage: GRAD } : undefined}
               >
                 {d}
@@ -808,7 +833,7 @@ function SubscriptionWidget({ t }: { t: Dict }) {
       {/* Metric overview blocks */}
       <div className="grid grid-cols-3 gap-2">
         {t.f3.blocks.map(([k, v], i) => (
-          <div key={k} className={`rounded-xl border p-2.5 text-center ${i === 0 ? "border-violet-400/30" : "border-[var(--l-border)] bg-[var(--l-panel-2)]"}`} style={i === 0 ? { background: "linear-gradient(160deg, rgba(124,58,237,0.16), rgba(124,58,237,0.03))" } : undefined}>
+          <div key={k} className={`rounded-xl border p-2.5 text-center ${i === 0 ? "border-blue-400/30" : "border-[var(--l-border)] bg-[var(--l-panel-2)]"}`} style={i === 0 ? { background: "linear-gradient(160deg, rgba(124,58,237,0.16), rgba(124,58,237,0.03))" } : undefined}>
             <p className="font-mono text-[16px] font-bold text-[var(--l-heading)]">{v}{i === 0 && <span className="ms-0.5 text-[9px] font-medium text-[var(--l-faint)]">MAD</span>}</p>
             <p className="mt-0.5 text-[9px] leading-tight text-[var(--l-faint)]">{k}</p>
           </div>
@@ -828,7 +853,7 @@ function SubscriptionWidget({ t }: { t: Dict }) {
             <span className="font-mono text-[var(--l-faint)]">{exp}</span>
           </div>
         ))}
-        <button className="flex w-full items-center justify-center gap-1.5 border-t border-dashed border-[var(--l-border-strong)] py-2 text-[11px] font-semibold text-violet-400 transition-colors hover:bg-violet-500/5">
+        <button className="flex w-full items-center justify-center gap-1.5 border-t border-dashed border-[var(--l-border-strong)] py-2 text-[11px] font-semibold text-blue-400 transition-colors hover:bg-blue-500/5">
           <Plus className="h-3.5 w-3.5" /> {t.f3.add}
         </button>
       </div>
@@ -850,11 +875,11 @@ function SubscriptionWidget({ t }: { t: Dict }) {
 function Assistant({ t, onEnter }: { t: Dict; onEnter: () => void }) {
   return (
     <section id="assistant" className="relative mx-auto max-w-6xl px-5 py-14 sm:px-8">
-      <div className="relative overflow-hidden rounded-3xl border border-violet-400/20 bg-gradient-to-b from-violet-500/10 to-transparent p-8 sm:p-12">
+      <div className="relative overflow-hidden rounded-3xl border border-blue-400/20 bg-gradient-to-b from-blue-500/10 to-transparent p-8 sm:p-12">
         <div className="mz-glow pointer-events-none absolute end-0 top-0 h-64 w-64 rounded-full bg-fuchsia-600/20 blur-3xl" />
         <div className="grid items-center gap-10 lg:grid-cols-2">
           <div>
-            <span className="inline-flex items-center gap-2 rounded-full border border-violet-400/25 bg-violet-500/10 px-3 py-1.5 text-[12px] font-medium text-[var(--l-accent-text)]">
+            <span className="inline-flex items-center gap-2 rounded-full border border-blue-400/25 bg-blue-500/10 px-3 py-1.5 text-[12px] font-medium text-[var(--l-accent-text)]">
               <Sparkles className="h-3.5 w-3.5" /> {t.asst.badge}
             </span>
             <h2 className="font-display mt-4 text-[28px] font-bold leading-tight tracking-tight text-[var(--l-heading)] sm:text-[34px]">{t.asst.title}</h2>
@@ -869,14 +894,14 @@ function Assistant({ t, onEnter }: { t: Dict; onEnter: () => void }) {
             </div>
             <div className="mt-3 space-y-2">
               {t.asst.rules.map((r) => (
-                <button key={r} onClick={onEnter} className="flex w-full items-center gap-2.5 rounded-lg border border-[var(--l-border)] bg-[var(--l-panel-2)] px-3 py-2.5 text-start transition-colors hover:border-violet-400/30">
-                  <FileText className="h-4 w-4 shrink-0 text-violet-400" />
+                <button key={r} onClick={onEnter} className="flex w-full items-center gap-2.5 rounded-lg border border-[var(--l-border)] bg-[var(--l-panel-2)] px-3 py-2.5 text-start transition-colors hover:border-blue-400/30">
+                  <FileText className="h-4 w-4 shrink-0 text-blue-400" />
                   <span className="min-w-0 flex-1 truncate text-[12.5px] text-[var(--l-text)]">{r}</span>
                   <ChevronRight className="h-4 w-4 shrink-0 text-[var(--l-faint)] rtl:rotate-180" />
                 </button>
               ))}
             </div>
-            <div className="mt-3 flex items-center gap-2 rounded-lg bg-violet-500/10 px-3 py-2 text-[11.5px] text-[var(--l-accent-text)]">
+            <div className="mt-3 flex items-center gap-2 rounded-lg bg-blue-500/10 px-3 py-2 text-[11.5px] text-[var(--l-accent-text)]">
               <ShieldCheck className="h-4 w-4" /> {t.asst.verified}
             </div>
           </div>
@@ -936,7 +961,7 @@ function PricingSection({ copy, onEnter }: { copy: ExtraCopy["pricing"]; onEnter
         <p className="mt-3 text-[15px] text-[var(--l-muted)]">{copy.sub}</p>
       </div>
       <div className="mx-auto mt-12 max-w-3xl space-y-4">
-        {copy.plans.map((plan) => <article key={plan.name} className={`relative rounded-2xl border p-6 sm:p-8 ${plan.featured ? "border-blue-400/50 bg-blue-500/10" : "border-[var(--l-border)] bg-[var(--l-surface)]"}`}>
+        {copy.plans.map((plan) => <article key={plan.name} className={`landing-pricing-card ${plan.featured ? "landing-pricing-featured" : ""} relative rounded-2xl border p-6 sm:p-8 ${plan.featured ? "border-blue-400/50 bg-blue-500/10" : "border-[var(--l-border)] bg-[var(--l-surface)]"}`}>
           {plan.featured && <span className="absolute end-6 top-6 rounded-full bg-blue-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white">Pro</span>}
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
             <div><h3 className="font-display text-[20px] font-bold text-[var(--l-heading)]">{plan.name}</h3><p className="mt-1 text-[13px] text-[var(--l-muted)]">{plan.desc}</p></div>
@@ -960,7 +985,7 @@ function BlogSection({ copy }: { copy: ExtraCopy["blog"] }) {
         <h2 className="font-display mt-3 text-[30px] font-bold text-[var(--l-heading)] sm:text-[38px]">{copy.title}</h2>
       </div>
       <div className="mx-auto mt-12 max-w-3xl space-y-4">
-        {copy.posts.map((post) => <article key={post.title} className="rounded-2xl border border-[var(--l-border)] bg-[var(--l-surface)] p-6 sm:p-7">
+        {copy.posts.map((post) => <article key={post.title} className="landing-resource-card rounded-2xl border border-[var(--l-border)] bg-[var(--l-surface)] p-6 sm:p-7">
           <div className="flex flex-wrap items-center justify-between gap-2"><span className="rounded-full bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold text-blue-400">{post.tag}</span><time dateTime={post.iso} className="text-[11px] text-[var(--l-faint)]">{post.date}</time></div>
           <h3 className="font-display mt-4 text-[19px] font-bold text-[var(--l-heading)]">{post.title}</h3><p className="mt-2 max-w-2xl text-[13.5px] leading-relaxed text-[var(--l-muted)]">{post.desc}</p>
           <a href="/contact/" className="mt-4 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-blue-400">Lire l'article <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" /></a>
@@ -1021,39 +1046,39 @@ function LegalSection({ copy, active }: { copy: ExtraCopy["legal"]; active?: "pr
 
 /* ----------------------------- Footer ----------------------------- */
 
-function Footer({ t, extra, onEnter }: { t: Dict; extra: ExtraCopy; onEnter: () => void }) {
+function Footer({ t, extra, home, onEnter }: { t: Dict; extra: ExtraCopy; home: boolean; onEnter: () => void }) {
   return (
-    <footer className="border-t border-[var(--l-border)] bg-[var(--l-bg-solid)]">
+    <footer className="landing-footer border-t border-[var(--l-border)] bg-[var(--l-bg-solid)]">
       <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
         <div className="grid gap-10 border-b border-[var(--l-border)] pb-12 lg:grid-cols-[1.2fr_0.8fr_0.8fr]">
           <div>
-            <Logo light size={32} />
+            <LandingBrand size={32} />
             <h2 className="font-display mt-6 max-w-xl text-[26px] font-bold leading-tight tracking-tight text-[var(--l-heading)] sm:text-[32px]">{t.footer.title}</h2>
             <GlowButton onClick={onEnter} className="mt-6">{t.signup} <ArrowRight className="h-4 w-4 rtl:rotate-180" /></GlowButton>
           </div>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--l-faint)]">{extra.about.eyebrow}</p>
             <div className="mt-4 flex flex-col items-start gap-3 text-[12.5px] text-[var(--l-muted)]">
-              <a href="/features/" className="hover:text-[var(--l-heading)]">{t.nav.features}</a>
-              <a href="/benefits/" className="hover:text-[var(--l-heading)]">{t.nav.benefits}</a>
-              <a href="/pricing/" className="hover:text-[var(--l-heading)]">{t.nav.pricing}</a>
-              <a href="/blog/" className="hover:text-[var(--l-heading)]">{extra.blog.eyebrow}</a>
+              <a href={sectionHref("features", home)} className="hover:text-[var(--l-heading)]">{t.nav.features}</a>
+              <a href={sectionHref("benefits", home)} className="hover:text-[var(--l-heading)]">{t.nav.benefits}</a>
+              <a href={sectionHref("pricing", home)} className="hover:text-[var(--l-heading)]">{t.nav.pricing}</a>
+              <a href={sectionHref("blog", home)} className="hover:text-[var(--l-heading)]">{extra.blog.eyebrow}</a>
             </div>
           </div>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--l-faint)]">{extra.contact.eyebrow}</p>
             <div className="mt-4 flex flex-col items-start gap-3 text-[12.5px] text-[var(--l-muted)]">
               <a href={`mailto:${extra.contact.email}`} className="hover:text-[var(--l-heading)]">{extra.contact.email}</a>
-              <a href="/faq/" className="hover:text-[var(--l-heading)]">{t.nav.faq}</a>
-              <a href="/privacy/" className="hover:text-[var(--l-heading)]">{extra.legal.privacy}</a>
-              <a href="/terms/" className="hover:text-[var(--l-heading)]">{extra.legal.terms}</a>
+              <a href={sectionHref("faq", home)} className="hover:text-[var(--l-heading)]">{t.nav.faq}</a>
+              <a href={sectionHref("privacy", home)} className="hover:text-[var(--l-heading)]">{extra.legal.privacy}</a>
+              <a href={sectionHref("terms", home)} className="hover:text-[var(--l-heading)]">{extra.legal.terms}</a>
             </div>
           </div>
         </div>
         <div className="mt-8 flex flex-col items-start justify-between gap-4 text-[12px] text-[var(--l-faint)] sm:flex-row sm:items-center">
           <p>{t.footer.copy}</p>
           <div className="flex flex-wrap items-center gap-4">
-            <a href="/cookies/" className="hover:text-[var(--l-heading)]">{extra.legal.cookies}</a>
+            <a href={sectionHref("cookies", home)} className="hover:text-[var(--l-heading)]">{extra.legal.cookies}</a>
             <p className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> {t.footer.compliance}</p>
           </div>
         </div>
@@ -1071,17 +1096,17 @@ function CookieBanner({ lang }: { lang: Lang }) {
   }[lang]
 
   useEffect(() => {
-    setVisible(localStorage.getItem("fatorati-cookie-consent") === null)
+    setVisible(readCookieConsent() === null)
   }, [])
 
   function choose(value: "accepted" | "declined") {
-    localStorage.setItem("fatorati-cookie-consent", value)
+    writeCookieConsent(value)
     setVisible(false)
   }
 
   if (!visible) return null
   return (
-    <aside className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-3xl rounded-2xl border border-[var(--l-border-strong)] bg-[var(--l-panel)] p-4 shadow-2xl backdrop-blur-xl sm:flex sm:items-center sm:gap-5 sm:p-5" role="dialog" aria-label={copy.link}>
+    <aside className="landing-cookie-banner fixed inset-x-4 bottom-4 z-50 mx-auto max-w-3xl rounded-2xl border border-[var(--l-border-strong)] bg-[var(--l-panel)] p-4 shadow-2xl backdrop-blur-xl sm:flex sm:items-center sm:gap-5 sm:p-5" role="dialog" aria-label={copy.link}>
       <p className="flex-1 text-[12.5px] leading-relaxed text-[var(--l-text)]">{copy.text} <a href="/cookies/" className="font-semibold text-blue-400 hover:underline">{copy.link}</a></p>
       <div className="mt-4 flex shrink-0 gap-2 sm:mt-0">
         <button type="button" onClick={() => choose("declined")} className="rounded-lg border border-[var(--l-border-strong)] px-3 py-2 text-[12px] font-semibold text-[var(--l-muted)] hover:text-[var(--l-heading)]">{copy.reject}</button>

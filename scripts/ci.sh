@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Local equivalent of .github/workflows/deploy.yml's build job:
-# frozen-lockfile install, typecheck, build. Useful to run before pushing.
+# frozen-lockfile install, typecheck, regression tests, build. Useful to run before pushing.
 #
 # Usage: pnpm run ci   (or: bash scripts/ci.sh)
 set -euo pipefail
@@ -11,6 +11,9 @@ pnpm install --frozen-lockfile
 
 echo "==> Type-checking"
 pnpm exec tsc --noEmit
+
+echo "==> Testing"
+pnpm run test
 
 echo "==> Building"
 pnpm run build

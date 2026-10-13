@@ -1,5 +1,5 @@
 import type {
-  AuditEvent, Contact, Contract, Expense, Project, Settings, StockItem, TeamMember, ModuleKey,
+  AuditEvent, Contact, Contract, Expense, Project, Settings, StockItem, TeamMember, ModuleKey, SubscriptionTool,
 } from "./types"
 
 export const uid = () => Math.random().toString(36).slice(2, 10)
@@ -107,6 +107,16 @@ export const seedTeam: TeamMember[] = [
   { id: "u2", name: "Salma Idrissi", email: "salma@atlas.ma", role: "accountant", active: true, permissions: perms(["dashboard", "procurement", "reports", "contacts"]) },
   { id: "u3", name: "Hamza Fassi", email: "hamza@atlas.ma", role: "supervisor", active: true, permissions: perms(["dashboard", "projects", "inventory"]) },
   { id: "u4", name: "Nadia Alaoui", email: "nadia@atlas.ma", role: "assistant", active: false, permissions: perms(["dashboard", "contacts"]) },
+]
+
+export const seedTools: SubscriptionTool[] = [
+  { id: "t1", name: "Adobe Creative Cloud", cost: 299, start: "2026-03-01", expiry: "2027-03-01" },
+  { id: "t2", name: "Microsoft 365 Business", cost: 129, start: "2026-01-12", expiry: "2026-09-12" },
+  { id: "t3", name: "Sage Compta", cost: 450, start: "2026-06-05", expiry: "2027-06-05" },
+  { id: "t4", name: "Hébergement OVH", cost: 89, start: "2026-02-20", expiry: "2027-02-20" },
+  { id: "t5", name: "Google Workspace", cost: 168, start: "2026-04-10", expiry: "2027-04-10" },
+  { id: "t6", name: "Slack Pro", cost: 95, start: "2026-05-18", expiry: "2027-05-18" },
+  { id: "t7", name: "Assurance RC Pro", cost: 213, start: "2026-01-01", expiry: "2026-09-20" },
 ]
 
 export const seedAudit: AuditEvent[] = [

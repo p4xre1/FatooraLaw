@@ -177,7 +177,7 @@ export function BarChart({
                 const bh = (v / max) * ih
                 const bx = startX + si * (barW + barGap)
                 return (
-                  <rect key={si} x={bx} y={padT + ih - bh} width={barW} height={Math.max(2, bh)} rx={4} fill={s.color ?? PALETTE[si]} opacity={hover === null || hover === i ? 1 : 0.4} />
+                  <rect key={si} x={bx} y={padT + ih - bh} width={barW} height={Math.max(0, bh)} rx={4} fill={s.color ?? PALETTE[si]} opacity={hover === null || hover === i ? 1 : 0.4} />
                 )
               })}
               <text x={gx + groupW / 2} y={H - 8} textAnchor="middle" className="fill-faint" style={{ fontSize: 10 }}>{l}</text>

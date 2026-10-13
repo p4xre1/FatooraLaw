@@ -1,100 +1,115 @@
-# Security Policy
+# Security policy
 
-Fatorati is a client-side financial/compliance app for Moroccan small
-businesses and artisans. This document describes what's actually in place,
-how to report a problem, and — importantly — what is *not* yet in place, so
-nobody assumes more coverage than exists.
+Fatorati is a React SPA with Supabase authentication and a database-backed
+CMS. Its business dashboard is still a local prototype. This policy describes
+the current code, not a certification of the deployed service or Loi 09-08 / CNDP
+compliance.
 
-## Reporting a vulnerability
+## Reporting vulnerabilities
 
-Please report privately, not via a public GitHub issue.
+Report privately to **security@fatorati.tech** (also listed in
+[`public/.well-known/security.txt`](public/.well-known/security.txt)).
+Include the affected feature, reproduction steps, and impact. Do not publish
+client records, credentials, or exploit details in a public issue.
 
-- Email: **security@fatorati.tech** (see [`/.well-known/security.txt`](public/.well-known/security.txt))
-- Include: what you found, steps to reproduce, and the potential impact.
-- You'll get an acknowledgement within **3 business days** and a status
-  update at least every **7 days** until it's resolved.
-- Please give us a reasonable window to fix an issue before any public
-  disclosure. We don't currently run a paid bug bounty.
+The project maintains one rolling version deployed from `main`; there are no
+maintained older releases. The reporting targets remain acknowledgement within
+3 business days and a status update at least every 7 days.
 
-## Supported versions
+## Actual security boundaries
 
-This project ships as a single rolling `main` branch deployed to production
-— there are no maintained older versions. Security fixes land on `main` and
-deploy on the next push.
+- **Supabase Auth** issues and refreshes real sessions. The dashboard does not
+  persist its lightweight name/email/role profile as authentication and clears
+  it if Supabase is unavailable or unconfigured.
+- Dashboard roles are read from protected `profiles.role`, not user-editable
+  `user_metadata`. Self-created accounts own their own workspace; future team
+  roles must be assigned by a trusted server.
+- **PostgreSQL grants and RLS** protect CMS records. Public readers see
+  published posts; only `profiles.is_admin = true` accounts may edit content.
+  Normal clients can update only their own profile name, not admin flags,
+  roles, emails, or profile ownership, and cannot insert/delete profile rows.
+- `platform_admins` / `is_platform_admin()` is a separate billing/operator
+  permission, not the content-admin flag.
+- Browser routing and module visibility are UX checks, **not access control**.
+  They cannot protect financial data stored on a device from someone with
+  devtools or access to that browser profile.
 
-## What's currently implemented
+### Required database patch
 
-**Transport & browser hardening** (`public/_headers`, enforced by Cloudflare
-Pages on every response):
-- Content-Security-Policy scoped to what the app actually loads (self JS/CSS,
-  Google Fonts, `data:` URIs for uploaded logos) — blocks arbitrary inline
-  script injection and external script loading
-- `Strict-Transport-Security` (2yr, includeSubDomains, preload)
-- `X-Frame-Options: DENY` + CSP `frame-ancestors 'none'` — clickjacking
-- `Cross-Origin-Opener-Policy` / `Cross-Origin-Resource-Policy: same-origin`
-- Hardened `Permissions-Policy` (camera, mic, geolocation, payment, USB,
-  sensors, FLoC all denied)
-- `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`
+Apply `supabase/migrations/20261012_harden_profile_permissions.sql` to an
+existing CMS installation. The old self-update policy allowed authenticated
+users to set their own `is_admin` flag and bypass posts RLS. A frontend deploy
+alone does not close that database vulnerability. The patch is also included
+in the fresh schema and incremental CMS setup.
 
-**Application layer**:
-- Free-text input passed into the store is sanitized (`sanitize()` in
-  `src/store/useMizan.ts`) before being persisted — strips control
-  characters and angle brackets, caps length
-- No use of `dangerouslySetInnerHTML`, `eval`, or `new Function` anywhere in
-  the app — React's default escaping is relied on and not bypassed
-- Automatic sign-out after 20 minutes of inactivity
-  (`src/lib/useIdleLogout.ts`) — mitigates an unlocked tab left open on a
-  shared device
-- Role-based module visibility for non-owner team members
-  (`allowed` permission check in `src/App.tsx`)
-- Uploaded logos are read as `data:` URIs client-side only — never uploaded
-  anywhere
+Review existing `profiles.is_admin` values against your authorized editor list
+and investigate unauthorized changes; restricting future writes cannot undo a
+privilege escalation that already occurred. Use a trusted SQL operator or
+server-only service role for administrator provisioning. Never expose a
+service-role key through the browser or a `VITE_*` variable.
 
-**Supply chain**:
-- `.github/dependabot.yml` — weekly automated PRs for npm and GitHub Actions
-  dependency updates
-- `.github/workflows/deploy.yml` runs a type-check (`tsc --noEmit`) before
-  every deploy
+## Browser hardening
 
-## Known limitations — read before handling real client data
+- Cloudflare Pages headers in `public/_headers` specify CSP, HSTS,
+  clickjacking protection, `nosniff`, and restricted browser capabilities.
+  These are deployment policies; Vite's development server does not enforce
+  them. Preview-host support is limited to `.e2b.app`, not a blanket host allow.
+- React renders text without `dangerouslySetInnerHTML`, `eval`, or
+  `new Function`. Selected store/CMS fields are bounded/sanitized; that does
+  **not** mean every input has complete validation or that sanitization
+  provides database access control.
+- CSV/XLS exports escape headers and cells; formula-like string values are
+  neutralized. XLS output is an HTML table, not a binary Excel workbook.
+- A wall-clock-based inactivity lock closes the local dashboard after
+  20 minutes, including when background timers have been throttled.
+- Local logout happens even if the Supabase request fails. A failed provider
+  sign-out is not proof that server tokens were revoked; secure devices and
+  server session policies are still required.
+- Google Analytics is loaded only after cookie acceptance. No tracking script
+  is injected into the initial HTML shell. Advertising permissions are denied;
+  changed choices disable analytics in the current page.
+- Optional Turnstile requires `VITE_TURNSTILE_SITE_KEY`, matching CAPTCHA
+  settings in Supabase, and `https://challenges.cloudflare.com` added to
+  `script-src` and `frame-src` in `public/_headers`. Test all configured auth
+  and recovery forms before enabling it; see the audit's remaining limitations.
 
-This is the most important part of this document.
+## Data storage and current limitations
 
-**There is no backend, and therefore no real authentication.** The
-"Connexion" screen collects a name, email, and a self-selected role
-(including "owner," which grants full access) and stores it in
-`localStorage` via `zustand/persist` — it does not check a password or
-verify identity against anything. Anyone with access to the deployed URL can
-sign in as anyone, with any role, and see or edit all data in that browser's
-local storage.
+**Do not use this as a production financial system yet.**
 
-Concretely, this means:
-- **All data lives in the browser's `localStorage`**, not on a server.
-  Nothing here is currently multi-user, multi-device, or backed up.
-  Clearing browser storage deletes everything.
-- The CSP, HSTS, idle-logout, and input sanitization above harden the
-  *browser environment* and reduce the blast radius of client-side bugs
-  (XSS, clickjacking, session-left-open) — none of them are access control.
-  They don't stop someone from opening the site and clicking "Se connecter."
-- Role-based permission checks (`allowed` in `App.tsx`) run entirely in the
-  client and can be bypassed by anyone with browser devtools. They're useful
-  for UX (hiding irrelevant modules from non-owner roles) but are not a
-  security boundary.
+- Projects, contacts, expenses, stock, contracts, subscriptions, team, settings,
+  and dashboard audit entries are stored in localStorage, partitioned by Supabase user ID.
+  Partitioning prevents accidental reuse between accounts in the normal UI;
+  it is not encryption, a device access boundary, or cloud backup.
+- Logout removes private records from active memory but keeps the account's
+  saved local records. Legacy shared data is preserved for explicit backup
+  and ownership review, not automatically reassigned to a new login.
+- Business storage failures are surfaced with an export option; RAM-only changes
+  are still lost on logout, idle logout, reload or tab/device loss. Settings and
+  warning exports omit auth/session objects but include sensitive business data.
+  Keep exported files private. There is no full JSON restore workflow yet.
+- Numeric mutation bounds and logo size/type/signature checks are browser
+  safeguards, not protection from a device user or substitutes for server-side
+  record validation. Existing record arrays are not fully schema-validated.
+- A local audit log is editable by a browser user. It is not an immutable
+  compliance record.
+- Team invitations do not send email, and local module permissions are not
+  server-enforced shared-workspace permissions.
+- Billing/pricing integration, transactional quota enforcement, tenant-scoped
+  foreign keys, financial calculations, and some date-based modules need
+  further work; see [CODE_AUDIT.md](CODE_AUDIT.md).
+- Marketing assertions about encryption, secure hosting of all business
+  records, multi-user access, and regulatory compliance must not be treated
+  as verified guarantees.
 
-**Before this app handles real client financial data, it needs:**
-1. A real backend with server-issued sessions (e.g. signed, HTTP-only
-   cookies) and password or OAuth-based authentication
-2. Server-side enforcement of role permissions on every read/write —
-   never trust the client's `allowed` object
-3. Data persisted server-side (with backups), not solely in `localStorage`
-4. Input validation repeated server-side (never trust that client-side
-   `sanitize()` ran)
-5. Rate limiting / brute-force protection on whatever auth endpoint replaces
-   the current form
-6. An actual privacy/data-processing review for Loi 09-08 (CNDP) compliance
-   — the login screen references it, but real compliance requires real data
-   handling safeguards behind it, not just the disclosure text
+Before real client data: implement tenant-aware server storage and permission
+checks, server-side input validation, trustworthy audit logs, tested backups
+and restore, reliable payment webhooks/quotas, hosted authentication and
+recovery tests, and an actual privacy/legal review.
 
-Until then, treat this as a **demo/prototype data model**: fine for trying
-out the UI and workflows, not for anyone's real invoices, contracts, or
-client records.
+## Supply-chain checks
+
+Both lockfiles are synchronized. CI includes type-checking, React/SQL regression
+tests, and a production build; Dependabot remains configured for dependencies
+and GitHub Actions. Registry advisory scans are a useful check, **not proof that
+all dependencies or application code are vulnerability-free**.

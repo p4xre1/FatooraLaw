@@ -36,7 +36,7 @@ export type PasswordIssue = "required" | "tooShort" | "tooLong" | null
 export function checkPassword(value: string): PasswordIssue {
   if (value.length === 0) return "required"
   if (value.length < MIN_PASSWORD_LENGTH) return "tooShort"
-  if (value.length > MAX_PASSWORD_LENGTH) return "tooLong"
+  if (new TextEncoder().encode(value).byteLength > MAX_PASSWORD_LENGTH) return "tooLong"
   return null
 }
 

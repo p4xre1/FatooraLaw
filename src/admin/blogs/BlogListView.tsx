@@ -6,16 +6,18 @@ import { deletePost, listPosts, setPublished, type Post } from "./client"
 
 export default function BlogListView() {
   const [posts, setPosts] = useState<Post[] | null>(null)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
 
   async function refresh() {
+    setLoading(true)
     try {
       setError(null)
       setPosts(await listPosts())
     } catch (err) {
       setError(err instanceof Error ? err.message : "تعذر تحميل المقالات.")
-    }
+    } finally { setLoading(false) }
   }
 
   useEffect(() => {
@@ -61,14 +63,19 @@ export default function BlogListView() {
         }
       />
 
-      {error && <p className="text-[13px] text-serious">{error}</p>}
+      {error && (
+        <div role="alert" className="flex items-center gap-3 text-[13px] text-serious">
+          <p>{error}</p>
+          <Btn variant="outline" size="sm" disabled={loading} onClick={() => { void refresh() }}>إعادة المحاولة</Btn>
+        </div>
+      )}
 
       <Card>
-        {posts === null ? (
+        {loading ? (
           <div className="grid place-items-center py-16">
             <Loader2 className="h-5 w-5 animate-spin text-brand" aria-hidden="true" />
           </div>
-        ) : posts.length === 0 ? (
+        ) : posts === null || posts.length === 0 ? (
           <EmptyState icon={<FileText className="h-5 w-5" />} text="لا توجد مقالات بعد." />
         ) : (
           <Table
