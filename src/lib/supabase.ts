@@ -19,12 +19,9 @@ export const supabaseConfigWarning = supabaseConfig.warning
 const clientUrl = isSupabaseConfigured && supabaseConfig.url ? supabaseConfig.url : "https://missing-supabase-config.supabase.co"
 const clientKey = isSupabaseConfigured && supabaseConfig.anonKey ? supabaseConfig.anonKey : "missing-supabase-anon-key"
 
-if (!isSupabaseConfigured) {
+if (supabaseConfigProblem?.code === "secret-key") {
   // eslint-disable-next-line no-console
-  console.error(
-    `${supabaseConfigProblem?.message ?? `Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in ${".env"} (see .env.example).`} ` +
-      "Sign up / sign in / password reset will not work until this is fixed.",
-  )
+  console.error(supabaseConfigProblem.message)
 } else if (supabaseConfigWarning) {
   // eslint-disable-next-line no-console
   console.warn(supabaseConfigWarning)

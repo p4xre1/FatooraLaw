@@ -1,4 +1,6 @@
-import { expect, it } from "vitest"
+import { readFileSync } from "node:fs"
+import { resolve } from "node:path"
+import { expect, it, vi } from "vitest"
 import { readSupabaseConfig } from "../src/lib/supabaseConfig"
 
 /** base64url-encoded fake JWT: enough structure for the config checks. */
@@ -92,4 +94,22 @@ it("accepts a publishable key, then warns when URL and key are from different pr
   expect(mismatched.configured).toBe(true)
   expect(mismatched.warning).toContain("abcdefghijklmnop")
   expect(mismatched.warning).toContain("zyxwvutsrqponmlk")
+})
+
+it("does not emit a console.error on module load when Supabase env vars are unset", async () => {
+  const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+  try {
+    vi.resetModules()
+    await import("../src/lib/supabase")
+    expect(errorSpy).not.toHaveBeenCalled()
+  } finally {
+    errorSpy.mockRestore()
+  }
+})
+
+it("permits Cloudflare Web Analytics in public/_headers CSP", () => {
+  const headers = readFileSync(resolve(process.cwd(), "public/_headers"), "utf8")
+  const cspLine = headers.split("\n").find((line) => line.trim().startsWith("Content-Security-Policy:")) ?? ""
+  expect(cspLine).toMatch(/script-src[^;]*https:\/\/static\.cloudflareinsights\.com/)
+  expect(cspLine).toMatch(/connect-src[^;]*https:\/\/cloudflareinsights\.com/)
 })
