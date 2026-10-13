@@ -52,4 +52,4 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           DEPLOY_BRANCH: ${{ github.head_ref || github.ref_name }}
-        run: pnpm exec wrangler pages deploy dist --project-name=fatorati-web-app --branch "$DEPLOY_BRANCH"
+        run: pnpm exec wrangler pages deploy dist --project-name=fatooralaw --branch "$DEPLOY_BRANCH"
