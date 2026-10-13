@@ -7,7 +7,7 @@ import { useTranslation } from "../language/useLanguage"
 import { PasswordField } from "../components/PasswordField"
 import { FormAlert } from "../components/FormAlert"
 import { checkPassword, isNonEmpty, isValidEmail, sanitizeInput, MAX_NAME_LENGTH } from "../lib/validation"
-import { mapAuthError } from "../lib/authErrors"
+import { mapAuthError, notConfiguredMessage } from "../lib/authErrors"
 
 export type SignUpFormProps = {
   /** Navigate back to the SignIn screen (e.g. an existing-account link). */
@@ -71,7 +71,7 @@ export function SignUpForm({ onSignIn, onViewPrivacyPolicy, onSuccess }: SignUpF
       return
     }
     if (!isSupabaseConfigured) {
-      setError(t.errors.notConfigured)
+      setError(notConfiguredMessage(t.errors.notConfigured))
       return
     }
 

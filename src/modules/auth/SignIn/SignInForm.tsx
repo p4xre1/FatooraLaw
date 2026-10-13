@@ -7,7 +7,7 @@ import { useTranslation } from "../language/useLanguage"
 import { PasswordField } from "../components/PasswordField"
 import { FormAlert } from "../components/FormAlert"
 import { isValidEmail, sanitizeInput } from "../lib/validation"
-import { mapAuthError } from "../lib/authErrors"
+import { mapAuthError, notConfiguredMessage } from "../lib/authErrors"
 
 export type SignInFormProps = {
   /** Navigate to the ForgotPassword screen. */
@@ -72,7 +72,7 @@ export function SignInForm({ onForgotPassword, onSignUp, onSuccess, captchaToken
       return
     }
     if (!isSupabaseConfigured) {
-      setError(t.errors.notConfigured)
+      setError(notConfiguredMessage(t.errors.notConfigured))
       return
     }
 

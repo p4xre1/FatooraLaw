@@ -3,6 +3,7 @@ import { Menu, Plus, ChevronDown, LogOut, ShieldCheck, FolderPlus, ReceiptText, 
 import type { ModuleKey } from "../store/types"
 import { useMizan } from "../store/useMizan"
 import { roleLabels } from "../lib/mizan"
+import { LOCAL_DEV_USER } from "../lib/localDevMode"
 
 export default function Topbar({
   title, onMenu, onNavigate, onLogout,
@@ -76,6 +77,12 @@ export default function Topbar({
                 <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-700">
                   <ShieldCheck className="h-3 w-3" /> {auth ? roleLabels[auth.role] : ""}
                 </span>
+                {/* Never let a development-only local workspace pass for a real account. */}
+                {import.meta.env.DEV && auth?.id === LOCAL_DEV_USER.id && (
+                  <span className="mt-1.5 ms-1.5 inline-flex items-center gap-1 rounded-full bg-warn-50 px-2 py-0.5 text-[11px] font-semibold text-warn">
+                    Mode local (dev)
+                  </span>
+                )}
               </div>
               <button onClick={() => { onNavigate("settings"); setPm(false) }} className="flex w-full items-center gap-2.5 px-4 py-2.5 text-start text-[13px] font-medium hover:bg-ink/[0.04]">
                 <ShieldCheck className="h-4 w-4 text-muted" /> Profil & entreprise

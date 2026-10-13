@@ -4,6 +4,8 @@ import { beforeEach, expect, it, vi } from "vitest"
 const mock = vi.hoisted(() => ({ login: vi.fn(), signup: vi.fn(), reset: vi.fn() }))
 vi.mock("../src/lib/supabase", () => ({
   isSupabaseConfigured: true,
+  supabaseConfigProblem: null,
+  supabaseConfigWarning: null,
   supabase: { auth: { signInWithPassword: mock.login, signUp: mock.signup, resetPasswordForEmail: mock.reset } },
 }))
 import Auth from "../src/components/Auth"

@@ -6,7 +6,7 @@ import { Btn, Field, Input } from "../../../components/kit"
 import { useTranslation } from "../language/useLanguage"
 import { FormAlert } from "../components/FormAlert"
 import { isValidEmail, sanitizeInput } from "../lib/validation"
-import { mapAuthError } from "../lib/authErrors"
+import { mapAuthError, notConfiguredMessage } from "../lib/authErrors"
 
 export type ForgotPasswordFormProps = {
   /** Navigate back to the SignIn screen. */
@@ -39,7 +39,7 @@ export function ForgotPasswordForm({ onBack, redirectTo }: ForgotPasswordFormPro
       return
     }
     if (!isSupabaseConfigured) {
-      setError(t.errors.notConfigured)
+      setError(notConfiguredMessage(t.errors.notConfigured))
       return
     }
 
