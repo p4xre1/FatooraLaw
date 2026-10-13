@@ -7,9 +7,31 @@ Supabase authentication, a protected blog CMS, and onboarding.
 See [SECURITY.md](SECURITY.md) and the [code audit](CODE_AUDIT.md) before
 using real financial or client data.
 
-The public homepage contains the full existing landing content: features,
-assistant, about, benefits, pricing, resources, FAQ, contact and legal sections.
-Header/footer links jump to these sections; standalone public pages still work.
+### Documentation
+
+| Document | What it covers |
+| --- | --- |
+| [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md) | every source of `VITE_SUPABASE_*`, why a deployed site can still be unconfigured, and how to verify a live bundle |
+| [docs/SEO_GEO_AIO_SXO.md](docs/SEO_GEO_AIO_SXO.md) | crawlability, per-page metadata, structured data, AI-answer-engine readiness and conversion/site-experience recommendations and backlog |
+| [docs/CODE_REVIEW.md](docs/CODE_REVIEW.md) | this release's code scan: fixed defects, verified-correct areas, open findings |
+| [CODE_AUDIT.md](CODE_AUDIT.md) | the earlier security/data audit (RLS, local storage partitioning, exports) |
+| [SECURITY.md](SECURITY.md) | key handling, CSP, Turnstile, reporting a vulnerability |
+| [SUPABASE_OPERATIONS.md](SUPABASE_OPERATIONS.md) | database setup, permissions, migrations |
+
+Every screen has its own URL: the public pages (`/features`, `/assistant`,
+`/pricing`, `/blog`, `/faq`, `/contact`, `/privacy`, `/terms`, `/cookies`), the
+auth screens (`/login`, `/signup`, `/forgot-password`, `/reset-password`), the
+dashboard (`/dashboard`, `/projects`, … `/settings`), the CMS (`/admin/*`) and a
+real not-found page. **No URL contains a `#`**: the header/footer links are
+pages, not fragments, and every public page is prerendered into its own HTML
+document with its own title, canonical URL and structured data at build time
+(see `docs/SEO_GEO_AIO_SXO.md`). The routing contract lives in
+`src/lib/routes.ts`; the deploy configuration (`sitemap.xml`, `llms.txt`,
+`_redirects`, one document per route) is generated from it, so it cannot drift.
+
+The public homepage contains the full landing content: features, assistant,
+about, benefits, pricing, resources, FAQ, contact and legal sections, plus the
+standalone pages above.
 The audience badge above the hero headline has been removed. Sign-up buttons
 still open the existing email/password login, including Gmail addresses.
 
@@ -46,6 +68,15 @@ key, which is refused rather than used. That diagnostic lives in
 `.env` requires a Vite restart; `.env.local` overrides `.env` and is ignored by
 git.
 
+**`VITE_*` values are inlined at build time**, which is the single most common
+cause of "it works locally and the deployed site still says Supabase is not
+configured": the deployment was built somewhere without the variables. `pnpm
+dev` and `pnpm build` now print the verdict, a Cloudflare Pages build **fails**
+instead of shipping an authentication-less site, `dist/build-report.json`
+records what a build was configured with, and the setup screen names the
+variable to fix. Every case, every source and every fix:
+**[docs/ENVIRONMENT.md](docs/ENVIRONMENT.md)**.
+
 ### Running without Supabase credentials (development only)
 
 Accounts live in Supabase, so with no usable credentials there is nothing to
@@ -79,9 +110,13 @@ Tests use React Testing Library / jsdom and embedded PostgreSQL (PGlite).
 They require no real Supabase credentials. SQL tests stub Supabase's `auth`
 schema and roles; they do not verify a hosted project's configuration.
 
-`pnpm build` currently creates a client-rendered SPA. The legacy
-`entry-server.tsx` and `scripts/prerender.mjs` are not wired into this command;
-do not assume the landing page has been prerendered.
+`pnpm build` runs three steps: the client build, an SSR build of
+`src/entry-server.tsx`, and `scripts/prerender.mjs`, which writes one real HTML
+document per public route (injected content **and** its own head) into `dist/`,
+together with the generated `sitemap.xml`, `llms.txt`, `_redirects` and the
+`noindex` documents for private routes. The client hydrates over the prerendered
+markup, so a crawler that does not execute JavaScript sees the same page a
+visitor sees.
 
 ## Database and admin setup
 
@@ -183,6 +218,13 @@ Set repository Actions variables `VITE_SUPABASE_URL` and
 Cloudflare deployment secrets in the repository's secure settings.
 The workflow passes the source branch explicitly to Cloudflare Pages;
 non-production branches should remain preview deployments.
+
+If this repository is deployed by the **Cloudflare Pages Git integration**
+instead (which is how `fatorati.tech` is served today), the two `VITE_*`
+variables must also be set in the Pages project — *Production **and** Preview* —
+and a new deployment must be triggered. The workflow's deploy step stays
+skipped until `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID` exist, and says so.
+Step-by-step: [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md).
 
 The policies in `public/_headers` are applied by Cloudflare Pages, not by
 `vite dev`. Analytics loads only after cookie acceptance. Optional Turnstile

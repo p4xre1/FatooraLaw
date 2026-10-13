@@ -33,6 +33,11 @@ export default function SupabaseSetupNotice({ onContinueLocally }: { onContinueL
   const message = supabaseConfigProblem?.message ?? FALLBACK_MESSAGE
   const secretKey = supabaseConfigProblem?.code === "secret-key"
   const localOption = import.meta.env.DEV && !secretKey && !!onContinueLocally
+  // `VITE_*` values are inlined at build time, so a deployed site can be
+  // unconfigured even when the developer's own .env is perfect. Naming the
+  // build date is what makes that distinguishable from "you edited the wrong
+  // file" — see docs/ENVIRONMENT.md.
+  const buildTime = import.meta.env.VITE_BUILD_TIME
 
   return (
     <div
@@ -46,6 +51,16 @@ export default function SupabaseSetupNotice({ onContinueLocally }: { onContinueL
         <span>{secretKey ? "Clé secrète détectée dans le navigateur" : "Configuration Supabase requise"}</span>
       </p>
       <p className="mt-1.5">{message}</p>
+      {!secretKey && (
+        <p className="mt-1.5 text-[11.5px] opacity-80">
+          {buildTime
+            ? `Ce bundle a été construit le ${new Date(buildTime).toLocaleString("fr-MA")}. `
+            : ""}
+          Sur un site déployé, ces variables doivent exister dans l'environnement de <strong>build</strong> (Cloudflare
+          Pages → Settings → Variables and secrets, pour <strong>Production</strong> et <strong>Preview</strong>), puis
+          un nouveau déploiement doit être lancé. Détails et vérification : <code>docs/ENVIRONMENT.md</code>.
+        </p>
+      )}
       {!secretKey && (
         <pre className="mt-2.5 overflow-x-auto rounded-md bg-canvas px-2.5 py-2 font-mono text-[11.5px] leading-relaxed text-ink">
           {`${SUPABASE_URL_VARIABLE}=https://<référence>.supabase.co\n${SUPABASE_ANON_KEY_VARIABLE}=<clé anon publique>`}

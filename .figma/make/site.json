@@ -7,8 +7,8 @@
   "organization": {
     "name": "Fatorati",
     "email": "bonjour@fatorati.tech",
-    "telephone": "+212520000000",
-    "addressLocality": "Casablanca",
+    "telephone": "",
+    "addressLocality": "Tanger",
     "addressCountry": "MA",
     "foundingDate": "2026-01-01",
     "sameAs": []
@@ -20,7 +20,7 @@
     "index": true
   },
   "openGraph": {
-    "image": "/fatorati-logo.svg"
+    "image": "/og/fatorati-og.jpg"
   },
   "analytics": {
     "googleAnalyticsId": "G-E9G2TM3MCH"

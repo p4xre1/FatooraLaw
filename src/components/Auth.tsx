@@ -8,6 +8,7 @@ import { isSupabaseConfigured, supabaseConfigProblem, supabase } from "../lib/su
 import { signInLocally } from "../lib/localDevMode"
 import SupabaseSetupNotice from "./SupabaseSetupNotice"
 import { Logo } from "./nav"
+import { CONTACT_CITY } from "../lib/contact"
 import { Btn, Field, Input, Checkbox, Modal } from "./kit"
 
 type View = "login" | "signup" | "forgot" | "reset"
@@ -104,10 +105,28 @@ function PrivacyModal({ onClose }: { onClose: () => void }) {
   )
 }
 
+/**
+ * The auth screens. Each view has its own URL (`/login`, `/signup`,
+ * `/forgot-password`, `/reset-password`) and the URL is the source of truth:
+ * the parent passes `view` and `onViewChange`, so "Créer un compte" or a
+ * bookmark of `/signup` lands on the same screen and the back button works.
+ * Both props are optional — rendering `<Auth onBack={…}/>` still manages the
+ * view internally, which is what the component's own tests do.
+ */
 export default function Auth({
-  onBack, initialView = "login", onRecoveryDone, idleSignedOut = false,
-}: { onBack: () => void; initialView?: View; onRecoveryDone?: () => void; idleSignedOut?: boolean }) {
-  const [view, setView] = useState<View>(initialView)
+  onBack, initialView = "login", onRecoveryDone, idleSignedOut = false, view: controlledView, onViewChange,
+}: {
+  onBack: () => void
+  initialView?: View
+  onRecoveryDone?: () => void
+  idleSignedOut?: boolean
+  /** Controlled view, driven by the current URL. */
+  view?: View
+  /** Called with the view the visitor asked for (the parent updates the URL). */
+  onViewChange?: (view: View) => void
+}) {
+  const [internalView, setInternalView] = useState<View>(initialView)
+  const view = controlledView ?? internalView
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -134,7 +153,8 @@ export default function Auth({
   function switchView(v: View) {
     setError(null)
     setNotice(null)
-    setView(v)
+    setInternalView(v)
+    if (v !== view) onViewChange?.(v)
   }
 
   function requireSupabase() {
@@ -192,7 +212,7 @@ export default function Auth({
       if (err) return setError(friendlyError(err.message))
       if (!data.session) {
         setNotice("Compte créé ! Vérifiez votre boîte mail pour confirmer votre adresse, puis connectez-vous.")
-        setView("login")
+        switchView("login")
       }
     } catch {
       setError("Problème de connexion. Vérifiez votre réseau et réessayez.")
@@ -227,7 +247,7 @@ export default function Auth({
       if (logoutError) return setError("Mot de passe mis à jour. La déconnexion a échoué ; réessayez.")
       onRecoveryDone?.()
       setNotice("Mot de passe mis à jour avec succès. Connectez-vous avec votre nouveau mot de passe.")
-      setView("login")
+      switchView("login")
     } catch {
       setError("Problème de connexion. Vérifiez votre réseau et réessayez.")
     } finally { setLoading(false) }
@@ -255,7 +275,7 @@ export default function Auth({
             ))}
           </div>
         </div>
-        <p className="relative text-[12px] text-slate-400">© 2026 Fatorati ERP · Casablanca, Maroc</p>
+        <p className="relative text-[12px] text-slate-400">© 2026 Fatorati ERP · {CONTACT_CITY}, Maroc</p>
       </div>
 
       {/* Form panel */}

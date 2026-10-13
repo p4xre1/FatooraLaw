@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="<!-- figma:lang -->">
+  <head>
+    <!-- figma:head-start -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- figma:head-end -->
+    <!-- figma:route-head-start -->
+    <!-- This is the shell for every *private* document (the CMS under /admin,
+         the auth screens, the dashboard and 404.html). It is intentionally
+         served with an empty #root and a noindex head: those screens require a
+         session, must never be indexed, and must not be hydrated over
+         prerendered public content (which would be a mismatch). -->
+    <title><!-- figma:title --></title>
+    <meta name="robots" content="noindex, nofollow, noarchive" />
+    <!-- figma:route-head-end -->
+  </head>
+  <body>
+    <!-- figma:body-start -->
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <!-- figma:body-end -->
+  </body>
+</html>
