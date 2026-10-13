@@ -40,6 +40,41 @@ function writeRouteDocument(filePath, html) {
   writeFileSync(filePath, html, "utf-8")
 }
 
+/**
+ * Break the React markup onto short lines. Some GEO crawlers and browser
+ * extensions truncate a single multi-dozen-kilobyte line and then report the
+ * page as "83 words, H1 missing" even though the bytes are in the file.
+ * Breaking only on tag boundaries keeps the HTML and the JSON-LD strings valid.
+ */
+function breakHtmlLines(html) {
+  // Tag boundaries only. Do not wrap mid-line: a newline inside a JSON-LD
+  // string (the head script is one long line) would make the schema invalid.
+  return html.replace(/></g, ">\n<")
+}
+
+function visibleWords(html) {
+  const text = html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&[a-z]+;/gi, " ")
+  return text.split(/\s+/).filter(Boolean).length
+}
+
+function assertCrawlable(route, html) {
+  const problems = []
+  const h1s = html.match(/<h1\b/g) ?? []
+  if (h1s.length !== 1) problems.push(`expected 1 <h1>, found ${h1s.length}`)
+  if (!html.includes("<blockquote")) problems.push("missing <blockquote>")
+  if (!html.includes('href="/about"')) problems.push("missing /about link")
+  if (!html.includes('href="/contact"')) problems.push("missing /contact link")
+  if (!/"(FAQPage|HowTo|Product|Article)"/.test(html) && !html.includes("FAQPage")) problems.push("missing content schema")
+  if (!html.includes("sameAs")) problems.push("missing sameAs")
+  const words = visibleWords(html)
+  if (words < 450) problems.push(`only ${words} server-rendered words`)
+  if (problems.length) throw new Error(`${route} is not GEO-ready: ${problems.join("; ")}`)
+}
+
 async function main() {
   if (!existsSync(ssrEntry)) {
     console.warn(`[prerender] SSR bundle not found at ${ssrEntry} — skipping, shipping client-only render.`)
@@ -76,9 +111,10 @@ async function main() {
       continue
     }
 
-    const document = shell
+    const document = breakHtmlLines(shell
       .replace(HEAD_PATTERN, `<!-- figma:route-head-start -->\n    ${head}\n    <!-- figma:route-head-end -->`)
-      .replace(PRERENDER_SLOT, `${PRERENDER_SLOT}${html}`)
+      .replace(PRERENDER_SLOT, `${PRERENDER_SLOT}${html}`))
+    assertCrawlable(route, document)
 
     if (route === "/") {
       writeFileSync(indexPath, document, "utf-8")
@@ -98,7 +134,8 @@ async function main() {
 
 main()
   .catch((err) => {
-    console.error("[prerender] Failed — shipping client-only render instead.", err)
+    console.error("[prerender] Failed — refusing to ship a client-only shell.", err)
+    process.exitCode = 1
   })
   .finally(() => {
     // Build-time tools only: never part of the deployed site.

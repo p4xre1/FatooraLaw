@@ -1,5 +1,16 @@
 # SEO, GEO, AIO and SXO — findings and roadmap
 
+**AITDK GEO score, 13 October 2026 (76 / B, 14 points short of A).** The eight
+flagged checks are addressed in the public HTML, not only after JavaScript:
+
+| Check | What the crawler now gets |
+| --- | --- |
+| Server-rendered words / H1 in the HTML | Every public route is prerendered with exactly one `<h1>`. The build fails if a document has fewer than 450 visible words. Markup is line-broken so a crawler that truncates a single huge line still sees the body. The hero animation no longer starts at `opacity: 0`. |
+| Content schema | Each page's JSON-LD graph includes `FAQPage` and `HowTo`. Home and pricing also include `Product`; home and blog include `Article`. |
+| sameAs | Organization `sameAs` points at the real GitHub repository. No invented Wikipedia or LinkedIn URL. |
+| Citations | Visible `<blockquote>`, `<q>` and `<cite>` link the DGI VAT guide, CGI article 208 and the CNDP page on Law 09-08. A table repeats the figures. Demo numbers are labelled fictional. |
+| About and Contact | Both are links in the header and the footer (`/about`, `/contact`). |
+
 **Scope:** the public site (`https://fatorati.tech`) — its fourteen public URLs,
 their metadata, structured data, crawlability, and what a search engine or an
 AI assistant can do with them. Audit date: 13 October 2026.

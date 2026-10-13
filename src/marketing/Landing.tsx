@@ -13,6 +13,8 @@ import { applyDocumentHead } from "../lib/seo"
 import { LANDING_PAGES, landingPath, landingPageFromPath, type LandingPage } from "../lib/routes"
 import { currentHistoryState, navigate, onInternalLinkClick, useRoutePath } from "../lib/router"
 import useLandingMotion from "./useLandingMotion"
+import { CONTENT_PUBLISHED, CONTENT_UPDATED, GITHUB_URL } from "./contentMeta"
+import { InlineCitation, PageIntro, ReferenceSection, referenceFaq, referenceHowTo } from "./references"
 import "./landing.css"
 
 const GRAD = "linear-gradient(135deg, var(--l-primary), var(--l-primary-hover))"
@@ -31,10 +33,6 @@ const DASHBOARD_GRAD = "linear-gradient(135deg, var(--l-primary), #4f9bf7)"
  * navigates to. Every *navigable* URL in this project is fragment-free.
  */
 const ORG_REF = { "@id": `${SITE_URL}/#organization` }
-/** Assumption — same as `organization.foundingDate` in .figma/make/site.json. Correct both if wrong. */
-const CONTENT_PUBLISHED = "2026-01-01"
-/** Bump this whenever the copy in this file changes materially. */
-const CONTENT_UPDATED = "2026-10-12"
 
 /** MAD price strings appear as either "199 MAD" (fr/ar) or "MAD 199" (en); pull the digits either way. */
 function priceDigits(price: string): string {
@@ -53,10 +51,22 @@ function offersFromPlans(plans: ExtraCopy["pricing"]["plans"]) {
   }))
 }
 
+function faqEntities(items: { q: string; a: string }[]) {
+  return items.map((item) => ({
+    "@type": "Question",
+    name: item.q,
+    acceptedAnswer: { "@type": "Answer", text: item.a },
+  }))
+}
+
 export function buildJsonLd(page: LandingPage, lang: Lang, t: Dict, extra: ExtraCopy): Record<string, unknown> {
   const url = `${SITE_URL}${landingPath(page)}`
+  const questions = [
+    ...referenceFaq(lang),
+    ...(page === "home" || page === "faq" ? extra.faq.items : []),
+  ]
+  const howto = referenceHowTo(lang)
   const base = {
-    "@context": "https://schema.org",
     "@id": `${url}#content`,
     url,
     inLanguage: lang,
@@ -67,77 +77,128 @@ export function buildJsonLd(page: LandingPage, lang: Lang, t: Dict, extra: Extra
     dateModified: CONTENT_UPDATED,
   }
 
-  switch (page) {
-    case "faq":
-      return {
-        ...base,
-        "@type": "FAQPage",
-        name: extra.faq.title,
-        mainEntity: extra.faq.items.map((item) => ({
-          "@type": "Question",
-          name: item.q,
-          acceptedAnswer: { "@type": "Answer", text: item.a },
-        })),
-      }
-    case "pricing":
-      return {
-        ...base,
-        "@type": "WebPage",
-        name: extra.pricing.title,
-        description: extra.pricing.sub,
-        mainEntity: { "@type": "ItemList", itemListElement: offersFromPlans(extra.pricing.plans) },
-      }
-    case "home":
-      return {
-        ...base,
-        "@type": "SoftwareApplication",
-        name: "Fatorati",
-        description: t.hero.sub,
-        applicationCategory: "BusinessApplication",
-        applicationSubCategory: "Gestion d'entreprise",
-        operatingSystem: "Web",
-        softwareVersion: "1.0",
-        dateModified: CONTENT_UPDATED,
-        inLanguage: ["fr", "en", "ar"],
-        // Priced in Moroccan dirhams (MAD) — the currency an assistant quoting
-        // this product must use, and the one the pricing page shows.
-        offers: offersFromPlans(extra.pricing.plans),
-        featureList: [t.f1.title, t.f2.title, t.f3.title],
-        publisher: ORG_REF,
-      }
-    case "about":
-      return { ...base, "@type": "AboutPage", name: extra.about.title, description: extra.about.desc }
-    case "benefits":
-      return { ...base, "@type": "WebPage", name: extra.benefits.title, description: extra.benefits.sub }
-    case "assistant":
-      return { ...base, "@type": "WebPage", name: t.asst.title, description: t.asst.desc }
-    case "features":
-      return { ...base, "@type": "WebPage", name: t.feat.title, description: t.feat.sub }
-    case "contact":
-      return {
-        ...base,
-        "@type": "ContactPage",
-        name: extra.contact.title,
-        description: extra.contact.sub,
-        // Same values as the rendered section (src/lib/contact.ts) and the
-        // site-wide Organization node — one address, one email, one city.
-        about: { ...ORG_REF, name: "Fatorati" },
-        mainEntity: {
-          "@type": "Organization",
-          "@id": `${SITE_URL}/#organization`,
-          email: CONTACT_EMAIL || undefined,
-          address: { "@type": "PostalAddress", addressLocality: CONTACT_CITY, addressCountry: CONTACT_COUNTRY },
-        },
-      }
-    case "blog":
-      return { ...base, "@type": "CollectionPage", name: extra.blog.title, description: `${extra.blog.eyebrow} — Fatorati` }
-    case "privacy":
-      return { ...base, "@type": "WebPage", name: extra.legal.privacy, description: extra.legal.privacyText }
-    case "terms":
-      return { ...base, "@type": "WebPage", name: extra.legal.terms, description: extra.legal.termsText }
-    case "cookies":
-      return { ...base, "@type": "WebPage", name: extra.legal.cookies, description: extra.legal.cookiesText }
+  const pageNode: Record<string, unknown> = (() => {
+    switch (page) {
+      case "faq":
+        return { ...base, "@type": "FAQPage", name: extra.faq.title, mainEntity: faqEntities(questions) }
+      case "pricing":
+        return {
+          ...base,
+          "@type": "WebPage",
+          name: extra.pricing.title,
+          description: extra.pricing.sub,
+          mainEntity: { "@type": "ItemList", itemListElement: offersFromPlans(extra.pricing.plans) },
+        }
+      case "home":
+        return {
+          ...base,
+          // Product is the type AI answer engines look for; SoftwareApplication
+          // stays so the offers and category are not lost.
+          "@type": ["SoftwareApplication", "Product"],
+          name: "Fatorati",
+          description: t.hero.sub,
+          brand: { "@type": "Brand", name: "Fatorati" },
+          applicationCategory: "BusinessApplication",
+          applicationSubCategory: "Gestion d'entreprise",
+          operatingSystem: "Web",
+          softwareVersion: "1.0",
+          inLanguage: ["fr", "en", "ar"],
+          offers: offersFromPlans(extra.pricing.plans),
+          featureList: [t.f1.title, t.f2.title, t.f3.title],
+        }
+      case "about":
+        return { ...base, "@type": "AboutPage", name: extra.about.title, description: extra.about.desc }
+      case "benefits":
+        return { ...base, "@type": "WebPage", name: extra.benefits.title, description: extra.benefits.sub }
+      case "assistant":
+        return { ...base, "@type": "WebPage", name: t.asst.title, description: t.asst.desc }
+      case "features":
+        return { ...base, "@type": "WebPage", name: t.feat.title, description: t.feat.sub }
+      case "contact":
+        return {
+          ...base,
+          "@type": "ContactPage",
+          name: extra.contact.title,
+          description: extra.contact.sub,
+          about: { ...ORG_REF, name: "Fatorati" },
+          mainEntity: {
+            "@type": "Organization",
+            "@id": `${SITE_URL}/#organization`,
+            email: CONTACT_EMAIL || undefined,
+            address: { "@type": "PostalAddress", addressLocality: CONTACT_CITY, addressCountry: CONTACT_COUNTRY },
+          },
+        }
+      case "blog":
+        return { ...base, "@type": "CollectionPage", name: extra.blog.title, description: `${extra.blog.eyebrow} — Fatorati` }
+      case "privacy":
+        return { ...base, "@type": "WebPage", name: extra.legal.privacy, description: extra.legal.privacyText.slice(0, 400) }
+      case "terms":
+        return { ...base, "@type": "WebPage", name: extra.legal.terms, description: extra.legal.termsText.slice(0, 400) }
+      case "cookies":
+        return { ...base, "@type": "WebPage", name: extra.legal.cookies, description: extra.legal.cookiesText.slice(0, 400) }
+    }
+  })()
+
+  const nodes: Record<string, unknown>[] = [pageNode]
+  if (page !== "faq") {
+    nodes.push({
+      "@type": "FAQPage",
+      "@id": `${url}#faq`,
+      url,
+      inLanguage: lang,
+      mainEntity: faqEntities(questions),
+    })
   }
+  nodes.push({
+    "@type": "HowTo",
+    "@id": `${url}#howto`,
+    name: howto.name,
+    description: howto.description,
+    inLanguage: lang,
+    step: howto.steps.map((step, index) => ({
+      "@type": "HowToStep",
+      position: index + 1,
+      name: step.name,
+      text: step.text,
+    })),
+  })
+  if (page === "home" || page === "pricing") {
+    nodes.push({
+      "@type": "Product",
+      "@id": `${SITE_URL}/#product`,
+      name: "Fatorati",
+      description: t.hero.sub,
+      brand: { "@type": "Brand", name: "Fatorati" },
+      offers: offersFromPlans(extra.pricing.plans),
+    })
+  }
+  if (page === "home" || page === "blog") {
+    for (const post of extra.blog.posts) {
+      nodes.push({
+        "@type": ["Article", "BlogPosting"],
+        headline: post.title,
+        description: post.desc,
+        datePublished: post.iso,
+        dateModified: CONTENT_UPDATED,
+        inLanguage: lang,
+        author: ORG_REF,
+        publisher: ORG_REF,
+        mainEntityOfPage: url,
+      })
+    }
+  }
+  if (page !== "home") {
+    nodes.push({
+      "@type": "BreadcrumbList",
+      "@id": `${url}#breadcrumb`,
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Accueil", item: `${SITE_URL}/` },
+        { "@type": "ListItem", position: 2, name: String(pageNode.name ?? page), item: url },
+      ],
+    })
+  }
+
+  return { "@context": "https://schema.org", "@graph": nodes }
 }
 
 /**
@@ -176,7 +237,7 @@ const LANGS: { code: Lang; label: string }[] = [
 ]
 
 export const T: Record<Lang, {
-  nav: { features: string; assistant: string; benefits: string; pricing: string; faq: string }
+  nav: { features: string; assistant: string; benefits: string; pricing: string; faq: string; about: string; contact: string }
   signup: string; explore: string
   hero: { headline: Seg[]; sub: string; note: string }
   feat: { eyebrow: string; title: string; sub: string }
@@ -184,12 +245,12 @@ export const T: Record<Lang, {
   f2: { tag: string; title: string; desc: string; items: { label: string; desc: string; level: string }[] }
   f3: { tag: string; title: string; desc: string; add: string; cols: [string, string, string, string]; tools: [string, string, string, string][]; blocks: [string, string][]; trend: string }
   cal: { month: string; renew: string; pay: string; legal: string; days: string[]; upcoming: string; events: { day: number; type: "renew" | "pay" | "legal"; label: string }[] }
-  prev: { greet: string; title: string; add: string; stats: string[]; trend: string; plan: string; nav: string[] }
+  prev: { greet: string; title: string; add: string; stats: string[]; trend: string; plan: string; nav: string[]; caption: string }
   asst: { badge: string; title: string; desc: string; cta: string; panel: string; panelSub: string; rules: string[]; verified: string }
   footer: { title: string; compliance: string; copy: string }
 }> = {
   fr: {
-    nav: { features: "Fonctionnalités", assistant: "Assistant", benefits: "Avantages", pricing: "Tarifs", faq: "FAQ" },
+    nav: { features: "Fonctionnalités", assistant: "Assistant", benefits: "Avantages", pricing: "Tarifs", faq: "FAQ", about: "À propos", contact: "Contact" },
     signup: "S'inscrire", explore: "Explorer",
     hero: {
       headline: [{ t: "Le logiciel simple qui pilote vos " }, { t: "finances", hi: true }, { t: ", vos " }, { t: "abonnements", hi: true }, { t: " et vos " }, { t: "risques", hi: true }, { t: "." }],
@@ -198,15 +259,15 @@ export const T: Record<Lang, {
     },
     feat: { eyebrow: "Tout-en-un", title: "Trois outils, une seule application", sub: "Chaque fonctionnalité pensée pour la réalité du terrain marocain." },
     f1: { tag: "Planification", title: "Outil de Calendrier", desc: "Un calendrier de time-blocking épuré pour ne jamais manquer une date clé : échéances légales, renouvellements de contrats et paiements." },
-    f2: { tag: "Conformité", title: "Gestion des Risques", desc: "Des alertes proactives et des contrôles de conformité locaux, adaptés aux réglementations des entreprises marocaines.", items: [{ label: "Déclaration TVA — T3 2026", desc: "À déposer avant le 30/09 auprès de la DGI. Pénalité de 15% en cas de retard.", level: "Élevé" }, { label: "Contrat client — PME locale", desc: "Clause de pénalité de retard à réviser avant renouvellement.", level: "Moyen" }, { label: "Registre du commerce (RC)", desc: "Modèle J mis à jour au tribunal de commerce de Casablanca.", level: "OK" }] },
+    f2: { tag: "Conformité", title: "Gestion des Risques", desc: "Des alertes proactives et des contrôles de conformité locaux, adaptés aux réglementations des entreprises marocaines.", items: [{ label: "Déclaration TVA — T3 2026", desc: "À déposer auprès de la DGI. L'article 208 du CGI porte la pénalité à 20 % si la TVA est versée hors délai.", level: "Élevé" }, { label: "Contrat client — PME locale", desc: "Clause de pénalité de retard à réviser avant renouvellement.", level: "Moyen" }, { label: "Registre du commerce (RC)", desc: "Modèle J mis à jour au tribunal de commerce de Casablanca.", level: "OK" }] },
     f3: { tag: "Finances", title: "Suivi des Abonnements & Outils", desc: "Saisissez chaque outil, visualisez vos totaux et suivez la tendance de vos dépenses mensuelles.", add: "Ajouter un outil", cols: ["Outil", "Coût / mois", "Début", "Expiration"], tools: [["Adobe Creative Cloud", "299 MAD", "01/03/26", "01/03/27"], ["Microsoft 365", "129 MAD", "12/01/26", "12/01/27"], ["Sage Compta", "450 MAD", "05/06/26", "05/06/27"], ["Hébergement OVH", "89 MAD", "20/02/26", "20/02/27"]], blocks: [["Total / mois", "1 720"], ["Outils actifs", "14"], ["Expire < 30j", "3"]], trend: "Tendance mensuelle" },
     cal: { month: "Septembre 2026", renew: "Renouv.", pay: "Paiement", legal: "Échéance légale", days: ["L", "M", "M", "J", "V", "S", "D"], upcoming: "Dates cruciales à venir", events: [{ day: 8, type: "pay", label: "Paiement Adobe CC — 299 MAD" }, { day: 15, type: "renew", label: "Renouvellement Microsoft 365" }, { day: 23, type: "legal", label: "Déclaration TVA (DGI)" }, { day: 27, type: "renew", label: "Fin abonnement Sage Compta" }] },
-    prev: { greet: "Bonjour, Karim 👋", title: "Suivi des outils", add: "Ajouter", stats: ["Dépense / mois", "Outils actifs", "Échéances 7j"], trend: "Tendance des dépenses", plan: "Plan Pro", nav: ["Tableau", "Contrats", "Calendrier", "Risques", "Outils"] },
+    prev: { greet: "Bonjour, Karim 👋", title: "Suivi des outils", add: "Ajouter", stats: ["Dépense / mois", "Outils actifs", "Échéances 7j"], trend: "Tendance des dépenses", plan: "Plan Pro", nav: ["Tableau", "Contrats", "Calendrier", "Risques", "Outils"], caption: "Aperçu de démonstration — les montants (1 720 MAD, +12 %) sont fictifs." },
     asst: { badge: "Fatorati Assistant", title: "Intégration juridique intelligente", desc: "Un panneau léger et intelligent qui vous sert dynamiquement les règles juridiques locales exactes et des modèles de contrats prêts à l'emploi — adaptés au droit marocain.", cta: "Découvrir l'assistant", panel: "Modèles suggérés", panelSub: "Basés sur votre activité", rules: ["Contrat de prestation — art. 723 DOC", "Clause de confidentialité (Loi 09-08)", "Facture conforme ICE + TVA 20%"], verified: "Vérifié selon le DOC & la Loi 09-08" },
     footer: { title: "Prêt à équilibrer votre gestion ?", compliance: "Conforme Loi 09-08 (CNDP)", copy: `© 2026 Fatorati · ${CONTACT_CITY}, Maroc` },
   },
   en: {
-    nav: { features: "Features", assistant: "Assistant", benefits: "Benefits", pricing: "Pricing", faq: "FAQ" },
+    nav: { features: "Features", assistant: "Assistant", benefits: "Benefits", pricing: "Pricing", faq: "FAQ", about: "About", contact: "Contact" },
     signup: "Sign up", explore: "Explore",
     hero: {
       headline: [{ t: "The simple software that runs your " }, { t: "finances", hi: true }, { t: ", your " }, { t: "subscriptions", hi: true }, { t: " and your " }, { t: "risks", hi: true }, { t: "." }],
@@ -215,15 +276,15 @@ export const T: Record<Lang, {
     },
     feat: { eyebrow: "All-in-one", title: "Three tools, one single app", sub: "Every feature designed for the Moroccan field reality." },
     f1: { tag: "Planning", title: "Calendar Tool", desc: "A clean time-blocking calendar so you never miss a key date: legal deadlines, contract renewals and payments." },
-    f2: { tag: "Compliance", title: "Risk Management", desc: "Proactive alerts and local compliance checks, tailored to Moroccan business regulations.", items: [{ label: "VAT return — Q3 2026", desc: "Due before 30/09 to the DGI. 15% penalty on late filing.", level: "High" }, { label: "Client contract — local SME", desc: "Late-payment penalty clause to review before renewal.", level: "Medium" }, { label: "Trade register (RC)", desc: "Model J updated at the Casablanca commercial court.", level: "OK" }] },
+    f2: { tag: "Compliance", title: "Risk Management", desc: "Proactive alerts and local compliance checks, tailored to Moroccan business regulations.", items: [{ label: "VAT return — Q3 2026", desc: "File with the DGI. Article 208 of the CGI raises the penalty to 20% when VAT is paid late.", level: "High" }, { label: "Client contract — local SME", desc: "Late-payment penalty clause to review before renewal.", level: "Medium" }, { label: "Trade register (RC)", desc: "Model J updated at the Casablanca commercial court.", level: "OK" }] },
     f3: { tag: "Finance", title: "Subscriptions & Tools Tracking", desc: "Log each tool, view your totals and track your monthly spending trend.", add: "Add a tool", cols: ["Tool", "Cost / month", "Start", "Expiry"], tools: [["Adobe Creative Cloud", "299 MAD", "01/03/26", "01/03/27"], ["Microsoft 365", "129 MAD", "12/01/26", "12/01/27"], ["Sage Compta", "450 MAD", "05/06/26", "05/06/27"], ["OVH Hosting", "89 MAD", "20/02/26", "20/02/27"]], blocks: [["Total / month", "1 720"], ["Active tools", "14"], ["Expiring < 30d", "3"]], trend: "Monthly trend" },
     cal: { month: "September 2026", renew: "Renewal", pay: "Payment", legal: "Legal deadline", days: ["M", "T", "W", "T", "F", "S", "S"], upcoming: "Upcoming crucial dates", events: [{ day: 8, type: "pay", label: "Adobe CC payment — 299 MAD" }, { day: 15, type: "renew", label: "Microsoft 365 renewal" }, { day: 23, type: "legal", label: "VAT return (DGI)" }, { day: 27, type: "renew", label: "Sage Compta subscription ends" }] },
-    prev: { greet: "Hello, Karim 👋", title: "Tools tracking", add: "Add", stats: ["Spend / month", "Active tools", "Due in 7d"], trend: "Spending trend", plan: "Pro plan", nav: ["Dashboard", "Contracts", "Calendar", "Risks", "Tools"] },
+    prev: { greet: "Hello, Karim 👋", title: "Tools tracking", add: "Add", stats: ["Spend / month", "Active tools", "Due in 7d"], trend: "Spending trend", plan: "Pro plan", nav: ["Dashboard", "Contracts", "Calendar", "Risks", "Tools"], caption: "Demo preview — the figures (MAD 1,720, +12%) are fictional." },
     asst: { badge: "Fatorati Assistant", title: "Smart legal integration", desc: "A lightweight, intelligent panel that dynamically serves the exact local legal rules and ready-to-use contract templates — tailored to Moroccan law.", cta: "Discover the assistant", panel: "Suggested templates", panelSub: "Based on your activity", rules: ["Service contract — art. 723 DOC", "Confidentiality clause (Law 09-08)", "Invoice compliant ICE + VAT 20%"], verified: "Verified against the DOC & Law 09-08" },
     footer: { title: "Ready to balance your management?", compliance: "Law 09-08 compliant (CNDP)", copy: `© 2026 Fatorati · ${CONTACT_CITY}, Morocco` },
   },
   ar: {
-    nav: { features: "الميزات", assistant: "المساعد", benefits: "المزايا", pricing: "الأسعار", faq: "الأسئلة" },
+    nav: { features: "الميزات", assistant: "المساعد", benefits: "المزايا", pricing: "الأسعار", faq: "الأسئلة", about: "عن فاتورتي", contact: "تواصل معنا" },
     signup: "إنشاء حساب", explore: "استكشاف",
     hero: {
       headline: [{ t: "البرنامج البسيط الذي يدير " }, { t: "أموالك", hi: true }, { t: " و" }, { t: "اشتراكاتك", hi: true }, { t: " و" }, { t: "مخاطرك", hi: true }, { t: "." }],
@@ -232,10 +293,10 @@ export const T: Record<Lang, {
     },
     feat: { eyebrow: "الكل في واحد", title: "ثلاث أدوات، تطبيق واحد", sub: "كل ميزة مصممة لواقع الميدان المغربي." },
     f1: { tag: "تخطيط", title: "أداة التقويم", desc: "تقويم بسيط لحجز الوقت حتى لا تفوّت أي موعد مهم: المواعيد القانونية وتجديد العقود والمدفوعات." },
-    f2: { tag: "امتثال", title: "إدارة المخاطر", desc: "تنبيهات استباقية وفحوصات امتثال محلية، مصممة للوائح الشركات المغربية.", items: [{ label: "إقرار الضريبة على القيمة المضافة — الربع 3 2026", desc: "يُودَع قبل 30/09 لدى المديرية العامة للضرائب. غرامة 15% عند التأخير.", level: "مرتفع" }, { label: "عقد العميل أطلس BTP", desc: "بند غرامة التأخير يجب مراجعته قبل التجديد.", level: "متوسط" }, { label: "السجل التجاري", desc: "النموذج J محدّث لدى المحكمة التجارية بالدار البيضاء.", level: "سليم" }] },
+    f2: { tag: "امتثال", title: "إدارة المخاطر", desc: "تنبيهات استباقية وفحوصات امتثال محلية، مصممة للوائح الشركات المغربية.", items: [{ label: "إقرار الضريبة على القيمة المضافة — الربع 3 2026", desc: "يُودَع لدى المديرية العامة للضرائب. المادة 208 ترفع الذعيرة إلى 20٪ إذا دُفعت الضريبة خارج الأجل.", level: "مرتفع" }, { label: "عقد العميل أطلس BTP", desc: "بند غرامة التأخير يجب مراجعته قبل التجديد.", level: "متوسط" }, { label: "السجل التجاري", desc: "النموذج J محدّث لدى المحكمة التجارية بالدار البيضاء.", level: "سليم" }] },
     f3: { tag: "المالية", title: "متابعة الاشتراكات والأدوات", desc: "سجّل كل أداة، اطّلع على إجمالياتك وتابع اتجاه نفقاتك الشهرية.", add: "إضافة أداة", cols: ["الأداة", "التكلفة / شهر", "البدء", "الانتهاء"], tools: [["Adobe Creative Cloud", "299 MAD", "01/03/26", "01/03/27"], ["Microsoft 365", "129 MAD", "12/01/26", "12/01/27"], ["Sage Compta", "450 MAD", "05/06/26", "05/06/27"], ["استضافة OVH", "89 MAD", "20/02/26", "20/02/27"]], blocks: [["الإجمالي / شهر", "1 720"], ["أدوات نشطة", "14"], ["تنتهي < 30 يوم", "3"]], trend: "الاتجاه الشهري" },
     cal: { month: "شتنبر 2026", renew: "تجديد", pay: "دفع", legal: "موعد قانوني", days: ["ن", "ث", "ر", "خ", "ج", "س", "ح"], upcoming: "مواعيد حاسمة قادمة", events: [{ day: 8, type: "pay", label: "دفع Adobe CC — 299 MAD" }, { day: 15, type: "renew", label: "تجديد Microsoft 365" }, { day: 23, type: "legal", label: "إقرار الضريبة (DGI)" }, { day: 27, type: "renew", label: "انتهاء اشتراك Sage Compta" }] },
-    prev: { greet: "مرحباً كريم 👋", title: "متابعة الأدوات", add: "إضافة", stats: ["الإنفاق / شهر", "أدوات نشطة", "استحقاق 7 أيام"], trend: "اتجاه الإنفاق", plan: "خطة برو", nav: ["لوحة", "عقود", "تقويم", "مخاطر", "أدوات"] },
+    prev: { greet: "مرحباً كريم 👋", title: "متابعة الأدوات", add: "إضافة", stats: ["الإنفاق / شهر", "أدوات نشطة", "استحقاق 7 أيام"], trend: "اتجاه الإنفاق", plan: "خطة برو", nav: ["لوحة", "عقود", "تقويم", "مخاطر", "أدوات"], caption: "عرض توضيحي — المبالغ (1 720 درهماً، +12٪) خيالية." },
     asst: { badge: "مساعد فاتورتي", title: "تكامل قانوني ذكي", desc: "لوحة خفيفة وذكية تقدّم لك القواعد القانونية المحلية الدقيقة ونماذج عقود جاهزة — مصممة للقانون المغربي.", cta: "اكتشف المساعد", panel: "نماذج مقترحة", panelSub: "بناءً على نشاطك", rules: ["عقد خدمة — المادة 723 ق.ل.ع", "بند السرية (القانون 09-08)", "فاتورة مطابقة ICE + ض.ق.م 20%"], verified: "تم التحقق وفق ق.ل.ع والقانون 09-08" },
     footer: { title: "مستعد لموازنة إدارتك؟", compliance: "متوافق مع القانون 09-08 (CNDP)", copy: `© 2026 فاتورتي · ${CONTACT_CITY}، المغرب` },
   },
@@ -248,13 +309,22 @@ export const EXTRA: Record<Lang, ExtraCopy> = {
     benefits: { eyebrow: "Pourquoi Fatorati", title: "Moins d'oubli. Plus de maîtrise.", sub: "Une vue claire pour décider vite et travailler sereinement.", items: [{ title: "Gagnez du temps", desc: "Retrouvez vos clients, dépenses, contrats et échéances sans passer d'un outil à l'autre." }, { title: "Restez conforme", desc: "Anticipez vos obligations et conservez une trace utile de chaque action importante." }, { title: "Pilotez depuis votre poche", desc: "Une interface mobile-first qui reste lisible au bureau comme sur le terrain." }, { title: "Travaillez en équipe", desc: "Attribuez les bons rôles et gardez le contrôle sur les accès sensibles." }] },
     pricing: { eyebrow: "Tarifs", title: "Un plan pour chaque étape.", sub: "Commencez simplement, puis adaptez votre espace à votre activité.", plans: [{ name: "Essentiel", price: "0 MAD", period: "/ pour commencer", desc: "Pour découvrir les fondamentaux.", cta: "Commencer", items: ["Tableau de bord", "Calendrier des échéances", "Gestion des contacts"] }, { name: "Pro", price: "199 MAD", period: "/ mois", desc: "Pour piloter une activité en croissance.", cta: "Choisir Pro", featured: true, items: ["Tout dans Essentiel", "Contrats et coffre juridique", "Rapports et exports", "Rôles et permissions"] }, { name: "Équipe", price: "499 MAD", period: "/ mois", desc: "Pour une équipe qui veut aller plus loin.", cta: "Parler à l'équipe", items: ["Tout dans Pro", "Équipe multi-utilisateurs", "Suivi avancé et audit", "Accompagnement prioritaire"] }] },
     blog: { eyebrow: "Ressources", title: "Le journal Fatorati.", posts: [{ tag: "Gestion", title: "Les 5 échéances à ne plus laisser passer", desc: "Une méthode simple pour organiser vos obligations mensuelles et trimestrielles.", date: "12 sept. 2026", iso: "2026-09-12" }, { tag: "Conformité", title: "Préparer ses contrats avec plus de sérénité", desc: "Les points à vérifier avant de signer une prestation au Maroc.", date: "04 sept. 2026", iso: "2026-09-04" }, { tag: "Trésorerie", title: "Où part vraiment votre budget outils ?", desc: "Comment repérer les abonnements inutilisés et reprendre la main sur vos coûts.", date: "28 août 2026", iso: "2026-08-28" }] },
-    faq: { eyebrow: "FAQ", title: "Questions fréquentes.", items: [{ q: "Fatorati est-il adapté aux petites entreprises marocaines ?", a: "Oui. L'application est conçue pour les artisans, freelances, TPE et PME qui veulent centraliser leur gestion sans complexité inutile." }, { q: "Puis-je utiliser Fatorati sur mobile ?", a: "Oui. L'interface est mobile-first et reste confortable sur téléphone, tablette et ordinateur." }, { q: "Mes données sont-elles protégées ?", a: "Fatorati applique des contrôles d'accès, une session sécurisée et une traçabilité des actions importantes. Consultez notre politique de confidentialité pour les détails." }, { q: "Puis-je changer de formule ?", a: "Oui. Vous pouvez faire évoluer votre formule selon la taille de votre activité et vos besoins." }] },
+    faq: { eyebrow: "FAQ", title: "Questions fréquentes.", items: [
+      { q: "Fatorati, c'est quoi ?", a: "Fatorati est une application de gestion mobile-first pour les artisans, freelances et TPE au Maroc. Elle réunit échéances, contrats, abonnements et alertes de conformité. Ce n'est pas un logiciel de comptabilité certifié : les déclarations fiscales restent à déposer auprès de la DGI, avec votre expert-comptable si vous en avez un." },
+      { q: "Fatorati est-il gratuit ou payant ?", a: "L'offre Essentiel est à 0 MAD pour commencer, sans carte bancaire. Pro est à 199 MAD par mois et Équipe à 499 MAD par mois. Les prix sont en dirhams, sur la page Tarifs, et la formule se change ou s'arrête à tout moment." },
+      { q: "Fatorati est-il conforme à la CNDP ?", a: "Le produit est conçu pour la loi 09-08 : accès limité au compte, pas de revente des données, mesure d'audience seulement après consentement. La déclaration d'un traitement auprès de la CNDP, lorsqu'elle est exigée, reste à la charge du responsable du traitement. Le détail est dans la politique de confidentialité." },
+      { q: "Quelle est la différence avec un logiciel de comptabilité ?", a: "Un logiciel de comptabilité produit le journal, le bilan et les liasses. Fatorati pilote le quotidien : dates, contrats, coût des outils et risques. Les deux se complètent. Fatorati ne télé-déclare pas et ne remplace pas l'expert-comptable." },
+      { q: "Fatorati est-il adapté aux petites entreprises marocaines ?", a: "Oui. L'application est conçue pour les artisans, freelances, TPE et PME qui veulent centraliser leur gestion sans complexité inutile, en français et en arabe." },
+      { q: "Puis-je utiliser Fatorati sur mobile ?", a: "Oui. L'interface est mobile-first et reste confortable sur téléphone, tablette et ordinateur." },
+      { q: "Mes données sont-elles protégées ?", a: "Fatorati applique des contrôles d'accès, une session sécurisée et une traçabilité des actions importantes. Consultez la politique de confidentialité et la page de la CNDP sur la loi 09-08 pour le cadre légal." },
+      { q: "Puis-je changer de formule ?", a: "Oui. Vous pouvez faire évoluer votre formule selon la taille de votre activité. Les exports sont inclus dans Pro et Équipe ; la conservation légale des pièces (comptabilité, fiscalité) peut durer plus longtemps que le compte." },
+    ] },
     contact: { eyebrow: "Contact", title: "Parlons de votre activité.", sub: "Une question sur Fatorati, les tarifs ou votre déploiement ? Notre équipe vous répond.", email: CONTACT_EMAIL, phone: CONTACT_PHONE, city: `${CONTACT_CITY}, Maroc`, cta: "Écrire à l'équipe" },
     legal: {
       privacy: "Politique de confidentialité",
       privacyText: "Fatorati traite vos données personnelles avec un objectif simple : vous fournir un espace de gestion sécurisé — jamais les revendre, ni les utiliser à des fins publicitaires.\n\nDonnées collectées — Lorsque vous créez un compte, nous recueillons votre nom, votre adresse e-mail et les données professionnelles que vous saisissez (clients, projets, dépenses, contrats, etc.). Ces données sont stockées de façon sécurisée et protégées par des règles d'accès strictes (Row Level Security) : elles ne sont accessibles qu'à vous et aux membres de votre équipe que vous autorisez.\n\nAucune publicité — Fatorati ne diffuse aucune publicité et ne partage, ne loue ni ne vend vos données à des annonceurs ou des courtiers en données, sous quelque forme que ce soit.\n\nGoogle Analytics — Le seul outil tiers que nous utilisons est Google Analytics, uniquement pour comprendre comment notre site est utilisé (pages consultées, durée de visite, provenance du trafic) et faire grandir Fatorati. Ces statistiques sont exploitées de façon agrégée pour améliorer le site — jamais pour vous cibler publicitairement. Cet outil ne s'active que si vous acceptez les cookies de mesure d'audience via notre bandeau de consentement ; vous pouvez le refuser à tout moment (voir notre politique de cookies).\n\nDurée de conservation — Vos données sont conservées tant que votre compte est actif. En cas de suppression de compte, elles sont supprimées ou anonymisées dans un délai raisonnable, sauf obligation légale de conservation plus longue (comptabilité, fiscalité).\n\nSécurité — L'accès à vos données est protégé par une authentification sécurisée, un chiffrement en transit (HTTPS) et des contrôles d'accès au niveau de la base de données. Voir notre politique de sécurité pour plus de détails.\n\nMise à jour — Cette politique peut évoluer ; la date de dernière mise à jour est indiquée en bas de cette page.",
       terms: "Conditions d'utilisation",
-      termsText: "En utilisant Fatorati, vous acceptez d'utiliser le service de manière légale et de conserver vos identifiants confidentiels. Les fonctionnalités peuvent évoluer pour améliorer le service.",
+      termsText: "Fatorati est un espace de gestion pour les artisans, freelances et petites entreprises au Maroc. En créant un compte, vous acceptez ces conditions.\n\nÀ quoi sert le service — Fatorati aide à suivre échéances, contrats, dépenses, abonnements et documents. Il ne remplace ni un expert-comptable, ni un avocat, ni une déclaration déposée auprès de la Direction Générale des Impôts. Les montants affichés dans les aperçus du site (1 720 MAD, +12 %) sont des exemples, pas vos chiffres.\n\nCompte — Vous fournissez des informations exactes et gardez vos identifiants confidentiels. Vous êtes responsable des données professionnelles que vous saisissez.\n\nPrix — Les formules en vigueur sont celles publiées sur la page Tarifs, en dirhams : 0 MAD pour commencer, 199 MAD par mois en Pro, 499 MAD par mois en Équipe. L'offre de départ ne demande pas de carte bancaire. Vous pouvez changer de formule ou cesser d'utiliser le service. Les obligations légales de conservation comptable ou fiscale restent les vôtres.\n\nDonnées — Le traitement des données personnelles est décrit dans la politique de confidentialité et s'inscrit dans la loi 09-08. Fatorati ne vend pas vos données.\n\nUsage licite — Vous n'utilisez pas le service pour enfreindre la loi, usurper une identité ou accéder au compte d'une autre personne.\n\nÉvolution et droit applicable — Les fonctionnalités peuvent évoluer. Ces conditions sont régies par le droit marocain. Question : bonjour@fatorati.tech, Tanger.",
       cookies: "Politique des cookies",
       cookiesText: "Un cookie est un petit fichier déposé sur votre appareil lors de votre visite. Voici les cookies utilisés sur fatorati.tech, et à quoi ils servent.\n\nCookies strictement nécessaires — Utilisés pour faire fonctionner le site (mémoriser votre choix de langue, votre thème et votre consentement aux cookies). Ils ne peuvent pas être désactivés et ne nécessitent pas votre consentement.\n\nCookies de mesure d'audience (Google Analytics) — Le seul outil tiers que nous utilisons est Google Analytics, uniquement pour comprendre la fréquentation du site (pages visitées, durée de visite, appareil, provenance approximative) et l'aider à grandir. Ces cookies ne sont déposés que si vous cliquez sur « Accepter » dans notre bandeau ; vous pouvez refuser à tout moment sans perdre l'accès au site.\n\nAucun cookie publicitaire — Fatorati ne dépose aucun cookie publicitaire, ne fait aucun reciblage (retargeting) et ne partage aucune donnée de navigation avec des régies publicitaires ou des réseaux sociaux.\n\nGérer vos préférences — Vous pouvez accepter ou refuser les cookies de mesure d'audience via le bandeau affiché lors de votre première visite. Votre choix est conservé sur votre appareil ; vous pouvez le modifier en effaçant les données de ce site dans votre navigateur.\n\nPour toute question sur cette politique, contactez-nous à bonjour@fatorati.tech.",
     },
@@ -265,13 +335,22 @@ export const EXTRA: Record<Lang, ExtraCopy> = {
     benefits: { eyebrow: "Why Fatorati", title: "Less chasing. More control.", sub: "A clear view that helps you decide quickly and work with confidence.", items: [{ title: "Save time", desc: "Find clients, spending, contracts and deadlines without jumping between tools." }, { title: "Stay compliant", desc: "Anticipate obligations and keep a useful trail of every important action." }, { title: "Work from anywhere", desc: "A mobile-first interface that stays clear in the office or on site." }, { title: "Work as a team", desc: "Assign the right roles and keep control of sensitive access." }] },
     pricing: { eyebrow: "Pricing", title: "A plan for every stage.", sub: "Start simply, then adapt your workspace as your business grows.", plans: [{ name: "Essential", price: "MAD 0", period: "/ to start", desc: "For exploring the essentials.", cta: "Get started", items: ["Dashboard", "Deadline calendar", "Contact management"] }, { name: "Pro", price: "MAD 199", period: "/ month", desc: "For running a growing business.", cta: "Choose Pro", featured: true, items: ["Everything in Essential", "Contracts and legal vault", "Reports and exports", "Roles and permissions"] }, { name: "Team", price: "MAD 499", period: "/ month", desc: "For a team ready to go further.", cta: "Talk to the team", items: ["Everything in Pro", "Multi-user workspace", "Advanced audit trail", "Priority support"] }] },
     blog: { eyebrow: "Resources", title: "The Fatorati journal.", posts: [{ tag: "Management", title: "5 deadlines worth never missing", desc: "A simple method for organizing monthly and quarterly obligations.", date: "Sep 12, 2026", iso: "2026-09-12" }, { tag: "Compliance", title: "Prepare contracts with more confidence", desc: "What to review before signing a service agreement in Morocco.", date: "Sep 04, 2026", iso: "2026-09-04" }, { tag: "Cash flow", title: "Where is your tools budget really going?", desc: "How to spot unused subscriptions and regain control of costs.", date: "Aug 28, 2026", iso: "2026-08-28" }] },
-    faq: { eyebrow: "FAQ", title: "Frequently asked questions.", items: [{ q: "Is Fatorati made for Moroccan small businesses?", a: "Yes. It is designed for artisans, freelancers, small businesses and teams that want practical management without unnecessary complexity." }, { q: "Can I use Fatorati on mobile?", a: "Yes. The interface is mobile-first and comfortable on phones, tablets and desktops." }, { q: "Is my data protected?", a: "Fatorati applies access controls, secure sessions and audit trails for important actions. See our privacy policy for details." }, { q: "Can I change plans?", a: "Yes. You can adjust your plan as your business and needs evolve." }] },
+    faq: { eyebrow: "FAQ", title: "Frequently asked questions.", items: [
+      { q: "What is Fatorati?", a: "Fatorati is a mobile-first management app for artisans, freelancers and small businesses in Morocco. It brings deadlines, contracts, subscriptions and compliance alerts into one place. It is not certified accounting software: tax filings stay with you and the DGI." },
+      { q: "Is Fatorati free or paid?", a: "Essential is MAD 0 to start, with no card. Pro is MAD 199 per month and Team is MAD 499 per month. Prices are in dirhams on the pricing page, and the plan can be changed or stopped at any time." },
+      { q: "Is Fatorati aligned with the CNDP?", a: "The product is built for Law 09-08: account access is limited, data is not sold, and audience measurement runs only after consent. Filing a processing declaration with the CNDP, when required, stays with the controller. See the privacy policy." },
+      { q: "How is it different from accounting software?", a: "Accounting software produces the journal, the balance sheet and the returns. Fatorati runs the day-to-day: dates, contracts, tool costs and risks. They complement each other. Fatorati does not file with the tax authority." },
+      { q: "Is Fatorati made for Moroccan small businesses?", a: "Yes. It is designed for artisans, freelancers and small teams who want practical management without unnecessary complexity, in French and Arabic." },
+      { q: "Can I use Fatorati on mobile?", a: "Yes. The interface is mobile-first and comfortable on phones, tablets and desktops." },
+      { q: "Is my data protected?", a: "Fatorati applies access controls, secure sessions and an audit trail for important actions. See the privacy policy and the CNDP page on Law 09-08 for the legal frame." },
+      { q: "Can I change plans?", a: "Yes. You can change plan as the business grows. Exports are included in Pro and Team. Legal retention of records can outlast the account." },
+    ] },
     contact: { eyebrow: "Contact", title: "Let us talk about your business.", sub: "Questions about Fatorati, pricing or rollout? Our team will get back to you.", email: CONTACT_EMAIL, phone: CONTACT_PHONE, city: `${CONTACT_CITY}, Morocco`, cta: "Email the team" },
     legal: {
       privacy: "Privacy policy",
       privacyText: "Fatorati handles your personal data with one goal: to give you a secure workspace — never to resell it or use it for advertising.\n\nData we collect — When you create an account, we collect your name, email address, and the business data you enter (clients, projects, expenses, contracts, and so on). This data is stored securely and protected by strict access rules (Row Level Security): only you and the team members you authorize can access it.\n\nNo advertising — Fatorati shows no ads and never shares, rents, or sells your data to advertisers or data brokers, in any form.\n\nGoogle Analytics — The only third-party tool we use is Google Analytics, solely to understand how our site is used (pages viewed, time on page, traffic sources) and help Fatorati grow. This data is used in aggregate to guide the product — never to target you with ads. This tool only runs if you accept audience-measurement cookies through our consent banner; you can decline it at any time (see our cookie policy).\n\nRetention — Your data is kept for as long as your account is active. If you delete your account, your data is deleted or anonymized within a reasonable timeframe, except where longer retention is legally required (accounting, tax).\n\nSecurity — Access to your data is protected by secure authentication, encryption in transit (HTTPS), and database-level access controls. See our security policy for details.\n\nUpdates — This policy may change over time; the last-updated date is shown at the bottom of this page.",
       terms: "Terms of use",
-      termsText: "By using Fatorati, you agree to use the service lawfully and keep your credentials confidential. Features may evolve as the service improves.",
+      termsText: "Fatorati is a management workspace for artisans, freelancers and small businesses in Morocco. Creating an account means you accept these terms.\n\nWhat the service is for — Fatorati helps you track deadlines, contracts, spending, subscriptions and documents. It does not replace an accountant, a lawyer, or a filing made with the tax authority. Figures in the site previews (MAD 1,720, +12%) are examples, not your numbers.\n\nAccount — You provide accurate information and keep your credentials confidential. You are responsible for the business data you enter.\n\nPrice — Current plans are those published on the pricing page, in dirhams: MAD 0 to start, MAD 199 per month for Pro, MAD 499 per month for Team. The starting plan does not ask for a card. You can change plan or stop. Legal retention duties for accounting or tax remain yours.\n\nData — Personal-data processing is described in the privacy policy and sits under Law 09-08. Fatorati does not sell your data.\n\nLawful use — You do not use the service to break the law, impersonate someone, or access another person's account.\n\nChanges and governing law — Features may change. Moroccan law applies. Questions: bonjour@fatorati.tech, Tangier.",
       cookies: "Cookie policy",
       cookiesText: "A cookie is a small file placed on your device when you visit a site. Here's what we use on fatorati.tech, and why.\n\nStrictly necessary cookies — Used to run the site itself (remembering your language, theme, and cookie choice). These can't be turned off and don't require consent.\n\nAudience-measurement cookies (Google Analytics) — The only third-party tool we use is Google Analytics, solely to understand site traffic (pages visited, time on page, device, approximate origin) and help the site grow. These cookies are only set if you click \"Accept\" in our banner; you can decline at any time without losing access to the site.\n\nNo advertising cookies — Fatorati sets no advertising cookies, does no retargeting, and shares no browsing data with ad networks or social platforms.\n\nManaging your preferences — You can accept or decline audience-measurement cookies via the banner shown on your first visit. Your choice is stored on your device; you can change it by clearing this site's data in your browser.\n\nQuestions about this policy? Email us at bonjour@fatorati.tech.",
     },
@@ -282,13 +361,22 @@ export const EXTRA: Record<Lang, ExtraCopy> = {
     benefits: { eyebrow: "لماذا فاتورتي", title: "نسيان أقل. تحكم أكبر.", sub: "رؤية واضحة تساعدك على اتخاذ القرار والعمل بثقة.", items: [{ title: "وفّر وقتك", desc: "اعثر على العملاء والمصاريف والعقود والمواعيد دون التنقل بين الأدوات." }, { title: "ابقَ ممتثلاً", desc: "استبق التزاماتك واحتفظ بسجل مفيد لكل إجراء مهم." }, { title: "اعمل من أي مكان", desc: "واجهة مصممة للهاتف وتبقى واضحة في المكتب أو الميدان." }, { title: "اعمل كفريق", desc: "عيّن الأدوار المناسبة وتحكم في صلاحيات الوصول الحساسة." }] },
     pricing: { eyebrow: "الأسعار", title: "خطة لكل مرحلة.", sub: "ابدأ ببساطة وطوّر مساحتك مع نمو نشاطك.", plans: [{ name: "أساسي", price: "0 MAD", period: "/ للبدء", desc: "لاكتشاف الأساسيات.", cta: "ابدأ الآن", items: ["لوحة التحكم", "تقويم المواعيد", "إدارة جهات الاتصال"] }, { name: "برو", price: "199 MAD", period: "/ شهر", desc: "لتسيير نشاط في نمو.", cta: "اختر برو", featured: true, items: ["كل ما في الأساسي", "العقود والخزنة القانونية", "التقارير والتصدير", "الأدوار والصلاحيات"] }, { name: "فريق", price: "499 MAD", period: "/ شهر", desc: "لفريق يريد التقدم أكثر.", cta: "تواصل معنا", items: ["كل ما في برو", "مساحة متعددة المستخدمين", "سجل تدقيق متقدم", "دعم ذو أولوية"] }] },
     blog: { eyebrow: "الموارد", title: "مجلة فاتورتي.", posts: [{ tag: "الإدارة", title: "5 مواعيد لا يجب تفويتها", desc: "طريقة بسيطة لتنظيم التزاماتك الشهرية والفصلية.", date: "12 شتنبر 2026", iso: "2026-09-12" }, { tag: "الامتثال", title: "جهّز عقودك بثقة أكبر", desc: "ما يجب مراجعته قبل توقيع عقد خدمة في المغرب.", date: "04 شتنبر 2026", iso: "2026-09-04" }, { tag: "الخزينة", title: "أين تذهب ميزانية أدواتك؟", desc: "كيف تكتشف الاشتراكات غير المستخدمة وتتحكم في التكاليف.", date: "28 غشت 2026", iso: "2026-08-28" }] },
-    faq: { eyebrow: "الأسئلة الشائعة", title: "أسئلة متكررة.", items: [{ q: "هل فاتورتي مناسبة للشركات المغربية الصغيرة؟", a: "نعم. صممت للحرفيين والمستقلين والشركات الصغيرة والفرق التي تريد إدارة عملية دون تعقيد." }, { q: "هل يمكنني استخدام فاتورتي على الهاتف؟", a: "نعم. الواجهة مصممة للهاتف وتعمل بشكل مريح على الهاتف واللوحة والحاسوب." }, { q: "هل بياناتي محمية؟", a: "تطبق فاتورتي صلاحيات وصول وجلسات آمنة وسجل تدقيق للإجراءات المهمة. راجع سياسة الخصوصية لمزيد من التفاصيل." }, { q: "هل يمكنني تغيير الخطة؟", a: "نعم. يمكنك تعديل خطتك مع تطور نشاطك واحتياجاتك." }] },
+    faq: { eyebrow: "الأسئلة الشائعة", title: "أسئلة متكررة.", items: [
+      { q: "ما هي فاتورتي؟", a: "فاتورتي تطبيق إدارة مصمم للهاتف للحرفيين والمستقلين والمقاولات الصغيرة في المغرب. يجمع المواعيد والعقود والاشتراكات وتنبيهات الامتثال. ليس برنامج محاسبة معتمداً: الإقرارات الجبائية تبقى لدى المديرية العامة للضرائب." },
+      { q: "هل فاتورتي مجانية أم مدفوعة؟", a: "خطة الأساسي بـ 0 درهم للبدء، دون بطاقة بنكية. برو بـ 199 درهماً في الشهر والفريق بـ 499 درهماً في الشهر. الأسعار بالدرهم في صفحة الأسعار، ويمكن تغيير الخطة أو إيقافها في أي وقت." },
+      { q: "هل فاتورتي متوافقة مع اللجنة الوطنية؟", a: "صُمم المنتج للقانون 09-08: وصول محدود إلى الحساب، دون بيع للبيانات، وقياس الجمهور فقط بعد الموافقة. يبقى التصريح بالمعالجة لدى اللجنة، عندما يكون مطلوباً، على عاتق المسؤول عن المعالجة." },
+      { q: "ما الفرق مع برنامج محاسبة؟", a: "برنامج المحاسبة يُنتج اليومية والميزانية والإقرارات. فاتورتي تدير اليومي: المواعيد والعقود وتكلفة الأدوات والمخاطر. الاثنان يتكاملان. فاتورتي لا تُودع الإقرار لدى الضرائب." },
+      { q: "هل فاتورتي مناسبة للشركات المغربية الصغيرة؟", a: "نعم. صُممت للحرفيين والمستقلين والفرق التي تريد إدارة عملية دون تعقيد، بالفرنسية والعربية." },
+      { q: "هل يمكنني استخدام فاتورتي على الهاتف؟", a: "نعم. الواجهة مصممة للهاتف وتعمل بشكل مريح على الهاتف واللوحة والحاسوب." },
+      { q: "هل بياناتي محمية؟", a: "تطبق فاتورتي صلاحيات وصول وجلسات آمنة وسجل تدقيق للإجراءات المهمة. راجع سياسة الخصوصية وصفحة اللجنة حول القانون 09-08." },
+      { q: "هل يمكنني تغيير الخطة؟", a: "نعم. يمكنك تعديل خطتك مع نمو النشاط. التصدير متاح في برو والفريق. قد تتجاوز مدة الحفظ القانونية مدة الحساب." },
+    ] },
     contact: { eyebrow: "تواصل معنا", title: "لنتحدث عن نشاطك.", sub: "لديك سؤال حول فاتورتي أو الأسعار أو طريقة الانطلاق؟ فريقنا يجيبك.", email: CONTACT_EMAIL, phone: CONTACT_PHONE, city: `${CONTACT_CITY}، المغرب`, cta: "راسل الفريق" },
     legal: {
       privacy: "سياسة الخصوصية",
       privacyText: "تتعامل فاتورتي مع بياناتك الشخصية بهدف واحد: منحك مساحة عمل آمنة، دون بيعها أو استخدامها لأغراض إعلانية أبداً.\n\nالبيانات التي نجمعها — عند إنشاء حساب، نجمع اسمك وبريدك الإلكتروني والبيانات المهنية التي تُدخلها (العملاء، المشاريع، المصاريف، العقود، إلخ). تُخزَّن هذه البيانات بشكل آمن وتحميها قواعد وصول صارمة (Row Level Security)، بحيث لا يصل إليها سواك وأعضاء فريقك الذين تُصرّح لهم بذلك.\n\nبدون إعلانات — لا تعرض فاتورتي أي إعلانات، ولا تشارك أو تؤجر أو تبيع بياناتك لأي معلنين أو وسطاء بيانات، تحت أي شكل.\n\nGoogle Analytics — نستخدم فقط أداة Google Analytics، وذلك حصراً لفهم كيفية استخدام موقعنا (الصفحات المُزارة، مدة الزيارة، مصدر الزيارات) من أجل تحسين فاتورتي. تُستخدم هذه الإحصاءات بشكل مُجمّع لتطوير الموقع، وليس لاستهدافك إعلانياً أبداً. لا تُفعَّل هذه الأداة إلا إذا وافقت على ملفات قياس الجمهور عبر شريط الموافقة، ويمكنك رفضها في أي وقت (راجع سياسة ملفات الارتباط).\n\nمدة الاحتفاظ — تُحفظ بياناتك طالما حسابك نشط. عند حذف حسابك، تُحذف بياناتك أو يُعمَّم إخفاء هويتها خلال مدة معقولة، إلا إذا فرض القانون مدة احتفاظ أطول (المحاسبة، الضرائب).\n\nالأمان — الوصول إلى بياناتك محمي بمصادقة آمنة وتشفير أثناء النقل (HTTPS) وضوابط وصول على مستوى قاعدة البيانات. راجع سياسة الأمان لدينا لمزيد من التفاصيل.\n\nالتحديثات — قد تتطور هذه السياسة مع الوقت؛ يظهر تاريخ آخر تحديث أسفل هذه الصفحة.",
       terms: "شروط الاستخدام",
-      termsText: "باستخدام فاتورتي، توافق على استعمال الخدمة بشكل قانوني والحفاظ على سرية بيانات الدخول. قد تتطور الميزات لتحسين الخدمة.",
+      termsText: "فاتورتي مساحة إدارة للحرفيين والمستقلين والشركات الصغيرة في المغرب. إنشاء حساب يعني قبول هذه الشروط.\n\nغاية الخدمة — تساعد فاتورتي على متابعة المواعيد والعقود والمصاريف والاشتراكات والوثائق. لا تحل محل محاسب ولا محامٍ ولا إقرار يُودع لدى المديرية العامة للضرائب. الأرقام في عروض الموقع (1 720 درهماً، +12٪) أمثلة وليست أرقامك.\n\nالحساب — تقدّم معلومات صحيحة وتحافظ على سرية بيانات الدخول. أنت مسؤول عن البيانات المهنية التي تُدخلها.\n\nالسعر — الخطط السارية هي المنشورة في صفحة الأسعار بالدرهم: 0 درهم للبدء، و199 درهماً شهرياً لبرو، و499 درهماً شهرياً للفريق. خطة البدء لا تطلب بطاقة بنكية. يمكنك تغيير الخطة أو التوقف. تبقى التزامات الحفظ المحاسبية أو الجبائية على عاتقك.\n\nالبيانات — معالجة البيانات الشخصية موصوفة في سياسة الخصوصية وتندرج في القانون 09-08. فاتورتي لا تبيع بياناتك.\n\nالاستخدام المشروع — لا تستخدم الخدمة لخرق القانون أو انتحال هوية أو الدخول إلى حساب شخص آخر.\n\nالتطور والقانون الواجب التطبيق — قد تتطور الوظائف. يسري القانون المغربي. للأسئلة: bonjour@fatorati.tech، طنجة.",
       cookies: "سياسة ملفات الارتباط",
       cookiesText: "ملف تعريف الارتباط (cookie) هو ملف صغير يُوضع على جهازك عند زيارتك للموقع. إليك الملفات التي نستخدمها على fatorati.tech، والغرض منها.\n\nملفات ضرورية بشكل صارم — تُستخدم لتشغيل الموقع نفسه (حفظ اختيارك للغة والمظهر وموافقتك على ملفات الارتباط). لا يمكن تعطيلها ولا تتطلب موافقتك.\n\nملفات قياس الجمهور (Google Analytics) — الأداة الخارجية الوحيدة التي نستخدمها هي Google Analytics، وذلك حصراً لفهم حركة الزوار على الموقع (الصفحات المُزارة، مدة الزيارة، نوع الجهاز، المصدر التقريبي) والمساعدة على نمو الموقع. لا تُوضع هذه الملفات إلا إذا ضغطت على «موافقة» في الشريط، ويمكنك الرفض في أي وقت دون أن يؤثر ذلك على وصولك للموقع.\n\nبدون ملفات إعلانية — لا تضع فاتورتي أي ملفات إعلانية، ولا تقوم بإعادة الاستهداف، ولا تشارك أي بيانات تصفح مع شبكات إعلانية أو منصات التواصل الاجتماعي.\n\nإدارة تفضيلاتك — يمكنك قبول أو رفض ملفات قياس الجمهور عبر الشريط الذي يظهر عند أول زيارة لك. يُحفظ اختيارك على جهازك، ويمكنك تغييره بمسح بيانات هذا الموقع من متصفحك.\n\nلأي سؤال حول هذه السياسة، راسلنا على bonjour@fatorati.tech.",
     },
@@ -370,8 +458,9 @@ export default function Landing({ onEnter = () => {}, initialPage }: { onEnter?:
       <main id="main-content">
         {home && <div className="landing-hero-backdrop relative">
           <div className="grid-veil pointer-events-none absolute inset-0 h-[720px]" />
-          <Hero t={t} onEnter={onEnter} />
+          <Hero t={t} lang={lang} onEnter={onEnter} />
         </div>}
+        {!home && <PageIntro lang={lang} page={page} />}
         {(home || page === "features") && <Features t={t} />}
         {(home || page === "assistant") && <Assistant t={t} onEnter={onEnter} />}
         {(home || page === "about") && <AboutSection copy={extra.about} />}
@@ -381,6 +470,7 @@ export default function Landing({ onEnter = () => {}, initialPage }: { onEnter?:
         {(home || page === "faq") && <FaqSection copy={extra.faq} />}
         {(home || page === "contact") && <ContactSection copy={extra.contact} />}
         {(page === "home" || page === "privacy" || page === "terms" || page === "cookies") && <LegalSection copy={extra.legal} active={page === "home" ? undefined : page} />}
+        <ReferenceSection lang={lang} />
       </main>
       <Footer t={t} extra={extra} onEnter={onEnter} />
       <CookieBanner lang={lang} />
@@ -483,6 +573,8 @@ const MOBILE_NAV_LINKS: { section: Exclude<LandingPage, "home">; key: keyof Dict
   { section: "benefits", key: "benefits" },
   { section: "pricing", key: "pricing" },
   { section: "faq", key: "faq" },
+  { section: "about", key: "about" },
+  { section: "contact", key: "contact" },
 ]
 
 const NAV_UI = {
@@ -609,7 +701,7 @@ function Header({ t, lang, setLang, theme, setTheme, onEnter }: { t: Dict; lang:
 
 /* --------------------------------- Hero --------------------------- */
 
-function Hero({ t, onEnter }: { t: Dict; onEnter: () => void }) {
+function Hero({ t, lang, onEnter }: { t: Dict; lang: Lang; onEnter: () => void }) {
   return (
     <section id="hero" className="landing-hero relative mx-auto max-w-6xl px-5 pb-8 pt-16 sm:px-8 sm:pt-24">
       <div className="landing-hero-copy mx-auto max-w-3xl text-center">
@@ -619,6 +711,7 @@ function Hero({ t, onEnter }: { t: Dict; onEnter: () => void }) {
             : <span key={i}>{s.t}</span>)}
         </h1>
         <p className="mz-rise mx-auto mt-5 max-w-xl text-[15.5px] leading-relaxed text-[var(--l-muted)] sm:text-[17px]" style={{ animationDelay: "0.1s" }}>{t.hero.sub}</p>
+        <InlineCitation lang={lang} className="mz-rise mx-auto mt-4 max-w-xl text-[13.5px] leading-relaxed text-[var(--l-muted)]" />
         <div className="mz-rise mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row" style={{ animationDelay: "0.15s" }}>
           <GlowButton onClick={onEnter} className="w-full sm:w-auto">
             {t.signup} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 rtl:rotate-180" />
@@ -699,6 +792,7 @@ function DashboardPreview({ t }: { t: Dict }) {
           </div>
         </div>
       </div>
+      <p className="mt-3 text-center text-[12px] text-[var(--l-faint)]">{t.prev.caption}</p>
     </div>
   )
 }
@@ -767,14 +861,14 @@ function TrendChart({ height = 120 }: { height?: number }) {
 
 /* --------------------------- Features ----------------------------- */
 
-function Features({ t }: { t: Dict }) {
+function Features({ t, showHeading = true }: { t: Dict; showHeading?: boolean }) {
   return (
     <section id="features" className="relative mx-auto max-w-6xl px-5 py-24 sm:px-8">
-      <div className="mx-auto max-w-2xl text-center">
+      {showHeading && <div className="mx-auto max-w-2xl text-center">
         <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-blue-400">{t.feat.eyebrow}</p>
         <h2 className="font-display mt-3 text-[30px] font-bold tracking-tight text-[var(--l-heading)] sm:text-[38px]">{t.feat.title}</h2>
         <p className="mt-3 text-[15px] text-[var(--l-muted)]">{t.feat.sub}</p>
-      </div>
+      </div>}
 
       <div className="mt-14 flex w-full flex-col gap-5">
         <FeatureCard id="calendar-preview" icon={CalendarDays} title={t.f1.title} tag={t.f1.tag}>
@@ -946,7 +1040,7 @@ function SubscriptionWidget({ t }: { t: Dict }) {
 
 /* --------------------------- Assistant ---------------------------- */
 
-function Assistant({ t, onEnter }: { t: Dict; onEnter: () => void }) {
+function Assistant({ t, onEnter, showHeading = true }: { t: Dict; onEnter: () => void; showHeading?: boolean }) {
   return (
     <section id="assistant" className="relative mx-auto max-w-6xl px-5 py-14 sm:px-8">
       <div className="relative overflow-hidden rounded-3xl border border-blue-400/20 bg-gradient-to-b from-blue-500/10 to-transparent p-8 sm:p-12">
@@ -956,7 +1050,7 @@ function Assistant({ t, onEnter }: { t: Dict; onEnter: () => void }) {
             <span className="inline-flex items-center gap-2 rounded-full border border-blue-400/25 bg-blue-500/10 px-3 py-1.5 text-[12px] font-medium text-[var(--l-accent-text)]">
               <Sparkles className="h-3.5 w-3.5" /> {t.asst.badge}
             </span>
-            <h2 className="font-display mt-4 text-[28px] font-bold leading-tight tracking-tight text-[var(--l-heading)] sm:text-[34px]">{t.asst.title}</h2>
+            {showHeading && <h2 className="font-display mt-4 text-[28px] font-bold leading-tight tracking-tight text-[var(--l-heading)] sm:text-[34px]">{t.asst.title}</h2>}
             <p className="mt-4 max-w-md text-[15px] leading-relaxed text-[var(--l-muted)]">{t.asst.desc}</p>
             <div className="mt-6"><GlowButton onClick={onEnter}>{t.asst.cta} <Zap className="h-4 w-4" /></GlowButton></div>
           </div>
@@ -985,14 +1079,14 @@ function Assistant({ t, onEnter }: { t: Dict; onEnter: () => void }) {
   )
 }
 
-function AboutSection({ copy }: { copy: ExtraCopy["about"] }) {
+function AboutSection({ copy, showHeading = true }: { copy: ExtraCopy["about"]; showHeading?: boolean }) {
   return (
     <section id="about" className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
       <div className="grid gap-10 rounded-3xl border border-[var(--l-border)] bg-[var(--l-surface)] p-8 sm:p-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-        <div>
+        {showHeading && <div>
           <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-emerald-400">{copy.eyebrow}</p>
           <h2 className="font-display mt-3 text-[30px] font-bold leading-tight text-[var(--l-heading)] sm:text-[38px]">{copy.title}</h2>
-        </div>
+        </div>}
         <div>
           <p className="text-[15px] leading-relaxed text-[var(--l-muted)]">{copy.desc}</p>
           <ul className="mt-6 space-y-3">
@@ -1004,15 +1098,15 @@ function AboutSection({ copy }: { copy: ExtraCopy["about"] }) {
   )
 }
 
-function BenefitsSection({ copy }: { copy: ExtraCopy["benefits"] }) {
+function BenefitsSection({ copy, showHeading = true }: { copy: ExtraCopy["benefits"]; showHeading?: boolean }) {
   const icons = [Zap, ShieldCheck, Wrench, LayoutDashboard]
   return (
     <section id="benefits" className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
-      <div className="mx-auto max-w-2xl text-center">
+      {showHeading && <div className="mx-auto max-w-2xl text-center">
         <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-emerald-400">{copy.eyebrow}</p>
         <h2 className="font-display mt-3 text-[30px] font-bold text-[var(--l-heading)] sm:text-[38px]">{copy.title}</h2>
         <p className="mt-3 text-[15px] text-[var(--l-muted)]">{copy.sub}</p>
-      </div>
+      </div>}
       <div className="mx-auto mt-12 max-w-3xl space-y-4">
         {copy.items.map((item, i) => {
           const Icon = icons[i]
@@ -1026,14 +1120,14 @@ function BenefitsSection({ copy }: { copy: ExtraCopy["benefits"] }) {
   )
 }
 
-function PricingSection({ copy, onEnter }: { copy: ExtraCopy["pricing"]; onEnter: () => void }) {
+function PricingSection({ copy, onEnter, showHeading = true }: { copy: ExtraCopy["pricing"]; onEnter: () => void; showHeading?: boolean }) {
   return (
     <section id="pricing" className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
-      <div className="mx-auto max-w-2xl text-center">
+      {showHeading && <div className="mx-auto max-w-2xl text-center">
         <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-blue-400">{copy.eyebrow}</p>
         <h2 className="font-display mt-3 text-[30px] font-bold text-[var(--l-heading)] sm:text-[38px]">{copy.title}</h2>
         <p className="mt-3 text-[15px] text-[var(--l-muted)]">{copy.sub}</p>
-      </div>
+      </div>}
       <div className="mx-auto mt-12 max-w-3xl space-y-4">
         {copy.plans.map((plan) => <article key={plan.name} className={`landing-pricing-card ${plan.featured ? "landing-pricing-featured" : ""} relative rounded-2xl border p-6 sm:p-8 ${plan.featured ? "border-blue-400/50 bg-blue-500/10" : "border-[var(--l-border)] bg-[var(--l-surface)]"}`}>
           {plan.featured && <span className="absolute end-6 top-6 rounded-full bg-blue-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white">Pro</span>}
@@ -1051,13 +1145,13 @@ function PricingSection({ copy, onEnter }: { copy: ExtraCopy["pricing"]; onEnter
   )
 }
 
-function BlogSection({ copy }: { copy: ExtraCopy["blog"] }) {
+function BlogSection({ copy, showHeading = true }: { copy: ExtraCopy["blog"]; showHeading?: boolean }) {
   return (
     <section id="blog" className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
-      <div className="mx-auto max-w-2xl text-center">
+      {showHeading && <div className="mx-auto max-w-2xl text-center">
         <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-blue-400">{copy.eyebrow}</p>
         <h2 className="font-display mt-3 text-[30px] font-bold text-[var(--l-heading)] sm:text-[38px]">{copy.title}</h2>
-      </div>
+      </div>}
       <div className="mx-auto mt-12 max-w-3xl space-y-4">
         {copy.posts.map((post) => <article key={post.title} className="landing-resource-card rounded-2xl border border-[var(--l-border)] bg-[var(--l-surface)] p-6 sm:p-7">
           <div className="flex flex-wrap items-center justify-between gap-2"><span className="rounded-full bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold text-blue-400">{post.tag}</span><time dateTime={post.iso} className="text-[11px] text-[var(--l-faint)]">{post.date}</time></div>
@@ -1069,7 +1163,7 @@ function BlogSection({ copy }: { copy: ExtraCopy["blog"] }) {
   )
 }
 
-function FaqSection({ copy }: { copy: ExtraCopy["faq"] }) {
+function FaqSection({ copy, showHeading = true }: { copy: ExtraCopy["faq"]; showHeading?: boolean }) {
   /**
    * Native `<details>` rather than a JS accordion: the answer text is part of
    * the HTML document (so it is indexable and citable by search and AI
@@ -1079,7 +1173,7 @@ function FaqSection({ copy }: { copy: ExtraCopy["faq"] }) {
    */
   return (
     <section id="faq" className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
-      <div className="mx-auto max-w-2xl text-center"><p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-emerald-400">{copy.eyebrow}</p><h2 className="font-display mt-3 text-[30px] font-bold text-[var(--l-heading)] sm:text-[38px]">{copy.title}</h2></div>
+      {showHeading && <div className="mx-auto max-w-2xl text-center"><p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-emerald-400">{copy.eyebrow}</p><h2 className="font-display mt-3 text-[30px] font-bold text-[var(--l-heading)] sm:text-[38px]">{copy.title}</h2></div>}
       <div className="mx-auto mt-12 max-w-3xl divide-y divide-[var(--l-border)] rounded-2xl border border-[var(--l-border)] bg-[var(--l-surface)] px-5 sm:px-7">
         {copy.items.map((item, i) => (
           <details key={item.q} className="landing-faq" open={i === 0}>
@@ -1095,11 +1189,11 @@ function FaqSection({ copy }: { copy: ExtraCopy["faq"] }) {
   )
 }
 
-function ContactSection({ copy }: { copy: ExtraCopy["contact"] }) {
+function ContactSection({ copy, showHeading = true }: { copy: ExtraCopy["contact"]; showHeading?: boolean }) {
   return (
     <section id="contact" className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
       <div className="mx-auto max-w-3xl rounded-3xl border border-blue-400/20 bg-blue-500/10 p-8 sm:p-10">
-        <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-blue-400">{copy.eyebrow}</p><h2 className="font-display mt-3 text-[30px] font-bold text-[var(--l-heading)] sm:text-[38px]">{copy.title}</h2><p className="mt-3 max-w-xl text-[15px] leading-relaxed text-[var(--l-muted)]">{copy.sub}</p>
+        {showHeading && <><p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-blue-400">{copy.eyebrow}</p><h2 className="font-display mt-3 text-[30px] font-bold text-[var(--l-heading)] sm:text-[38px]">{copy.title}</h2></>}<p className="mt-3 max-w-xl text-[15px] leading-relaxed text-[var(--l-muted)]">{copy.sub}</p>
         <div className="mt-8 grid gap-3 sm:grid-cols-3">
           <a href={`mailto:${copy.email}`} className="flex items-center gap-2.5 rounded-xl border border-[var(--l-border)] bg-[var(--l-panel)] p-3 text-[12px] text-[var(--l-text)] hover:border-blue-400/40"><Mail className="h-4 w-4 text-blue-400" />{copy.email}</a>
           {copy.phone && (
@@ -1113,14 +1207,14 @@ function ContactSection({ copy }: { copy: ExtraCopy["contact"] }) {
   )
 }
 
-function LegalSection({ copy, active }: { copy: ExtraCopy["legal"]; active?: "privacy" | "terms" | "cookies" }) {
+function LegalSection({ copy, active, showHeading = true }: { copy: ExtraCopy["legal"]; active?: "privacy" | "terms" | "cookies"; showHeading?: boolean }) {
   const items = [{ id: "privacy", title: copy.privacy, text: copy.privacyText }, { id: "terms", title: copy.terms, text: copy.termsText }, { id: "cookies", title: copy.cookies, text: copy.cookiesText }]
   return (
     <section className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
       <div className="mx-auto max-w-3xl border-t border-[var(--l-border)] pt-10">
         {items.filter((item) => !active || item.id === active).map((item) => (
           <article id={item.id} key={item.id}>
-            <h2 className="font-display text-[24px] font-bold text-[var(--l-heading)]">{item.title}</h2>
+            {showHeading && <h2 className="font-display text-[24px] font-bold text-[var(--l-heading)]">{item.title}</h2>}
             {item.text.split("\n\n").map((para, i) => (
               <p key={i} className="mt-4 text-[14px] leading-relaxed text-[var(--l-muted)]">{para}</p>
             ))}
@@ -1146,6 +1240,7 @@ function Footer({ t, extra, onEnter }: { t: Dict; extra: ExtraCopy; onEnter: () 
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--l-faint)]">{extra.about.eyebrow}</p>
             <div className="mt-4 flex flex-col items-start gap-3 text-[12.5px] text-[var(--l-muted)]">
+              <a href={landingPath("about")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{t.nav.about}</a>
               <a href={landingPath("features")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{t.nav.features}</a>
               <a href={landingPath("benefits")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{t.nav.benefits}</a>
               <a href={landingPath("pricing")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{t.nav.pricing}</a>
@@ -1155,7 +1250,9 @@ function Footer({ t, extra, onEnter }: { t: Dict; extra: ExtraCopy; onEnter: () 
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--l-faint)]">{extra.contact.eyebrow}</p>
             <div className="mt-4 flex flex-col items-start gap-3 text-[12.5px] text-[var(--l-muted)]">
+              <a href={landingPath("contact")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{t.nav.contact}</a>
               <a href={`mailto:${extra.contact.email}`} className="hover:text-[var(--l-heading)]">{extra.contact.email}</a>
+              <a href={GITHUB_URL} className="hover:text-[var(--l-heading)]" rel="noopener noreferrer">GitHub</a>
               <a href={landingPath("faq")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{t.nav.faq}</a>
               <a href={landingPath("privacy")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{extra.legal.privacy}</a>
               <a href={landingPath("terms")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{extra.legal.terms}</a>
