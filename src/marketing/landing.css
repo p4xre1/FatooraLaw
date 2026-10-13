@@ -120,8 +120,8 @@
 .landing-root.landing-atlas .landing-nav-desktop {
   display: none;
   align-items: center;
-  gap: 1.35rem;
-  font-size: 14px;
+  gap: 0.85rem;
+  font-size: 13.5px;
   font-weight: 550;
 }
 .landing-root.landing-atlas .landing-nav-desktop a {
@@ -330,7 +330,7 @@
 .landing-root.landing-atlas[data-theme='dark'] .text-amber-400 { color: #f5cd47; }
 
 /* No opacity-hidden base state: content is always readable if JS is disabled. */
-@keyframes landing-enter { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes landing-enter { from { transform: translateY(10px); } to { transform: none; } }
 @keyframes landing-menu-enter { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 @keyframes landing-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 .landing-root.landing-atlas .mz-rise { animation: landing-enter 650ms cubic-bezier(.22, 1, .36, 1) both; }
@@ -360,6 +360,14 @@
   .landing-root.landing-atlas .landing-feature-card { padding: 20px; }
   .landing-root.landing-atlas .landing-mobile-panel { max-height: calc(100dvh - 68px); }
 }
+.landing-sources table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.landing-sources th, .landing-sources td { text-align: start; padding: 10px 12px; border-top: 1px solid var(--l-border); vertical-align: top; }
+.landing-sources thead th { font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--l-faint); }
+.landing-sources td, .landing-sources th { color: var(--l-text); }
+.landing-sources a { color: var(--l-primary); text-decoration: underline; text-underline-offset: 2px; }
+.landing-quote { margin: 16px 0 0; border-inline-start: 3px solid var(--l-primary); padding-inline-start: 16px; color: var(--l-text); }
+.landing-quote footer { margin-top: 8px; font-size: 12.5px; color: var(--l-faint); }
+
 @media (prefers-reduced-motion: reduce) {
   .landing-root.landing-atlas *,
   .landing-root.landing-atlas *::before,

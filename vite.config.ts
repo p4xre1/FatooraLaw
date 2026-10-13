@@ -16,6 +16,7 @@ import {
   renderHeadTags,
   renderNoIndexHeadTags,
 } from './src/lib/seo.ts'
+import { CONTENT_UPDATED } from './src/marketing/contentMeta.ts'
 
 // Vite config — https://vitejs.dev/config/
 export default defineConfig(({ mode, isSsrBuild }) => {
@@ -120,6 +121,8 @@ type FigmaSiteConfiguration = {
      * empty (and the tag simply omitted) rather than invented.
      */
     sameAs?: string[]
+    /** Topics the entity is a source for. Must match what the public pages actually cover. */
+    knowsAbout?: string[]
   }
   analytics?: {
     googleAnalyticsId?: string
@@ -155,7 +158,7 @@ function figmaSiteConfiguration(config: FigmaSiteConfiguration): Plugin {
   const keywords = config.keywords?.trim() ?? ''
   const hasKeywords = keywords && keywords.toUpperCase() !== 'N/A'
   const org = config.organization
-  const buildDate = new Date().toISOString().slice(0, 10)
+  const buildDate = CONTENT_UPDATED
   const language = sanitizeHtmlValue(config.language) || 'en'
   const headStart = config.customScripts?.headStart ?? ''
   const headEnd = config.customScripts?.headEnd ?? ''
@@ -239,6 +242,14 @@ function figmaSiteConfiguration(config: FigmaSiteConfiguration): Plugin {
             }
           }
           if (org.sameAs && org.sameAs.length > 0) organizationNode.sameAs = org.sameAs
+          if (org.knowsAbout && org.knowsAbout.length > 0) organizationNode.knowsAbout = org.knowsAbout
+          if (description) organizationNode.description = description
+          if (org.addressCountry) {
+            organizationNode.areaServed = {
+              '@type': 'Country',
+              name: org.addressCountry === 'MA' ? 'Morocco' : org.addressCountry,
+            }
+          }
           // Strip undefined *and empty* keys: an empty `telephone: ""` in the
           // entity graph is published to every search engine, so an unset
           // contact detail must be absent rather than blank.

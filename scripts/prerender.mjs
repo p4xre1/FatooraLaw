@@ -40,6 +40,66 @@ function writeRouteDocument(filePath, html) {
   writeFileSync(filePath, html, "utf-8")
 }
 
+/**
+ * Break the React markup onto short lines. Some GEO crawlers and browser
+ * extensions truncate a single multi-dozen-kilobyte line and then report the
+ * page as "83 words, H1 missing" even though the bytes are in the file.
+ * Breaking only on tag boundaries keeps the HTML and the JSON-LD strings valid.
+ */
+function breakHtmlLines(html) {
+  // Tag boundaries only. Do not wrap mid-line: a newline inside a JSON-LD
+  // string would make the schema invalid. Pretty-print JSON-LD first.
+  return html.replace(/></g, ">\n<")
+}
+
+function prettyJsonLd(html) {
+  return html.replace(
+    /<script\b([^>]*\btype="application\/ld\+json"[^>]*)>([\s\S]*?)<\/script>/gi,
+    (full, attrs, body) => {
+      try {
+        const pretty = JSON.stringify(JSON.parse(body.trim()), null, 2)
+        return `<script${attrs}>\n${pretty}\n</script>`
+      } catch {
+        return full
+      }
+    },
+  )
+}
+
+function visibleWords(html) {
+  const text = html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&[a-z]+;/gi, " ")
+  return text.split(/\s+/).filter(Boolean).length
+}
+
+function assertCrawlable(route, html) {
+  const problems = []
+  const h1s = html.match(/<h1\b/g) ?? []
+  if (h1s.length !== 1) problems.push(`expected 1 <h1>, found ${h1s.length}`)
+  if (!html.includes("<blockquote")) problems.push("missing <blockquote>")
+  if (!html.includes('href="/about"')) problems.push("missing /about link")
+  if (!html.includes('href="/contact"')) problems.push("missing /contact link")
+  if (!/"(FAQPage|HowTo|Product|Article)"/.test(html) && !html.includes("FAQPage")) problems.push("missing content schema")
+  if (!html.includes("sameAs")) problems.push("missing sameAs")
+  const words = visibleWords(html)
+  if (words < 450) problems.push(`only ${words} server-rendered words`)
+  const levels = [...html.matchAll(/<h([1-6])\b/gi)].map((match) => Number(match[1]))
+  let previous = 0
+  for (const level of levels) {
+    if (previous && level > previous + 1) {
+      problems.push(`h${level} skips a level after h${previous}`)
+      break
+    }
+    previous = level
+  }
+  const longest = html.split("\n").reduce((max, line) => Math.max(max, line.length), 0)
+  if (longest > 2000) problems.push(`a line is ${longest} characters; a truncating crawler will miss the rest of it`)
+  if (problems.length) throw new Error(`${route} is not GEO-ready: ${problems.join("; ")}`)
+}
+
 async function main() {
   if (!existsSync(ssrEntry)) {
     console.warn(`[prerender] SSR bundle not found at ${ssrEntry} — skipping, shipping client-only render.`)
@@ -76,9 +136,10 @@ async function main() {
       continue
     }
 
-    const document = shell
+    const document = breakHtmlLines(prettyJsonLd(shell
       .replace(HEAD_PATTERN, `<!-- figma:route-head-start -->\n    ${head}\n    <!-- figma:route-head-end -->`)
-      .replace(PRERENDER_SLOT, `${PRERENDER_SLOT}${html}`)
+      .replace(PRERENDER_SLOT, `${PRERENDER_SLOT}${html}`)))
+    assertCrawlable(route, document)
 
     if (route === "/") {
       writeFileSync(indexPath, document, "utf-8")
@@ -98,7 +159,8 @@ async function main() {
 
 main()
   .catch((err) => {
-    console.error("[prerender] Failed — shipping client-only render instead.", err)
+    console.error("[prerender] Failed — refusing to ship a client-only shell.", err)
+    process.exitCode = 1
   })
   .finally(() => {
     // Build-time tools only: never part of the deployed site.
