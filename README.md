@@ -1,7 +1,7 @@
 # Fatorati / FatooraLaw
-
+by mohamed reda yassin
 A React dashboard and marketing site for Moroccan small businesses, with
-Supabase authentication, a protected blog CMS, and onboarding.
+Supabase authentication, a protected blog CMS, and onboarding.   
 
 **Business records are still a local prototype, not a production ERP.**
 See [SECURITY.md](SECURITY.md) and the [code audit](CODE_AUDIT.md) before
