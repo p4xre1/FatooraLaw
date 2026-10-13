@@ -123,10 +123,20 @@ the **Pages project**, not in GitHub:
    [supabase:build] configured from the Cloudflare Pages build environment: https://<ref>.supabase.co (project <ref>)
    ```
 
-   A Pages build with no usable pair now **fails** (visible in the deployment
-   list) instead of publishing a broken site. `ALLOW_UNCONFIGURED_SUPABASE=1`
+   A Pages **production** build with no usable pair now **fails** (visible in
+   the deployment list and as a failed `Cloudflare Pages` check on the pull
+   request) instead of publishing a broken site. A *preview* build only warns,
+   so unrelated pull requests are not blocked. `ALLOW_UNCONFIGURED_SUPABASE=1`
    as a Pages environment variable restores the old "build anyway" behaviour —
    only useful when you deliberately want the marketing pages without auth.
+
+   > **Observed on this repository:** the Cloudflare Pages check on pull request
+   > #22 failed with `Refusing to build a deployable bundle without Supabase …`
+   > That is the proof that the Pages project — the service that actually
+   > serves `fatorati.tech`, since the GitHub workflow's deploy step never runs
+   > — was building **without** `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`.
+   > Fixing §3 above (both environments, then a fresh deployment, without the
+   > build cache the first time) is the whole solution.
 
 ## 4. Deploying from your machine
 
@@ -163,7 +173,8 @@ present for `pnpm build`.
 | --- | --- | --- |
 | Dev-server report at startup | `vite.config.ts` → `figmaSupabaseEnvPlugin` | — |
 | Build report at startup + `dist/build-report.json` | same plugin | `ALLOW_UNCONFIGURED_SUPABASE=1` skips the file |
-| **Failing** Cloudflare Pages build without a usable pair | same plugin (`CF_PAGES=1`) | `ALLOW_UNCONFIGURED_SUPABASE=1` |
+| **Failing** Cloudflare Pages *production* build (`CF_PAGES=1` and `CF_PAGES_BRANCH` equal to the production branch, `main` by default) without a usable pair | same plugin | `ALLOW_UNCONFIGURED_SUPABASE=1`, or rename the production branch via `CF_PAGES_PRODUCTION_BRANCH` |
+| Warning (not failure) on a Cloudflare Pages *preview* build | same plugin | — |
 | **Failing** any CI build on request | same plugin | `REQUIRE_SUPABASE_ENV=1` (opt-in), `ALLOW_UNCONFIGURED_SUPABASE=1` (opt-out) |
 | Failed job on `main` when the variables are absent | `.github/workflows/deploy.yml` | run it on a PR (warning only), or set the variables |
 | Banner + console warning in the browser | `src/lib/supabase.ts`, `src/components/SupabaseSetupNotice.tsx` | — |

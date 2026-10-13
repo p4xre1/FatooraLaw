@@ -417,13 +417,35 @@ function figmaSupabaseEnvPlugin(mode: string, isDev: boolean): Plugin {
       if (isSsr) return
       readEnv()
       if (report?.configured) return
-      const strict =
-        process.env.ALLOW_UNCONFIGURED_SUPABASE !== '1' &&
-        (process.env.CF_PAGES === '1' || process.env.REQUIRE_SUPABASE_ENV === '1')
-      if (!strict) return
+      if (process.env.ALLOW_UNCONFIGURED_SUPABASE === '1') return
+
+      // A deployment that replaces production must not be built without the
+      // variables (that is how the live site ended up unable to sign anyone
+      // in). Preview deployments only warn: they cannot authenticate, but
+      // failing them would put a red check on every unrelated pull request.
+      const onCloudflare = process.env.CF_PAGES === '1'
+      const branch = process.env.CF_PAGES_BRANCH ?? ''
+      const productionBranch = process.env.CF_PAGES_PRODUCTION_BRANCH ?? 'main'
+      const isProductionDeployment = onCloudflare && (branch === '' || branch === productionBranch)
+      const strict = isProductionDeployment || process.env.REQUIRE_SUPABASE_ENV === '1'
+      const hint =
+        'Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to this build environment (docs/ENVIRONMENT.md), ' +
+        'or pass ALLOW_UNCONFIGURED_SUPABASE=1 to build the marketing pages anyway.'
+      if (!strict) {
+        if (onCloudflare) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            `[supabase:build] preview deployment of "${branch || 'unknown branch'}" has no usable Supabase configuration: ` +
+              'sign-in will not work on this preview. ' +
+              hint,
+          )
+        }
+        return
+      }
       this.error(
-        `Refusing to build a deployable bundle without Supabase: ${report?.problem?.message ?? 'VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are missing'}` +
-          ' Set them in this build environment (docs/ENVIRONMENT.md), or pass ALLOW_UNCONFIGURED_SUPABASE=1 to build the marketing pages anyway.',
+        `Refusing to build a deployable bundle without Supabase: ${report?.problem?.message ?? 'VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are missing'} ` +
+          `(Cloudflare Pages build of "${branch || productionBranch}" — set the variables for Production and Preview in the Pages project, then redeploy.) ` +
+          hint,
       )
     },
     writeBundle(options) {
