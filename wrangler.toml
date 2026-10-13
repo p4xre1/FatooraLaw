@@ -26,8 +26,11 @@ pages_build_output_dir = "dist"
 # inlined into the browser bundle at BUILD time — a runtime `[vars]` entry here
 # would never reach the bundle.
 #
-# Set them in the Pages dashboard instead, as build variables, for BOTH
-# Production and Preview:
+# Current state: `.env.production` is committed with this project's public
+# pair (project `xithosetdfwoqbxmufvw`), so Pages builds already authenticate
+# with nothing set in the dashboard. Setting the variables in the Pages
+# dashboard, as build variables for BOTH Production and Preview, overrides
+# the committed values (use that to rotate keys or switch projects):
 #   Pages project → Settings → Variables and secrets → Add →
 #     VITE_SUPABASE_URL      = https://<project-ref>.supabase.co
 #     VITE_SUPABASE_ANON_KEY = <public anon/publishable key>   (mark as secret)

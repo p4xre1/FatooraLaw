@@ -4,6 +4,9 @@ build/
 .cache/
 .env*
 !.env.example
+# Public, publishable Supabase config only (see the file's header) — committed
+# on purpose so dashboard-less builds (Cloudflare Pages Git) can authenticate.
+!.env.production
 .vite/
 vite.config.*.timestamp-*
 *.tsbuildinfo
