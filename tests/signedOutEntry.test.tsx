@@ -6,6 +6,8 @@ import { useMizan } from "../src/store/useMizan"
 const mock = vi.hoisted(() => ({ login: vi.fn() }))
 vi.mock("../src/lib/supabase", () => ({
   isSupabaseConfigured: true,
+  supabaseConfigProblem: null,
+  supabaseConfigWarning: null,
   supabase: { auth: { signInWithPassword: mock.login } },
 }))
 vi.mock("../src/hooks/useSupabaseAuth", () => ({ useSupabaseAuth: () => ({ ready: true, recovery: false, clearRecovery: vi.fn(), logout: vi.fn() }) }))

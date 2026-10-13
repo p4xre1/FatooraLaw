@@ -38,6 +38,32 @@ The server listens on `0.0.0.0:5173` by default and accepts Arena's `.e2b.app`
 preview hosts. Vite environment variables are included in the browser bundle:
 **never put a Supabase service-role key in a `VITE_*` variable.**
 
+If the login screen reports that Supabase is not configured, it now names the
+exact cause instead of a generic message: a missing variable, swapped values, a
+dashboard link pasted instead of the API URL, or a `service_role`/`sb_secret_`
+key, which is refused rather than used. That diagnostic lives in
+`src/lib/supabaseConfig.ts` (tests in `tests/supabaseConfig.test.ts`). Changing
+`.env` requires a Vite restart; `.env.local` overrides `.env` and is ignored by
+git.
+
+### Running without Supabase credentials (development only)
+
+Accounts live in Supabase, so with no usable credentials there is nothing to
+sign in with. On a dev server only (`pnpm dev`), the login screen therefore
+offers **Continuer en mode local (développement)**: an explicitly labelled,
+opt-in local workspace backed by the browser-local record store, with no
+Supabase account and no network request. It is remembered per tab, cleared on
+sign-out, and the top bar keeps showing `Mode local (dev)` so it can never be
+mistaken for a real account.
+
+This path cannot reach a deployed site. `src/lib/localDevMode.ts` gates every
+entry point on `import.meta.env.DEV`, which Vite replaces with `false` in every
+`vite build` (any mode, including Cloudflare deploys), so `signInLocally()`
+refuses and the dev-only UI is dropped from the production bundle
+(`tests/localDevMode.test.tsx` pins this behaviour).**Never** work around a
+Supabase configuration problem by weakening this flag or by shipping a
+service-role key: configure the two public variables instead.
+
 ## Checks
 
 ```sh

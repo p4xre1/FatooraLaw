@@ -4,7 +4,9 @@ import {
   ArrowRight, ArrowLeft, ShieldCheck, ShieldAlert, Lock, Eye, EyeOff, CheckCircle2, AlertCircle, KeyRound, Loader2,
 } from "lucide-react"
 import { checkPassword, MAX_NAME_LENGTH, sanitizeInput } from "../modules/auth/lib/validation"
-import { isSupabaseConfigured, supabase } from "../lib/supabase"
+import { isSupabaseConfigured, supabaseConfigProblem, supabase } from "../lib/supabase"
+import { signInLocally } from "../lib/localDevMode"
+import SupabaseSetupNotice from "./SupabaseSetupNotice"
 import { Logo } from "./nav"
 import { Btn, Field, Input, Checkbox, Modal } from "./kit"
 
@@ -74,7 +76,13 @@ function Notice({ kind, children }: { kind: "error" | "success"; children: React
     : "border-good/20 bg-good-50 text-emerald-700"
   const Icon = kind === "error" ? AlertCircle : CheckCircle2
   return (
-    <div className={`mb-4 flex items-start gap-2 rounded-lg border px-3 py-2.5 text-[12.5px] leading-relaxed ${styles}`}>
+    // Announced by screen readers, like the modular auth forms' FormAlert:
+    // a configuration problem is only actionable if it is actually heard.
+    <div
+      role={kind === "error" ? "alert" : "status"}
+      aria-live={kind === "error" ? "assertive" : "polite"}
+      className={`mb-4 flex items-start gap-2 rounded-lg border px-3 py-2.5 text-[12.5px] leading-relaxed ${styles}`}
+    >
       <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
       <span>{children}</span>
     </div>
@@ -131,7 +139,10 @@ export default function Auth({
 
   function requireSupabase() {
     if (isSupabaseConfigured) return true
-    setError("Supabase n'est pas configuré. Ajoutez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY dans le fichier .env, puis redémarrez Vite.")
+    setError(
+      supabaseConfigProblem?.message ??
+        "Supabase n'est pas configuré. Ajoutez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY dans le fichier .env, puis redémarrez Vite.",
+    )
     return false
   }
 
@@ -259,6 +270,11 @@ export default function Auth({
           <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1 text-[12px] font-semibold text-brand-700">
             <Lock className="h-3.5 w-3.5" /> Espace sécurisé
           </span>
+
+          {/* `import.meta.env.DEV` is replaced by Vite at build time, so this
+              escape hatch (see lib/localDevMode.ts) is dropped from production
+              bundles instead of merely being unreachable at runtime. */}
+          <SupabaseSetupNotice onContinueLocally={import.meta.env.DEV ? signInLocally : undefined} />
 
           {view === "login" && (
             <>

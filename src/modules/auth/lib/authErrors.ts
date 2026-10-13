@@ -1,4 +1,16 @@
 import type { Translation } from "../language/translations"
+import { supabaseConfigProblem } from "../../../lib/supabase"
+
+/**
+ * Adds the variables to fix to a translated "not configured" message. Only
+ * `.env` identifiers are appended, so the sentence stays readable in every
+ * language while the operator still learns which variable is missing/refused
+ * (see src/lib/supabaseConfig.ts).
+ */
+export function notConfiguredMessage(translated: string): string {
+  const variables = supabaseConfigProblem?.variables ?? []
+  return variables.length > 0 ? `${translated} (.env : ${variables.join(", ")})` : translated
+}
 
 /**
  * Supabase (GoTrue) returns English error strings regardless of app

@@ -1,4 +1,4 @@
-import { Suspense, lazy, useMemo, useState } from "react"
+import { Suspense, lazy, useEffect, useMemo, useState } from "react"
 import { Loader2, ShieldAlert } from "lucide-react"
 import type { ModuleKey } from "./store/types"
 import { useMizan } from "./store/useMizan"
@@ -9,6 +9,7 @@ import { useSupabaseAuth } from "./hooks/useSupabaseAuth"
 import { useOnboarding } from "./hooks/useOnboarding"
 import { allowedModules } from "./lib/permissions"
 import { useIdleLogout } from "./lib/useIdleLogout"
+import { forgetLocalDevSession, localDevSessionRequested, signInLocally } from "./lib/localDevMode"
 import Sidebar from "./components/Sidebar"
 import Topbar from "./components/Topbar"
 import LocalSaveNotice from "./components/LocalSaveNotice"
@@ -50,8 +51,21 @@ export default function App() {
   const [showLogin, setShowLogin] = useState(false)
   const [idleSignedOut, setIdleSignedOut] = useState(false)
 
+  // Leaving a local development session must also clear its opt-in marker,
+  // otherwise the next reload would sign the same tab straight back in.
+  function signOut() {
+    forgetLocalDevSession()
+    return logout()
+  }
+
+  // Development-only: restore the opt-in local session in this tab (no-op in
+  // production builds and whenever Supabase is configured — see lib/localDevMode).
+  useEffect(() => {
+    if (localDevSessionRequested()) signInLocally()
+  }, [])
+
   useIdleLogout(!!auth, IDLE_TIMEOUT_MS, () => {
-    void logout()
+    void signOut()
     setShowLogin(true)
     setIdleSignedOut(true)
   })
@@ -63,7 +77,7 @@ export default function App() {
   }
 
   if (recovery) {
-    return <Auth onBack={() => { clearRecovery(); void logout() }} initialView="reset" onRecoveryDone={clearRecovery} />
+    return <Auth onBack={() => { clearRecovery(); void signOut() }} initialView="reset" onRecoveryDone={clearRecovery} />
   }
 
   if (!auth) {
@@ -80,7 +94,7 @@ export default function App() {
           <ShieldAlert className="mx-auto h-8 w-8 text-warn" />
           <h1 className="text-xl font-bold">Aucun accès disponible</h1>
           <p className="text-sm text-muted">Ce compte est désactivé ou aucun module ne lui est attribué. Contactez le propriétaire de votre espace.</p>
-          <Btn onClick={() => { void logout() }}>Se déconnecter</Btn>
+          <Btn onClick={() => { void signOut() }}>Se déconnecter</Btn>
         </div>
       </div>
     )
@@ -104,7 +118,7 @@ export default function App() {
         setMobileOpen={setMobileOpen}
       />
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar title={title} onMenu={() => setMobileOpen(true)} onNavigate={go} onLogout={() => { void logout() }} />
+        <Topbar title={title} onMenu={() => setMobileOpen(true)} onNavigate={go} onLogout={() => { void signOut() }} />
         <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:px-8">
           <LocalSaveNotice />
           <Suspense key={auth.id} fallback={<Fallback />}>
