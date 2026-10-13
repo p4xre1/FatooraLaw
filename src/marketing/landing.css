@@ -309,6 +309,11 @@
 .landing-root.landing-atlas #assistant > div { background: var(--l-surface); border-color: var(--l-border); }
 .landing-root.landing-atlas .landing-pricing-card { border-radius: 12px; box-shadow: 0 2px 5px rgb(9 30 66 / 3%); }
 .landing-root.landing-atlas .landing-pricing-featured { border-color: var(--l-primary); background: var(--l-chip); }
+.landing-root.landing-atlas .landing-faq summary { list-style: none; cursor: pointer; }
+.landing-root.landing-atlas .landing-faq summary::-webkit-details-marker { display: none; }
+.landing-root.landing-atlas .landing-faq summary svg { transition: transform 180ms ease; }
+.landing-root.landing-atlas .landing-faq[open] summary svg { transform: rotate(180deg); }
+.landing-root.landing-atlas .landing-faq summary:focus-visible { outline: 2px solid #3b82f6; outline-offset: 3px; border-radius: 6px; }
 .landing-root.landing-atlas .landing-resource-card { border-radius: 12px; background: var(--l-panel); transition: border-color 180ms ease, transform 180ms ease; }
 .landing-root.landing-atlas .landing-resource-card:hover { border-color: #85b8ff; transform: translateY(-2px); }
 .landing-root.landing-atlas #contact > div { background: var(--l-soft-blue); border-color: transparent; border-radius: 14px; }

@@ -4,12 +4,20 @@
     <!-- figma:head-start -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title><!-- figma:title --></title>
     <!-- figma:head-end -->
+    <!-- figma:route-head-start -->
+    <!-- The block between these markers is rewritten per route: by the Vite
+         plugin for the fallback/default document, and by scripts/prerender.mjs
+         for every public page (title, description, canonical, Open Graph and
+         the per-page JSON-LD). Keep the markers on their own lines. -->
+    <title><!-- figma:title --></title>
+    <meta name="description" content="" />
+    <link rel="canonical" href="/" />
+    <!-- figma:route-head-end -->
   </head>
   <body>
     <!-- figma:body-start -->
-    <div id="root"></div>
+    <div id="root"><!-- figma:prerender-start --><!-- figma:prerender-end --></div>
     <script type="module" src="/src/main.tsx"></script>
     <!-- figma:body-end -->
   </body>

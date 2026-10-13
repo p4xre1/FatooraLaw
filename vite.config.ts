@@ -1,29 +1,70 @@
-import { defineConfig, type HtmlTagDescriptor, type Plugin } from 'vite'
+import { defineConfig, loadEnv, type HtmlTagDescriptor, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'node:path'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 
 import siteConfiguration from './.figma/make/site.json' with { type: 'json' }
+import { NOT_FOUND_PATH, LANDING_PAGES, landingPath } from './src/lib/routes.ts'
+import { readSupabaseConfig } from './src/lib/supabaseConfig.ts'
+import {
+  buildLlmsTxt,
+  buildSitemapXml,
+  isoDate,
+  privatePaths,
+  privateTitleFor,
+  renderHeadTags,
+  renderNoIndexHeadTags,
+} from './src/lib/seo.ts'
 
 // Vite config — https://vitejs.dev/config/
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode, isSsrBuild }) => {
   // .figma/make/deploy-preview passes `--mode development` for cached-preview builds.
   const emitSourcemaps = mode === 'development'
 
   return {
     base: process.env.FIGMA_PUBLIC_URL ? `${process.env.FIGMA_PUBLIC_URL}/` : '/',
+    // Provenance for the setup screen: when the deployed site reports a
+    // configuration problem, the operator needs to know *which* build is
+    // looking at them and how old it is (see components/SupabaseSetupNotice).
+    define: {
+      'import.meta.env.VITE_BUILD_TIME': JSON.stringify(new Date().toISOString()),
+    },
     build: {
       sourcemap: emitSourcemaps ? 'inline' : false,
       minify: !emitSourcemaps,
+      // The SSR build (`vite build --ssr src/entry-server.tsx`) has its own
+      // single entry and must not inherit the two HTML documents.
+      ...(isSsrBuild
+        ? {}
+        : {
+            rollupOptions: {
+              // Two documents: the public site (`index.html`, prerendered per
+              // route by scripts/prerender.mjs) and the private shell
+              // (`admin.html`: empty #root + noindex head, reused for the CMS,
+              // the auth screens, the dashboard and 404.html).
+              input: {
+                index: path.resolve(import.meta.dirname, 'index.html'),
+                admin: path.resolve(import.meta.dirname, 'admin.html'),
+              },
+            },
+          }),
     },
     plugins: [
       react(),
       tailwindcss(),
       figmaSiteConfiguration(siteConfiguration),
+      figmaSupabaseEnvPlugin(mode, mode === 'development'),
+      figmaTurnstileGuard(),
+      figmaSeoRoutes({
+        siteUrl: siteConfiguration.siteUrl ?? '',
+        socialImage: siteConfiguration.openGraph?.image ?? '',
+      }),
       figmaErrorOverlayReplay(),
       figmaReactRefreshBoundaryFallback(),
       figmaMakeKitPlugin({ storiesGlob: '/src/**/*.stories.{ts,tsx,js,jsx}' }),
     ],
+
     resolve: {
       alias: {
         '@': path.resolve(import.meta.dirname, './src'),
@@ -143,24 +184,38 @@ function figmaSiteConfiguration(config: FigmaSiteConfiguration): Plugin {
     },
     transformIndexHtml: {
       order: 'pre',
-      handler(html) {
+      handler(html, ctx) {
+        const isPrivateShell = ctx.path.split('?')[0].endsWith('admin.html')
         let result = html
         result = replaceHtmlCommentSlot(result, 'figma:lang', language)
-        result = replaceHtmlCommentSlot(result, 'figma:title', escapeHtmlText(title))
         result = replaceHtmlCommentSlot(result, 'figma:head-start', headStart)
         result = replaceHtmlCommentSlot(result, 'figma:head-end', headEnd)
         result = replaceHtmlCommentSlot(result, 'figma:body-start', bodyStart)
         result = replaceHtmlCommentSlot(result, 'figma:body-end', bodyEnd)
 
-        const tags: HtmlTagDescriptor[] = []
-        if (description) {
-          tags.push({ tag: 'meta', attrs: { name: 'description', content: description }, injectTo: 'head' })
+        // The route-dependent head (title, description, canonical, Open Graph,
+        // per-page JSON-LD) lives between the `figma:route-head-*` markers so
+        // scripts/prerender.mjs can rewrite it once per public route. What is
+        // injected here is the *fallback* document: the home head for
+        // index.html, a noindex head for the private shell (admin.html).
+        const routeHead = isPrivateShell
+          ? renderNoIndexHeadTags(escapeHtmlText(title))
+          : renderHeadTags({
+              page: 'home',
+              siteUrl,
+              socialImage: socialImage || undefined,
+              lastmod: buildDate,
+            })
+        if (result.includes('<!-- figma:route-head-start -->')) {
+          result = result.replace(
+            /<!-- figma:route-head-start -->[\s\S]*?<!-- figma:route-head-end -->/,
+            `<!-- figma:route-head-start -->\n    ${routeHead}\n    <!-- figma:route-head-end -->`,
+          )
         }
+
+        const tags: HtmlTagDescriptor[] = []
         if (hasKeywords) {
           tags.push({ tag: 'meta', attrs: { name: 'keywords', content: keywords }, injectTo: 'head' })
-        }
-        if (siteUrl) {
-          tags.push({ tag: 'link', attrs: { rel: 'canonical', href: `${siteUrl}/` }, injectTo: 'head' })
         }
         if (org && siteUrl) {
           const orgId = `${siteUrl}/#organization`
@@ -184,9 +239,12 @@ function figmaSiteConfiguration(config: FigmaSiteConfiguration): Plugin {
             }
           }
           if (org.sameAs && org.sameAs.length > 0) organizationNode.sameAs = org.sameAs
-          // Strip undefined keys so they don't render as literal "undefined" in the JSON-LD.
+          // Strip undefined *and empty* keys: an empty `telephone: ""` in the
+          // entity graph is published to every search engine, so an unset
+          // contact detail must be absent rather than blank.
           for (const key of Object.keys(organizationNode)) {
-            if (organizationNode[key] === undefined) delete organizationNode[key]
+            const value = organizationNode[key]
+            if (value === undefined || value === null || value === "") delete organizationNode[key]
           }
 
           const graph = [
@@ -215,19 +273,11 @@ function figmaSiteConfiguration(config: FigmaSiteConfiguration): Plugin {
         if (favicon) {
           tags.push({ tag: 'link', attrs: { rel: 'icon', href: favicon }, injectTo: 'head' })
         }
-        if (title) {
-          tags.push({ tag: 'meta', attrs: { property: 'og:title', content: title }, injectTo: 'head' })
-        }
-        if (description) {
-          tags.push({ tag: 'meta', attrs: { property: 'og:description', content: description }, injectTo: 'head' })
-        }
-        if (socialImage) {
-          tags.push(
-            { tag: 'meta', attrs: { property: 'og:image', content: socialImage }, injectTo: 'head' },
-            { tag: 'meta', attrs: { name: 'twitter:card', content: 'summary_large_image' }, injectTo: 'head' },
-            { tag: 'meta', attrs: { name: 'twitter:image', content: socialImage }, injectTo: 'head' },
-          )
-        }
+        // Open Graph tags (og:title/og:description/og:url/og:image) are
+        // per-route and emitted by renderHeadTags into the route-head block
+        // above — never inject a second, relative copy here: two og:image tags
+        // (one absolute, one relative) is exactly the kind of duplicate that
+        // makes a social preview unreliable.
 
         // Google Analytics is loaded by src/lib/cookieConsent.ts only after
         // explicit consent. Never emit tracking scripts into the HTML shell.
@@ -270,6 +320,285 @@ function figmaSiteConfiguration(config: FigmaSiteConfiguration): Plugin {
           tags,
         }
       },
+    },
+  }
+}
+
+/**
+ * Public Supabase configuration, checked where it is actually consumed.
+ *
+ * `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are *inlined into the browser
+ * bundle at build time*, which is why "the .env looks right" and "the deployed
+ * site still says Supabase is not configured" can both be true: the deployed
+ * bundle was built somewhere else (a CI runner, Cloudflare Pages, another
+ * machine) where the variables were absent. Nothing used to say so — the build
+ * succeeded, the site deployed, and only the login screen complained.
+ *
+ * This plugin closes that gap:
+ *   - it validates the pair with the same rules the app uses
+ *     (src/lib/supabaseConfig.ts) and prints the verdict on `pnpm dev` and
+ *     `pnpm build`, naming the exact variable and the fix;
+ *   - it **fails a Cloudflare Pages / opt-in build** that has no usable pair
+ *     instead of shipping an authentication-less deployment —
+ *     set `ALLOW_UNCONFIGURED_SUPABASE=1` to build anyway (e.g. to preview the
+ *     marketing pages), or `REQUIRE_SUPABASE_ENV=1` to demand it in any CI;
+ *   - it writes `dist/build-report.json`, so anyone can check a *live*
+ *     deployment with one request instead of guessing.
+ *
+ * See docs/ENVIRONMENT.md for every supported source of these variables.
+ */
+function figmaSupabaseEnvPlugin(mode: string, isDev: boolean): Plugin {
+  let report: ReturnType<typeof readSupabaseConfig> | null = null
+  let reportEnv: { url?: string; anonKey?: string } = {}
+  let isSsr = false
+
+  function readEnv(): void {
+    if (report) return
+    // `loadEnv` merges .env / .env.local / .env.[mode] / .env.[mode].local and
+    // process.env with exactly the precedence Vite uses to inline VITE_*.
+    const env = loadEnv(mode, import.meta.dirname, 'VITE_')
+    reportEnv = { url: env.VITE_SUPABASE_URL, anonKey: env.VITE_SUPABASE_ANON_KEY }
+    report = readSupabaseConfig(reportEnv)
+  }
+
+  /** The project ref (`https://<ref>.supabase.co`), safe to print and to publish. */
+  function projectRef(): string | null {
+    const url = report?.url
+    const match = url ? /^([a-z0-9-]+)\.supabase\.(co|in)$/i.exec(new URL(url).hostname) : null
+    return match ? match[1] : null
+  }
+
+  function source(): string {
+    if (process.env.CF_PAGES === '1') return 'the Cloudflare Pages build environment'
+    if (process.env.GITHUB_ACTIONS === 'true') return 'the GitHub Actions build environment'
+    if (process.env.CI) return 'a CI build environment'
+    return `the ${mode} mode environment (.env / .env.local / process.env)`
+  }
+
+  function printReport(): void {
+    readEnv()
+    const prefix = isDev ? '[supabase:dev]' : '[supabase:build]'
+    if (report?.configured) {
+      const ref = projectRef()
+      // eslint-disable-next-line no-console
+      console.log(
+        `${prefix} configured from ${source()}: ${report.url}${ref ? ` (project ${ref})` : ''}` +
+          (report.warning ? `\n${prefix} warning: ${report.warning}` : ''),
+      )
+      return
+    }
+    // eslint-disable-next-line no-console
+    console.warn(
+      [
+        `${prefix} no usable Supabase configuration in ${source()}.`,
+        `  The login screen will show "Configuration Supabase requise" and Supabase is disabled.`,
+        `  Cause: ${report?.problem?.message ?? 'VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY are missing.'}`,
+        '  Fix, depending on where this build runs:',
+        '    • local          → create .env (see .env.example) and restart the dev server;',
+        '    • GitHub Actions → Repository → Settings → Secrets and variables → Actions;',
+        '    • Cloudflare     → Pages project → Settings → Variables and secrets, then redeploy',
+        '                       (set it for BOTH Production and Preview).',
+        '  Full list of cases + verification: docs/ENVIRONMENT.md',
+      ].join('\n'),
+    )
+  }
+
+  return {
+    name: 'figma-supabase-env',
+    configResolved(config) {
+      isSsr = Boolean(config.build.ssr)
+      // The SSR build shares this configuration but must not duplicate the
+      // report (and its output directory is temporary).
+      if (isSsr) return
+      readEnv()
+      printReport()
+    },
+    buildStart() {
+      if (isSsr) return
+      readEnv()
+      if (report?.configured) return
+      const strict =
+        process.env.ALLOW_UNCONFIGURED_SUPABASE !== '1' &&
+        (process.env.CF_PAGES === '1' || process.env.REQUIRE_SUPABASE_ENV === '1')
+      if (!strict) return
+      this.error(
+        `Refusing to build a deployable bundle without Supabase: ${report?.problem?.message ?? 'VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are missing'}` +
+          ' Set them in this build environment (docs/ENVIRONMENT.md), or pass ALLOW_UNCONFIGURED_SUPABASE=1 to build the marketing pages anyway.',
+      )
+    },
+    writeBundle(options) {
+      if (isSsr) return
+      readEnv()
+      const outDir = options.dir ?? path.resolve(import.meta.dirname, 'dist')
+      const payload = {
+        builtAt: new Date().toISOString(),
+        mode,
+        source: source(),
+        commit: process.env.CF_PAGES_COMMIT_SHA ?? process.env.GITHUB_SHA ?? null,
+        supabase: {
+          configured: Boolean(report?.configured),
+          problemCode: report?.problem?.code ?? null,
+          projectRef: projectRef(),
+        },
+      }
+      try {
+        writeFileSync(path.join(outDir, 'build-report.json'), `${JSON.stringify(payload, null, 2)}\n`, 'utf-8')
+      } catch {
+        // Reporting must never break a build.
+      }
+    },
+  }
+}
+
+/**
+ * Turns the documented Turnstile/CSP coupling into a build-time warning.
+ *
+ * `VITE_TURNSTILE_SITE_KEY` loads a script and an iframe from
+ * `https://challenges.cloudflare.com`. The production Content-Security Policy
+ * in `public/_headers` ships without that origin (deliberately, so the CSP stays
+ * tight), so enabling the key without editing `_headers` produces a *silent*
+ * production failure: the script is blocked, the token stays empty, and the
+ * admin login answers "captcha failed" with nothing in the UI explaining why.
+ * Warning at build time is cheap; debugging that from a user report is not.
+ */
+function figmaTurnstileGuard(): Plugin {
+  return {
+    name: 'figma-turnstile-guard',
+    apply: 'build',
+    configResolved(config) {
+      if (!process.env.VITE_TURNSTILE_SITE_KEY) return
+      let policy = ''
+      try {
+        // Only real directives count — the Turnstile paragraph in the comment
+        // block above them mentions the same origin.
+        policy = readFileSync(path.resolve(import.meta.dirname, 'public/_headers'), 'utf-8')
+          .split('\n')
+          .filter((line) => !line.trimStart().startsWith('#'))
+          .join('\n')
+      } catch {
+        return
+      }
+      if (policy.includes('challenges.cloudflare.com')) return
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[turnstile] VITE_TURNSTILE_SITE_KEY is set, but public/_headers does not allow https://challenges.cloudflare.com.\n' +
+          '  In production the script and iframe will be blocked by the CSP and the admin login will fail silently.\n' +
+          '  Add " https://challenges.cloudflare.com" to script-src and a "frame-src https://challenges.cloudflare.com;" directive\n' +
+          '  in public/_headers (see SECURITY.md), then rebuild.',
+      )
+    },
+  }
+}
+
+/**
+ * Routing + SEO artifacts, generated from `src/lib/routes.ts` so the deploy
+ * configuration can never drift from the application's real URLs:
+ *
+ *   - `sitemap.xml`  — every indexable public page (the hand-written version
+ *     shipped a single `/` entry, so 11 real pages were invisible to crawlers);
+ *   - `llms.txt`     — the same page list rewritten for AI assistants;
+ *   - `_redirects`   — explicit `200` rewrites per route (host-independent:
+ *     works whether or not the host prefers an extensionless file, a
+ *     `.html` file or a directory index), plus the 301s that stop the
+ *     generated `.html` mirrors from competing with the clean URLs. There is
+ *     deliberately **no** `/*` catch-all any more: it turned every typo into
+ *     a `200 OK` copy of the homepage (a soft 404). Unknown paths now fall
+ *     through to `404.html`, which Cloudflare Pages serves with a real 404
+ *     status while still booting the SPA.
+ *   - `404.html` + one document per private route (`/login`, `/dashboard`, …)
+ *     — the shell with a `noindex` head and an empty `#root`, so a crawler
+ *     (or a curious visitor) never sees the signed-in screens, and the client
+ *     never hydrates the public page over a different screen.
+ */
+function figmaSeoRoutes({ siteUrl, socialImage }: { siteUrl: string; socialImage: string }): Plugin {
+  const origin = siteUrl.replace(/\/+$/, '')
+  const shellPath = (route: string) => `${route === '/' ? '' : route}/index.html`
+  const mirrorPath = (route: string) => `${route === '/' ? 'index' : route.slice(1)}.html`
+
+  // The rendered shells are captured at the end of the HTML transform (hashed
+  // asset links included) and written in `writeBundle`, because the HTML
+  // documents are not part of `bundle` at `generateBundle` time.
+  const shells: { index?: string; admin?: string } = {}
+  let isSsrBuild = false
+
+  return {
+    name: 'figma-seo-routes',
+    apply: 'build',
+    configResolved(config) {
+      isSsrBuild = Boolean(config.build.ssr)
+    },
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        const file = ctx.path.split('?')[0]
+        if (file.endsWith('admin.html')) shells.admin = html
+        else if (file.endsWith('index.html')) shells.index = html
+        return html
+      },
+    },
+    writeBundle(options) {
+      if (isSsrBuild || !shells.admin) return
+      const outDir = options.dir ?? path.resolve(import.meta.dirname, 'dist')
+      const headPattern = /<!-- figma:route-head-start -->[\s\S]*?<!-- figma:route-head-end -->/
+
+      const write = (fileName: string, source: string) => {
+        const target = path.join(outDir, fileName)
+        mkdirSync(path.dirname(target), { recursive: true })
+        writeFileSync(target, source, 'utf-8')
+      }
+
+      /** The private shell with its own noindex head. */
+      const documentFor = (path: string) =>
+        shells.admin!.includes('<!-- figma:route-head-start -->')
+          ? shells.admin!.replace(
+              headPattern,
+              `<!-- figma:route-head-start -->\n    ${renderNoIndexHeadTags(privateTitleFor(path))}\n    <!-- figma:route-head-end -->`,
+            )
+          : shells.admin!
+
+      // 1. One document per private route + 404.html, so no crawler (and no
+      //    visitor) can ever reach a signed-in screen through a public URL.
+      for (const path of [NOT_FOUND_PATH, ...privatePaths()]) {
+        const html = documentFor(path)
+        write(shellPath(path), html)
+        write(mirrorPath(path), html)
+      }
+
+      // 2. Sitemap + llms.txt, generated from the same page list as the app.
+      const lastmod = isoDate()
+      write('sitemap.xml', buildSitemapXml(origin, lastmod))
+      write('llms.txt', buildLlmsTxt(origin))
+
+      // 3. Host-independent routing rules (see the doc comment above).
+      const publicRoutes = LANDING_PAGES.map(landingPath)
+      const rules = [
+        '# Generated by vite.config.ts (figma-seo-routes) from src/lib/routes.ts.',
+        '# Do not hand-edit: add a page to src/lib/routes.ts and rebuild instead.',
+        '',
+        '# Every public page is a real, prerendered document; rewrite it explicitly',
+        '# so the same URL resolves identically on any static host.',
+        ...publicRoutes.filter((route) => route !== '/').map((route) => `${route}  ${shellPath(route)}  200`),
+        '',
+        '# Private screens keep their own document (empty #root + noindex head).',
+        ...privatePaths().map((route) => `${route}  ${shellPath(route)}  200`),
+        '# The CMS is client-routed under /admin: it only ever needs the shell.',
+        '/admin/*  /admin.html  200',
+        '',
+        '# Same document, one canonical URL: keep the .html mirrors out of results.',
+        ...[...privatePaths(), ...publicRoutes].map((route) => `${mirrorPath(route)}  ${route}  301`),
+        '',
+        '# Unknown paths are intentionally NOT caught here: the host serves',
+        '# 404.html with a real 404 status, and that document boots the SPA so the',
+        '# in-app not-found screen still renders (no more soft 404s).',
+        '',
+      ]
+      write('_redirects', rules.join('\n'))
+
+      // 4. The route list for scripts/prerender.mjs (removed again by it).
+      write(
+        'seo-routes.json',
+        JSON.stringify({ origin, socialImage: socialImage || null, routes: publicRoutes }, null, 2),
+      )
     },
   }
 }

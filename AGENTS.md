@@ -13,13 +13,31 @@ A Vite development server is **already running** on `$PORT` (default 8443). You 
 
 This is the canonical project structure. Start with task-relevant files below. Only follow imports or inspect other files when required, when a documented path is missing, or when the repository contradicts this guide.
 
-- `src/main.tsx` - React entrypoint; imports `src/index.css` and mounts `src/App.tsx` into the `#root` element
-- `src/App.tsx` - Primary application component and the usual starting point for UI work
-- `src/index.css` - Global CSS entrypoint and Tailwind CSS v4 import
-- `index.html` - Vite HTML shell containing the `#root` element and loading `src/main.tsx`
+- `src/main.tsx` - React entrypoint; imports `src/index.css` plus the self-hosted fonts and mounts the app into the `#root` element
+- `src/App.tsx` - Primary application component; renders the screen that matches the current URL (public page, auth screen, dashboard module or not-found)
+- `src/lib/routes.ts` - **the** URL contract (public pages, auth paths, module paths). Add a page here first; the sitemap, `llms.txt`, `_redirects` and the prerendered documents are generated from it
+- `src/lib/router.ts` - small history router (`useRoutePath`, `navigate`, `onInternalLinkClick`)
+- `src/lib/seo.ts` - per-route titles/descriptions, sitemap/`llms.txt` builders, `<head>` application
+- `src/lib/contact.ts` - public contact details, read from `.figma/make/site.json` (single source; placeholders refused)
+- `src/index.css` - Global CSS entrypoint and Tailwind CSS v4 import (no external font/CDN import — fonts are bundled)
+- `index.html` / `admin.html` - Vite HTML shells: public (prerendered per route) and private (`noindex`, empty `#root`)
+- `scripts/prerender.mjs` - post-build step that writes one real document per public route
 - `package.json` - Project dependencies and the Vite build, development, preview, and formatting scripts
-- `vite.config.ts` - Vite configuration with React, Tailwind CSS v4, and Figma Make plugins plus the `@` alias for `src`
+- `vite.config.ts` - Vite configuration with React, Tailwind CSS v4, Figma Make plugins, the Supabase/Turnstile build guards, the generated SEO artifacts and the `@` alias for `src`
 - `.mise.toml` - Toolchain versions for Node.js and pnpm
+
+## URLs and routing rules
+
+- **Never add a `#fragment` link.** Every screen has a real path; sections are
+  pages (`/features`, not `/#features`). In-page scroll targets travel in
+  `history.state` (`navigate(path, { state: { focus: id } })`).
+- Keep `src/lib/routes.ts` as the only place that knows a path: components,
+  the deploy config and the tests all read from it.
+- Private screens must stay `noindex`: the build writes them a `noindex`
+  document, `public/_headers` sends `X-Robots-Tag`, and `App.tsx` applies
+  `applyNoIndexHead`. Add any new private path to `privatePaths()` too.
+- Environment variables: `VITE_*` values are inlined **at build time**. Never
+  assume a runtime variable reaches the browser. See `docs/ENVIRONMENT.md`.
 
 ## Dependencies
 

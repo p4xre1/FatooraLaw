@@ -16,9 +16,26 @@ pages_build_output_dir = "dist"
 #   Build command:    pnpm install && pnpm build
 #   Build output dir: dist
 #   Custom domain:    fatorati.tech (add under Pages project → Custom domains)
-
-[env.production]
-vars = { NODE_ENV = "production" }
-
-[env.preview]
-vars = { NODE_ENV = "preview" }
+#
+# ---------------------------------------------------------------------------
+# IMPORTANT — where the Supabase variables must NOT be set
+# ---------------------------------------------------------------------------
+# `[vars]` and `[env.*]` in this file configure the *Workers runtime* of a
+# Pages project (Functions). This site is a static SPA with no Functions, and
+# `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are consumed by Vite and
+# inlined into the browser bundle at BUILD time — a runtime `[vars]` entry here
+# would never reach the bundle.
+#
+# Set them in the Pages dashboard instead, as build variables, for BOTH
+# Production and Preview:
+#   Pages project → Settings → Variables and secrets → Add →
+#     VITE_SUPABASE_URL      = https://<project-ref>.supabase.co
+#     VITE_SUPABASE_ANON_KEY = <public anon/publishable key>   (mark as secret)
+# then trigger a new deployment (variables are only read when a build starts).
+#
+# Cloudflare Pages exposes CF_PAGES=1 during builds: a build that has no usable
+# pair now FAILS instead of shipping a site nobody can sign in to. Escape hatch
+# (marketing pages only): ALLOW_UNCONFIGURED_SUPABASE=1
+#
+# Full walkthrough, every alternative source, and how to verify a deployed
+# bundle: docs/ENVIRONMENT.md

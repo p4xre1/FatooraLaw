@@ -6,6 +6,22 @@ import App from './App'
 import AdminApp from './admin/AdminApp'
 import './index.css'
 
+// Fonts are bundled, never fetched from a third party: the CSP in
+// public/_headers allows no external font/style origin, and the privacy and
+// cookie policies state that Google Analytics (consent-gated) is the only
+// third-party tool this site talks to. Self-hosting is what makes that true —
+// and it removes a render-blocking request from every page load.
+// The variable-font packages ship one CSS file per variable axis covering every
+// subset; the browser downloads only the subset a page actually needs, thanks
+// to the `unicode-range` in each @font-face. Arabic (Tajawal) is static, so the
+// four weights the interface uses are imported explicitly.
+import '@fontsource-variable/sora/index.css'
+import '@fontsource-variable/jetbrains-mono/index.css'
+import '@fontsource/tajawal/arabic-400.css'
+import '@fontsource/tajawal/arabic-500.css'
+import '@fontsource/tajawal/arabic-700.css'
+import '@fontsource/tajawal/arabic-800.css'
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: { staleTime: 30_000, refetchOnWindowFocus: false, retry: 1 },

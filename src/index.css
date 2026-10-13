@@ -1,11 +1,14 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap');
 @import 'tailwindcss';
 
 @theme {
-  --font-sans: 'Inter', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
-  --font-display: 'Sora', 'Inter', system-ui, sans-serif;
-  --font-arabic: 'Tajawal', 'Inter', system-ui, sans-serif;
+  /* Self-hosted fonts only: no request leaves the visitor's browser for a font
+     (see the notice in src/main.tsx). 'Fatorati Landing Sans' is the Inter
+     variable file already shipped in public/fonts/landing, so the dashboard and
+     the marketing page share one copy. */
+  --font-sans: 'Fatorati Landing Sans', 'Inter Variable', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, monospace;
+  --font-display: 'Sora Variable', 'Fatorati Landing Sans', system-ui, sans-serif;
+  --font-arabic: 'Tajawal', 'Fatorati Landing Sans', system-ui, sans-serif;
 
   /* Ink / surfaces (light content area) */
   --color-ink: #0b1220;

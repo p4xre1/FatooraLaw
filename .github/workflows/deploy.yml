@@ -38,6 +38,34 @@ jobs:
       - name: Regression tests
         run: pnpm test
 
+      # The two `VITE_*` variables are *inlined into the bundle at build time*.
+      # A build without them still succeeds and still deploys — it just ships a
+      # site where nobody can sign in, and the only symptom is a banner on the
+      # login screen. Fail loudly instead of shipping that, except on pull
+      # requests (where a fork/Dependabot run legitimately has no secrets).
+      # Full explanation of every source of these variables: docs/ENVIRONMENT.md
+      - name: Verify public build variables
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          if [ -n "$VITE_SUPABASE_URL" ] && [ -n "$VITE_SUPABASE_ANON_KEY" ]; then
+            echo "VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are available to this build."
+            exit 0
+          fi
+          message="VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY are not available to this build, so the bundle produced here cannot authenticate anyone. Add them in Repository → Settings → Secrets and variables → Actions (variables or secrets, both work) — and, because production is served by the Cloudflare Pages Git integration, also in the Pages project: Settings → Variables and secrets, for BOTH Production and Preview, then redeploy. See docs/ENVIRONMENT.md"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "::warning title=Supabase build variables missing::$message"
+            exit 0
+          fi
+          echo "::error title=Supabase build variables missing::$message"
+          exit 1
+
+      - name: Note when this workflow cannot deploy
+        if: env.HAS_CLOUDFLARE_CREDENTIALS != 'true'
+        run: |
+          echo "::notice title=Cloudflare deploy step skipped::CLOUDFLARE_API_TOKEN and/or CLOUDFLARE_ACCOUNT_ID are not set as repository secrets, so the deploy step below is skipped and this workflow only validates the build. Production is deployed by the Cloudflare Pages Git integration — set the VITE_SUPABASE_* variables there too, or add the two secrets to deploy from here. See docs/ENVIRONMENT.md"
+
       - name: Build
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}

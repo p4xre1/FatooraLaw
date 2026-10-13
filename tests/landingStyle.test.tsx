@@ -20,19 +20,22 @@ it("defaults to the public light design and applies no class to the body or dash
   expect(root.getAttribute("data-theme")).toBe("dark")
 })
 
-it("opens an accessible features flyout and preserves each public demo anchor", () => {
-  render(<Landing onEnter={() => {}} />)
+it("opens an accessible features flyout whose cards link to /features and reach their preview", () => {
+  const view = render(<Landing onEnter={() => {}} />)
   const toggle = screen.getByRole("button", { name: "Explorer les fonctionnalités" })
   fireEvent.click(toggle)
   expect(toggle.getAttribute("aria-expanded")).toBe("true")
   const panel = screen.getByRole("region", { name: "Fonctionnalités" })
   const links = within(panel).getAllByRole("link")
+  // The previews are sections of /features, not `#anchors`: the link is the
+  // page URL and the target is reached without putting a fragment in the URL.
   for (const id of ["calendar-preview", "risk-preview", "tools-preview"]) {
-    expect(links.some((link) => link.getAttribute("href") === `#${id}`)).toBe(true)
-    expect(document.getElementById(id)).not.toBeNull()
+    expect(links.some((link) => link.getAttribute("href") === "/features")).toBe(true)
+    expect(view.container.querySelector(`[id="${id}"]`)).not.toBeNull()
   }
   fireEvent.click(within(panel).getByRole("link", { name: /Outil de Calendrier/ }))
   expect(screen.queryByRole("region", { name: "Fonctionnalités" })).toBeNull()
+  expect(window.location.hash).toBe("")
 })
 
 it("supports ArrowDown to focus the flyout and Escape to restore its toggle", () => {

@@ -6,6 +6,8 @@ beforeEach(() => {
   window.history.replaceState({}, "", "/")
   localStorage.clear()
   document.getElementById("ld-content")?.remove()
+  document.querySelector('link[rel="canonical"]')?.remove()
+  document.querySelector('meta[property="og:url"]')?.remove()
   document.getElementById("fatorati-google-analytics")?.remove()
   delete window.gtag
   delete window.dataLayer
@@ -32,34 +34,38 @@ it.each(["Français", "English", "العربية"])("removes the hero badge in %
   expect(view.container.querySelector("#contact")).not.toBeNull()
 })
 
-it("uses section anchors on desktop and mobile, and keeps the header outside the hero wrapper", () => {
+it("gives every public section its own URL on desktop and mobile, and keeps the header outside the hero wrapper", () => {
   const view = render(<Landing onEnter={() => {}} />)
   const header = view.container.querySelector("header")!
   expect(header.parentElement?.classList.contains("landing-root")).toBe(true)
   const desktop = header.querySelector("nav")!
-  expect(within(desktop).getByRole("link", { name: "Fonctionnalités" }).getAttribute("href")).toBe("#features")
-  expect(within(desktop).getByRole("link", { name: "Tarifs" }).getAttribute("href")).toBe("#pricing")
+  // No `#` anywhere: each section is a real page a visitor can link to.
+  expect(within(desktop).getByRole("link", { name: "Fonctionnalités" }).getAttribute("href")).toBe("/features")
+  expect(within(desktop).getByRole("link", { name: "Tarifs" }).getAttribute("href")).toBe("/pricing")
   fireEvent.click(screen.getByRole("button", { name: "Ouvrir le menu" }))
   const mobile = screen.getByRole("navigation", { name: "Navigation principale" })
   const link = within(mobile).getByRole("link", { name: "Fonctionnalités" })
-  expect(link.getAttribute("href")).toBe("#features")
+  expect(link.getAttribute("href")).toBe("/features")
   fireEvent.click(link)
   expect(screen.queryByRole("navigation", { name: "Navigation principale" })).toBeNull()
+  // Client-side navigation: the URL changed and the features page is mounted.
+  expect(window.location.pathname).toBe("/features")
+  expect(view.container.querySelector("#features")).not.toBeNull()
 })
 
-it("keeps standalone pages working and links them back to homepage sections", () => {
-  window.history.replaceState({}, "", "/pricing/")
+it("keeps standalone pages working and links back to the other public pages", () => {
+  window.history.replaceState({}, "", "/pricing")
   const view = render(<Landing onEnter={() => {}} />)
   expect(view.container.querySelector("#pricing")).not.toBeNull()
   expect(view.container.querySelector("#hero")).toBeNull()
   const header = view.container.querySelector("header")!
-  expect(within(header).getByRole("link", { name: "Fonctionnalités" }).getAttribute("href")).toBe("/#features")
+  expect(within(header).getByRole("link", { name: "Fonctionnalités" }).getAttribute("href")).toBe("/features")
 })
 
 it("lets visitors explore the features without opening login, while sign-up still opens login", () => {
   const enter = vi.fn()
   render(<Landing onEnter={enter} />)
-  expect(screen.getByRole("link", { name: "Explorer" }).getAttribute("href")).toBe("#features")
+  expect(screen.getByRole("link", { name: "Explorer" }).getAttribute("href")).toBe("/features")
   fireEvent.click(screen.getAllByRole("button", { name: "S'inscrire" })[0])
   expect(enter).toHaveBeenCalledOnce()
 })
@@ -72,18 +78,24 @@ it("loads no analytics until a consent choice and keeps refusing functional", ()
   expect(screen.queryByRole("dialog", { name: "En savoir plus" })).toBeNull()
 })
 
-it("renders homepage hash targets before scrolling to a bookmarked section", () => {
+it("rewrites a legacy /#pricing bookmark to the real /pricing URL", () => {
   window.history.replaceState({}, "", "/#pricing")
-  const original = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollIntoView")
-  const scroll = vi.fn()
-  Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: scroll })
-  try {
-    render(<Landing onEnter={() => {}} />)
-    expect(scroll).toHaveBeenCalled()
-    const target = scroll.mock.contexts[0] as HTMLElement
-    expect(target.id).toBe("pricing")
-  } finally {
-    if (original) Object.defineProperty(HTMLElement.prototype, "scrollIntoView", original)
-    else delete (HTMLElement.prototype as { scrollIntoView?: unknown }).scrollIntoView
-  }
+  const view = render(<Landing onEnter={() => {}} />)
+  // The fragment is gone from the address bar and the pricing page is mounted.
+  expect(window.location.hash).toBe("")
+  expect(window.location.pathname).toBe("/pricing")
+  expect(view.container.querySelector("#pricing")).not.toBeNull()
+})
+
+it("updates the canonical URL and title when a visitor changes page", () => {
+  const view = render(<Landing onEnter={() => {}} />)
+  expect(document.title).toContain("TPE marocaines")
+  expect(document.querySelector('link[rel="canonical"]')?.getAttribute("href")).toBe("https://fatorati.tech/")
+
+  fireEvent.click(within(view.container.querySelector("header")!).getByRole("link", { name: "Tarifs" }))
+
+  expect(document.querySelector('link[rel="canonical"]')?.getAttribute("href")).toBe("https://fatorati.tech/pricing")
+  expect(document.title).toContain("Tarifs Fatorati")
+  expect(document.querySelector('meta[property="og:url"]')?.getAttribute("content")).toBe("https://fatorati.tech/pricing")
+  expect(document.getElementById("ld-content")?.textContent).toContain("https://fatorati.tech/pricing")
 })

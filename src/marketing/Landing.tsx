@@ -7,7 +7,11 @@ import {
 } from "lucide-react"
 import { Logo } from "../components/nav"
 import { SITE_URL } from "../lib/site"
+import { CONTACT_CITY, CONTACT_COUNTRY, CONTACT_EMAIL, CONTACT_PHONE, telHref } from "../lib/contact"
 import { readCookieConsent, writeCookieConsent, useMarketingAnalytics } from "../lib/cookieConsent"
+import { applyDocumentHead } from "../lib/seo"
+import { LANDING_PAGES, landingPath, landingPageFromPath, type LandingPage } from "../lib/routes"
+import { currentHistoryState, navigate, onInternalLinkClick, useRoutePath } from "../lib/router"
 import useLandingMotion from "./useLandingMotion"
 import "./landing.css"
 
@@ -20,15 +24,17 @@ const DASHBOARD_GRAD = "linear-gradient(135deg, var(--l-primary), #4f9bf7)"
  * Kept next to the copy it describes so it can never drift from what's
  * actually rendered on the page.
  * ---------------------------------------------------------------- */
+/**
+ * Node identifiers inside JSON-LD keep a `#fragment` on purpose: they name a
+ * graph node (`/#organization`, `/features#content`) that is referenced by
+ * `@id` from other documents — they are not links a visitor or crawler ever
+ * navigates to. Every *navigable* URL in this project is fragment-free.
+ */
 const ORG_REF = { "@id": `${SITE_URL}/#organization` }
 /** Assumption — same as `organization.foundingDate` in .figma/make/site.json. Correct both if wrong. */
 const CONTENT_PUBLISHED = "2026-01-01"
 /** Bump this whenever the copy in this file changes materially. */
 const CONTENT_UPDATED = "2026-10-12"
-
-function pagePath(page: LandingPage): string {
-  return page === "home" ? "/" : `/${page}/`
-}
 
 /** MAD price strings appear as either "199 MAD" (fr/ar) or "MAD 199" (en); pull the digits either way. */
 function priceDigits(price: string): string {
@@ -43,12 +49,12 @@ function offersFromPlans(plans: ExtraCopy["pricing"]["plans"]) {
     description: plan.desc,
     price: priceDigits(plan.price),
     priceCurrency: "MAD",
-    url: `${SITE_URL}/pricing/`,
+    url: `${SITE_URL}${landingPath("pricing")}`,
   }))
 }
 
-function buildJsonLd(page: LandingPage, lang: Lang, t: Dict, extra: ExtraCopy): Record<string, unknown> {
-  const url = `${SITE_URL}${pagePath(page)}`
+export function buildJsonLd(page: LandingPage, lang: Lang, t: Dict, extra: ExtraCopy): Record<string, unknown> {
+  const url = `${SITE_URL}${landingPath(page)}`
   const base = {
     "@context": "https://schema.org",
     "@id": `${url}#content`,
@@ -88,8 +94,16 @@ function buildJsonLd(page: LandingPage, lang: Lang, t: Dict, extra: ExtraCopy): 
         name: "Fatorati",
         description: t.hero.sub,
         applicationCategory: "BusinessApplication",
+        applicationSubCategory: "Gestion d'entreprise",
         operatingSystem: "Web",
+        softwareVersion: "1.0",
+        dateModified: CONTENT_UPDATED,
+        inLanguage: ["fr", "en", "ar"],
+        // Priced in Moroccan dirhams (MAD) — the currency an assistant quoting
+        // this product must use, and the one the pricing page shows.
         offers: offersFromPlans(extra.pricing.plans),
+        featureList: [t.f1.title, t.f2.title, t.f3.title],
+        publisher: ORG_REF,
       }
     case "about":
       return { ...base, "@type": "AboutPage", name: extra.about.title, description: extra.about.desc }
@@ -100,7 +114,21 @@ function buildJsonLd(page: LandingPage, lang: Lang, t: Dict, extra: ExtraCopy): 
     case "features":
       return { ...base, "@type": "WebPage", name: t.feat.title, description: t.feat.sub }
     case "contact":
-      return { ...base, "@type": "ContactPage", name: extra.contact.title, description: extra.contact.sub }
+      return {
+        ...base,
+        "@type": "ContactPage",
+        name: extra.contact.title,
+        description: extra.contact.sub,
+        // Same values as the rendered section (src/lib/contact.ts) and the
+        // site-wide Organization node — one address, one email, one city.
+        about: { ...ORG_REF, name: "Fatorati" },
+        mainEntity: {
+          "@type": "Organization",
+          "@id": `${SITE_URL}/#organization`,
+          email: CONTACT_EMAIL || undefined,
+          address: { "@type": "PostalAddress", addressLocality: CONTACT_CITY, addressCountry: CONTACT_COUNTRY },
+        },
+      }
     case "blog":
       return { ...base, "@type": "CollectionPage", name: extra.blog.title, description: `${extra.blog.eyebrow} — Fatorati` }
     case "privacy":
@@ -112,39 +140,25 @@ function buildJsonLd(page: LandingPage, lang: Lang, t: Dict, extra: ExtraCopy): 
   }
 }
 
-/** Upserts a single <script type="application/ld+json"> in <head> and keeps document.title in sync per page. */
-function usePageStructuredData(page: LandingPage, lang: Lang, t: Dict, extra: ExtraCopy) {
+/**
+ * Keeps the document head in sync with the page being shown.
+ *
+ * The built documents are prerendered per route (scripts/prerender.mjs), so
+ * this is what stops a client-side navigation from leaving the previous
+ * page's title, description, `canonical` and JSON-LD behind — the classic
+ * "every page claims to be the homepage" SPA bug.
+ */
+function usePageHead(page: LandingPage, lang: Lang, t: Dict, extra: ExtraCopy) {
   useEffect(() => {
-    const schema = buildJsonLd(page, lang, t, extra)
-    let script = document.getElementById("ld-content") as HTMLScriptElement | null
-    if (!script) {
-      script = document.createElement("script")
-      script.id = "ld-content"
-      script.type = "application/ld+json"
-      document.head.appendChild(script)
-    }
-    script.textContent = JSON.stringify(schema)
-
-    if (page !== "home") {
-      document.title = `${schema.name as string} | Fatorati`
-    }
+    applyDocumentHead({ page, siteUrl: SITE_URL, jsonLd: buildJsonLd(page, lang, t, extra) })
   }, [page, lang, t, extra])
 }
 
-type Lang = "fr" | "en" | "ar"
+export type Lang = "fr" | "en" | "ar"
 type Theme = "dark" | "light"
 type Seg = { t: string; hi?: boolean }
-type LandingPage = "home" | "features" | "assistant" | "about" | "benefits" | "pricing" | "blog" | "faq" | "contact" | "privacy" | "terms" | "cookies"
 
-function getLandingPage(): LandingPage {
-  if (typeof window === "undefined") return "home"
-  const path = window.location.pathname.split("/").filter(Boolean)[0]
-  return (["features", "assistant", "about", "benefits", "pricing", "blog", "faq", "contact", "privacy", "terms", "cookies"] as string[]).includes(path)
-    ? path as LandingPage
-    : "home"
-}
-
-type ExtraCopy = {
+export type ExtraCopy = {
   nav: { benefits: string; pricing: string; faq: string }
   about: { eyebrow: string; title: string; desc: string; points: string[] }
   benefits: { eyebrow: string; title: string; sub: string; items: { title: string; desc: string }[] }
@@ -161,7 +175,7 @@ const LANGS: { code: Lang; label: string }[] = [
   { code: "ar", label: "العربية" },
 ]
 
-const T: Record<Lang, {
+export const T: Record<Lang, {
   nav: { features: string; assistant: string; benefits: string; pricing: string; faq: string }
   signup: string; explore: string
   hero: { headline: Seg[]; sub: string; note: string }
@@ -189,7 +203,7 @@ const T: Record<Lang, {
     cal: { month: "Septembre 2026", renew: "Renouv.", pay: "Paiement", legal: "Échéance légale", days: ["L", "M", "M", "J", "V", "S", "D"], upcoming: "Dates cruciales à venir", events: [{ day: 8, type: "pay", label: "Paiement Adobe CC — 299 MAD" }, { day: 15, type: "renew", label: "Renouvellement Microsoft 365" }, { day: 23, type: "legal", label: "Déclaration TVA (DGI)" }, { day: 27, type: "renew", label: "Fin abonnement Sage Compta" }] },
     prev: { greet: "Bonjour, Karim 👋", title: "Suivi des outils", add: "Ajouter", stats: ["Dépense / mois", "Outils actifs", "Échéances 7j"], trend: "Tendance des dépenses", plan: "Plan Pro", nav: ["Tableau", "Contrats", "Calendrier", "Risques", "Outils"] },
     asst: { badge: "Fatorati Assistant", title: "Intégration juridique intelligente", desc: "Un panneau léger et intelligent qui vous sert dynamiquement les règles juridiques locales exactes et des modèles de contrats prêts à l'emploi — adaptés au droit marocain.", cta: "Découvrir l'assistant", panel: "Modèles suggérés", panelSub: "Basés sur votre activité", rules: ["Contrat de prestation — art. 723 DOC", "Clause de confidentialité (Loi 09-08)", "Facture conforme ICE + TVA 20%"], verified: "Vérifié selon le DOC & la Loi 09-08" },
-    footer: { title: "Prêt à équilibrer votre gestion ?", compliance: "Conforme Loi 09-08 (CNDP)", copy: "© 2026 Fatorati · Casablanca, Maroc" },
+    footer: { title: "Prêt à équilibrer votre gestion ?", compliance: "Conforme Loi 09-08 (CNDP)", copy: `© 2026 Fatorati · ${CONTACT_CITY}, Maroc` },
   },
   en: {
     nav: { features: "Features", assistant: "Assistant", benefits: "Benefits", pricing: "Pricing", faq: "FAQ" },
@@ -206,7 +220,7 @@ const T: Record<Lang, {
     cal: { month: "September 2026", renew: "Renewal", pay: "Payment", legal: "Legal deadline", days: ["M", "T", "W", "T", "F", "S", "S"], upcoming: "Upcoming crucial dates", events: [{ day: 8, type: "pay", label: "Adobe CC payment — 299 MAD" }, { day: 15, type: "renew", label: "Microsoft 365 renewal" }, { day: 23, type: "legal", label: "VAT return (DGI)" }, { day: 27, type: "renew", label: "Sage Compta subscription ends" }] },
     prev: { greet: "Hello, Karim 👋", title: "Tools tracking", add: "Add", stats: ["Spend / month", "Active tools", "Due in 7d"], trend: "Spending trend", plan: "Pro plan", nav: ["Dashboard", "Contracts", "Calendar", "Risks", "Tools"] },
     asst: { badge: "Fatorati Assistant", title: "Smart legal integration", desc: "A lightweight, intelligent panel that dynamically serves the exact local legal rules and ready-to-use contract templates — tailored to Moroccan law.", cta: "Discover the assistant", panel: "Suggested templates", panelSub: "Based on your activity", rules: ["Service contract — art. 723 DOC", "Confidentiality clause (Law 09-08)", "Invoice compliant ICE + VAT 20%"], verified: "Verified against the DOC & Law 09-08" },
-    footer: { title: "Ready to balance your management?", compliance: "Law 09-08 compliant (CNDP)", copy: "© 2026 Fatorati · Casablanca, Morocco" },
+    footer: { title: "Ready to balance your management?", compliance: "Law 09-08 compliant (CNDP)", copy: `© 2026 Fatorati · ${CONTACT_CITY}, Morocco` },
   },
   ar: {
     nav: { features: "الميزات", assistant: "المساعد", benefits: "المزايا", pricing: "الأسعار", faq: "الأسئلة" },
@@ -223,11 +237,11 @@ const T: Record<Lang, {
     cal: { month: "شتنبر 2026", renew: "تجديد", pay: "دفع", legal: "موعد قانوني", days: ["ن", "ث", "ر", "خ", "ج", "س", "ح"], upcoming: "مواعيد حاسمة قادمة", events: [{ day: 8, type: "pay", label: "دفع Adobe CC — 299 MAD" }, { day: 15, type: "renew", label: "تجديد Microsoft 365" }, { day: 23, type: "legal", label: "إقرار الضريبة (DGI)" }, { day: 27, type: "renew", label: "انتهاء اشتراك Sage Compta" }] },
     prev: { greet: "مرحباً كريم 👋", title: "متابعة الأدوات", add: "إضافة", stats: ["الإنفاق / شهر", "أدوات نشطة", "استحقاق 7 أيام"], trend: "اتجاه الإنفاق", plan: "خطة برو", nav: ["لوحة", "عقود", "تقويم", "مخاطر", "أدوات"] },
     asst: { badge: "مساعد فاتورتي", title: "تكامل قانوني ذكي", desc: "لوحة خفيفة وذكية تقدّم لك القواعد القانونية المحلية الدقيقة ونماذج عقود جاهزة — مصممة للقانون المغربي.", cta: "اكتشف المساعد", panel: "نماذج مقترحة", panelSub: "بناءً على نشاطك", rules: ["عقد خدمة — المادة 723 ق.ل.ع", "بند السرية (القانون 09-08)", "فاتورة مطابقة ICE + ض.ق.م 20%"], verified: "تم التحقق وفق ق.ل.ع والقانون 09-08" },
-    footer: { title: "مستعد لموازنة إدارتك؟", compliance: "متوافق مع القانون 09-08 (CNDP)", copy: "© 2026 فاتورتي · الدار البيضاء، المغرب" },
+    footer: { title: "مستعد لموازنة إدارتك؟", compliance: "متوافق مع القانون 09-08 (CNDP)", copy: `© 2026 فاتورتي · ${CONTACT_CITY}، المغرب` },
   },
 }
 
-const EXTRA: Record<Lang, ExtraCopy> = {
+export const EXTRA: Record<Lang, ExtraCopy> = {
   fr: {
     nav: { benefits: "Avantages", pricing: "Tarifs", faq: "FAQ" },
     about: { eyebrow: "À propos", title: "La gestion pensée pour le terrain marocain.", desc: "Fatorati réunit les outils essentiels des artisans, freelances et petites entreprises dans un espace clair, mobile et conforme.", points: ["Une expérience simple, en français et en arabe.", "Des échéances, contrats et dépenses visibles au même endroit.", "Une approche conçue avec les réalités des TPE marocaines."] },
@@ -235,14 +249,14 @@ const EXTRA: Record<Lang, ExtraCopy> = {
     pricing: { eyebrow: "Tarifs", title: "Un plan pour chaque étape.", sub: "Commencez simplement, puis adaptez votre espace à votre activité.", plans: [{ name: "Essentiel", price: "0 MAD", period: "/ pour commencer", desc: "Pour découvrir les fondamentaux.", cta: "Commencer", items: ["Tableau de bord", "Calendrier des échéances", "Gestion des contacts"] }, { name: "Pro", price: "199 MAD", period: "/ mois", desc: "Pour piloter une activité en croissance.", cta: "Choisir Pro", featured: true, items: ["Tout dans Essentiel", "Contrats et coffre juridique", "Rapports et exports", "Rôles et permissions"] }, { name: "Équipe", price: "499 MAD", period: "/ mois", desc: "Pour une équipe qui veut aller plus loin.", cta: "Parler à l'équipe", items: ["Tout dans Pro", "Équipe multi-utilisateurs", "Suivi avancé et audit", "Accompagnement prioritaire"] }] },
     blog: { eyebrow: "Ressources", title: "Le journal Fatorati.", posts: [{ tag: "Gestion", title: "Les 5 échéances à ne plus laisser passer", desc: "Une méthode simple pour organiser vos obligations mensuelles et trimestrielles.", date: "12 sept. 2026", iso: "2026-09-12" }, { tag: "Conformité", title: "Préparer ses contrats avec plus de sérénité", desc: "Les points à vérifier avant de signer une prestation au Maroc.", date: "04 sept. 2026", iso: "2026-09-04" }, { tag: "Trésorerie", title: "Où part vraiment votre budget outils ?", desc: "Comment repérer les abonnements inutilisés et reprendre la main sur vos coûts.", date: "28 août 2026", iso: "2026-08-28" }] },
     faq: { eyebrow: "FAQ", title: "Questions fréquentes.", items: [{ q: "Fatorati est-il adapté aux petites entreprises marocaines ?", a: "Oui. L'application est conçue pour les artisans, freelances, TPE et PME qui veulent centraliser leur gestion sans complexité inutile." }, { q: "Puis-je utiliser Fatorati sur mobile ?", a: "Oui. L'interface est mobile-first et reste confortable sur téléphone, tablette et ordinateur." }, { q: "Mes données sont-elles protégées ?", a: "Fatorati applique des contrôles d'accès, une session sécurisée et une traçabilité des actions importantes. Consultez notre politique de confidentialité pour les détails." }, { q: "Puis-je changer de formule ?", a: "Oui. Vous pouvez faire évoluer votre formule selon la taille de votre activité et vos besoins." }] },
-    contact: { eyebrow: "Contact", title: "Parlons de votre activité.", sub: "Une question sur Fatorati, les tarifs ou votre déploiement ? Notre équipe vous répond.", email: "contact@fatorati.tech", phone: "+212 0 20 00 00 00", city: "Tanger, Maroc", cta: "Écrire à l'équipe" },
+    contact: { eyebrow: "Contact", title: "Parlons de votre activité.", sub: "Une question sur Fatorati, les tarifs ou votre déploiement ? Notre équipe vous répond.", email: CONTACT_EMAIL, phone: CONTACT_PHONE, city: `${CONTACT_CITY}, Maroc`, cta: "Écrire à l'équipe" },
     legal: {
       privacy: "Politique de confidentialité",
       privacyText: "Fatorati traite vos données personnelles avec un objectif simple : vous fournir un espace de gestion sécurisé — jamais les revendre, ni les utiliser à des fins publicitaires.\n\nDonnées collectées — Lorsque vous créez un compte, nous recueillons votre nom, votre adresse e-mail et les données professionnelles que vous saisissez (clients, projets, dépenses, contrats, etc.). Ces données sont stockées de façon sécurisée et protégées par des règles d'accès strictes (Row Level Security) : elles ne sont accessibles qu'à vous et aux membres de votre équipe que vous autorisez.\n\nAucune publicité — Fatorati ne diffuse aucune publicité et ne partage, ne loue ni ne vend vos données à des annonceurs ou des courtiers en données, sous quelque forme que ce soit.\n\nGoogle Analytics — Le seul outil tiers que nous utilisons est Google Analytics, uniquement pour comprendre comment notre site est utilisé (pages consultées, durée de visite, provenance du trafic) et faire grandir Fatorati. Ces statistiques sont exploitées de façon agrégée pour améliorer le site — jamais pour vous cibler publicitairement. Cet outil ne s'active que si vous acceptez les cookies de mesure d'audience via notre bandeau de consentement ; vous pouvez le refuser à tout moment (voir notre politique de cookies).\n\nDurée de conservation — Vos données sont conservées tant que votre compte est actif. En cas de suppression de compte, elles sont supprimées ou anonymisées dans un délai raisonnable, sauf obligation légale de conservation plus longue (comptabilité, fiscalité).\n\nSécurité — L'accès à vos données est protégé par une authentification sécurisée, un chiffrement en transit (HTTPS) et des contrôles d'accès au niveau de la base de données. Voir notre politique de sécurité pour plus de détails.\n\nMise à jour — Cette politique peut évoluer ; la date de dernière mise à jour est indiquée en bas de cette page.",
       terms: "Conditions d'utilisation",
       termsText: "En utilisant Fatorati, vous acceptez d'utiliser le service de manière légale et de conserver vos identifiants confidentiels. Les fonctionnalités peuvent évoluer pour améliorer le service.",
       cookies: "Politique des cookies",
-      cookiesText: "Un cookie est un petit fichier déposé sur votre appareil lors de votre visite. Voici les cookies utilisés sur fatorati.tech, et à quoi ils servent.\n\nCookies strictement nécessaires — Utilisés pour faire fonctionner le site (mémoriser votre choix de langue, votre thème et votre consentement aux cookies). Ils ne peuvent pas être désactivés et ne nécessitent pas votre consentement.\n\nCookies de mesure d'audience (Google Analytics) — Le seul outil tiers que nous utilisons est Google Analytics, uniquement pour comprendre la fréquentation du site (pages visitées, durée de visite, appareil, provenance approximative) et l'aider à grandir. Ces cookies ne sont déposés que si vous cliquez sur « Accepter » dans notre bandeau ; vous pouvez refuser à tout moment sans perdre l'accès au site.\n\nAucun cookie publicitaire — Fatorati ne dépose aucun cookie publicitaire, ne fait aucun reciblage (retargeting) et ne partage aucune donnée de navigation avec des régies publicitaires ou des réseaux sociaux.\n\nGérer vos préférences — Vous pouvez accepter ou refuser les cookies de mesure d'audience via le bandeau affiché lors de votre première visite. Votre choix est conservé sur votre appareil ; vous pouvez le modifier en effaçant les données de ce site dans votre navigateur.\n\nPour toute question sur cette politique, contactez-nous à contact@fatorati.tech.",
+      cookiesText: "Un cookie est un petit fichier déposé sur votre appareil lors de votre visite. Voici les cookies utilisés sur fatorati.tech, et à quoi ils servent.\n\nCookies strictement nécessaires — Utilisés pour faire fonctionner le site (mémoriser votre choix de langue, votre thème et votre consentement aux cookies). Ils ne peuvent pas être désactivés et ne nécessitent pas votre consentement.\n\nCookies de mesure d'audience (Google Analytics) — Le seul outil tiers que nous utilisons est Google Analytics, uniquement pour comprendre la fréquentation du site (pages visitées, durée de visite, appareil, provenance approximative) et l'aider à grandir. Ces cookies ne sont déposés que si vous cliquez sur « Accepter » dans notre bandeau ; vous pouvez refuser à tout moment sans perdre l'accès au site.\n\nAucun cookie publicitaire — Fatorati ne dépose aucun cookie publicitaire, ne fait aucun reciblage (retargeting) et ne partage aucune donnée de navigation avec des régies publicitaires ou des réseaux sociaux.\n\nGérer vos préférences — Vous pouvez accepter ou refuser les cookies de mesure d'audience via le bandeau affiché lors de votre première visite. Votre choix est conservé sur votre appareil ; vous pouvez le modifier en effaçant les données de ce site dans votre navigateur.\n\nPour toute question sur cette politique, contactez-nous à bonjour@fatorati.tech.",
     },
   },
   en: {
@@ -252,14 +266,14 @@ const EXTRA: Record<Lang, ExtraCopy> = {
     pricing: { eyebrow: "Pricing", title: "A plan for every stage.", sub: "Start simply, then adapt your workspace as your business grows.", plans: [{ name: "Essential", price: "MAD 0", period: "/ to start", desc: "For exploring the essentials.", cta: "Get started", items: ["Dashboard", "Deadline calendar", "Contact management"] }, { name: "Pro", price: "MAD 199", period: "/ month", desc: "For running a growing business.", cta: "Choose Pro", featured: true, items: ["Everything in Essential", "Contracts and legal vault", "Reports and exports", "Roles and permissions"] }, { name: "Team", price: "MAD 499", period: "/ month", desc: "For a team ready to go further.", cta: "Talk to the team", items: ["Everything in Pro", "Multi-user workspace", "Advanced audit trail", "Priority support"] }] },
     blog: { eyebrow: "Resources", title: "The Fatorati journal.", posts: [{ tag: "Management", title: "5 deadlines worth never missing", desc: "A simple method for organizing monthly and quarterly obligations.", date: "Sep 12, 2026", iso: "2026-09-12" }, { tag: "Compliance", title: "Prepare contracts with more confidence", desc: "What to review before signing a service agreement in Morocco.", date: "Sep 04, 2026", iso: "2026-09-04" }, { tag: "Cash flow", title: "Where is your tools budget really going?", desc: "How to spot unused subscriptions and regain control of costs.", date: "Aug 28, 2026", iso: "2026-08-28" }] },
     faq: { eyebrow: "FAQ", title: "Frequently asked questions.", items: [{ q: "Is Fatorati made for Moroccan small businesses?", a: "Yes. It is designed for artisans, freelancers, small businesses and teams that want practical management without unnecessary complexity." }, { q: "Can I use Fatorati on mobile?", a: "Yes. The interface is mobile-first and comfortable on phones, tablets and desktops." }, { q: "Is my data protected?", a: "Fatorati applies access controls, secure sessions and audit trails for important actions. See our privacy policy for details." }, { q: "Can I change plans?", a: "Yes. You can adjust your plan as your business and needs evolve." }] },
-    contact: { eyebrow: "Contact", title: "Let us talk about your business.", sub: "Questions about Fatorati, pricing or rollout? Our team will get back to you.", email: "contact@fatorati.tech", phone: "+212 0 20 00 00 00", city: "Tanger, Morocco", cta: "Email the team" },
+    contact: { eyebrow: "Contact", title: "Let us talk about your business.", sub: "Questions about Fatorati, pricing or rollout? Our team will get back to you.", email: CONTACT_EMAIL, phone: CONTACT_PHONE, city: `${CONTACT_CITY}, Morocco`, cta: "Email the team" },
     legal: {
       privacy: "Privacy policy",
       privacyText: "Fatorati handles your personal data with one goal: to give you a secure workspace — never to resell it or use it for advertising.\n\nData we collect — When you create an account, we collect your name, email address, and the business data you enter (clients, projects, expenses, contracts, and so on). This data is stored securely and protected by strict access rules (Row Level Security): only you and the team members you authorize can access it.\n\nNo advertising — Fatorati shows no ads and never shares, rents, or sells your data to advertisers or data brokers, in any form.\n\nGoogle Analytics — The only third-party tool we use is Google Analytics, solely to understand how our site is used (pages viewed, time on page, traffic sources) and help Fatorati grow. This data is used in aggregate to guide the product — never to target you with ads. This tool only runs if you accept audience-measurement cookies through our consent banner; you can decline it at any time (see our cookie policy).\n\nRetention — Your data is kept for as long as your account is active. If you delete your account, your data is deleted or anonymized within a reasonable timeframe, except where longer retention is legally required (accounting, tax).\n\nSecurity — Access to your data is protected by secure authentication, encryption in transit (HTTPS), and database-level access controls. See our security policy for details.\n\nUpdates — This policy may change over time; the last-updated date is shown at the bottom of this page.",
       terms: "Terms of use",
       termsText: "By using Fatorati, you agree to use the service lawfully and keep your credentials confidential. Features may evolve as the service improves.",
       cookies: "Cookie policy",
-      cookiesText: "A cookie is a small file placed on your device when you visit a site. Here's what we use on fatorati.tech, and why.\n\nStrictly necessary cookies — Used to run the site itself (remembering your language, theme, and cookie choice). These can't be turned off and don't require consent.\n\nAudience-measurement cookies (Google Analytics) — The only third-party tool we use is Google Analytics, solely to understand site traffic (pages visited, time on page, device, approximate origin) and help the site grow. These cookies are only set if you click \"Accept\" in our banner; you can decline at any time without losing access to the site.\n\nNo advertising cookies — Fatorati sets no advertising cookies, does no retargeting, and shares no browsing data with ad networks or social platforms.\n\nManaging your preferences — You can accept or decline audience-measurement cookies via the banner shown on your first visit. Your choice is stored on your device; you can change it by clearing this site's data in your browser.\n\nQuestions about this policy? Email us at contact@fatorati.tech.",
+      cookiesText: "A cookie is a small file placed on your device when you visit a site. Here's what we use on fatorati.tech, and why.\n\nStrictly necessary cookies — Used to run the site itself (remembering your language, theme, and cookie choice). These can't be turned off and don't require consent.\n\nAudience-measurement cookies (Google Analytics) — The only third-party tool we use is Google Analytics, solely to understand site traffic (pages visited, time on page, device, approximate origin) and help the site grow. These cookies are only set if you click \"Accept\" in our banner; you can decline at any time without losing access to the site.\n\nNo advertising cookies — Fatorati sets no advertising cookies, does no retargeting, and shares no browsing data with ad networks or social platforms.\n\nManaging your preferences — You can accept or decline audience-measurement cookies via the banner shown on your first visit. Your choice is stored on your device; you can change it by clearing this site's data in your browser.\n\nQuestions about this policy? Email us at bonjour@fatorati.tech.",
     },
   },
   ar: {
@@ -269,46 +283,90 @@ const EXTRA: Record<Lang, ExtraCopy> = {
     pricing: { eyebrow: "الأسعار", title: "خطة لكل مرحلة.", sub: "ابدأ ببساطة وطوّر مساحتك مع نمو نشاطك.", plans: [{ name: "أساسي", price: "0 MAD", period: "/ للبدء", desc: "لاكتشاف الأساسيات.", cta: "ابدأ الآن", items: ["لوحة التحكم", "تقويم المواعيد", "إدارة جهات الاتصال"] }, { name: "برو", price: "199 MAD", period: "/ شهر", desc: "لتسيير نشاط في نمو.", cta: "اختر برو", featured: true, items: ["كل ما في الأساسي", "العقود والخزنة القانونية", "التقارير والتصدير", "الأدوار والصلاحيات"] }, { name: "فريق", price: "499 MAD", period: "/ شهر", desc: "لفريق يريد التقدم أكثر.", cta: "تواصل معنا", items: ["كل ما في برو", "مساحة متعددة المستخدمين", "سجل تدقيق متقدم", "دعم ذو أولوية"] }] },
     blog: { eyebrow: "الموارد", title: "مجلة فاتورتي.", posts: [{ tag: "الإدارة", title: "5 مواعيد لا يجب تفويتها", desc: "طريقة بسيطة لتنظيم التزاماتك الشهرية والفصلية.", date: "12 شتنبر 2026", iso: "2026-09-12" }, { tag: "الامتثال", title: "جهّز عقودك بثقة أكبر", desc: "ما يجب مراجعته قبل توقيع عقد خدمة في المغرب.", date: "04 شتنبر 2026", iso: "2026-09-04" }, { tag: "الخزينة", title: "أين تذهب ميزانية أدواتك؟", desc: "كيف تكتشف الاشتراكات غير المستخدمة وتتحكم في التكاليف.", date: "28 غشت 2026", iso: "2026-08-28" }] },
     faq: { eyebrow: "الأسئلة الشائعة", title: "أسئلة متكررة.", items: [{ q: "هل فاتورتي مناسبة للشركات المغربية الصغيرة؟", a: "نعم. صممت للحرفيين والمستقلين والشركات الصغيرة والفرق التي تريد إدارة عملية دون تعقيد." }, { q: "هل يمكنني استخدام فاتورتي على الهاتف؟", a: "نعم. الواجهة مصممة للهاتف وتعمل بشكل مريح على الهاتف واللوحة والحاسوب." }, { q: "هل بياناتي محمية؟", a: "تطبق فاتورتي صلاحيات وصول وجلسات آمنة وسجل تدقيق للإجراءات المهمة. راجع سياسة الخصوصية لمزيد من التفاصيل." }, { q: "هل يمكنني تغيير الخطة؟", a: "نعم. يمكنك تعديل خطتك مع تطور نشاطك واحتياجاتك." }] },
-    contact: { eyebrow: "تواصل معنا", title: "لنتحدث عن نشاطك.", sub: "لديك سؤال حول فاتورتي أو الأسعار أو طريقة الانطلاق؟ فريقنا يجيبك.", email: "contact@fatorati.tech", phone: "+212 0 20 00 00 00", city: "طنجة، المغرب", cta: "راسل الفريق" },
+    contact: { eyebrow: "تواصل معنا", title: "لنتحدث عن نشاطك.", sub: "لديك سؤال حول فاتورتي أو الأسعار أو طريقة الانطلاق؟ فريقنا يجيبك.", email: CONTACT_EMAIL, phone: CONTACT_PHONE, city: `${CONTACT_CITY}، المغرب`, cta: "راسل الفريق" },
     legal: {
       privacy: "سياسة الخصوصية",
       privacyText: "تتعامل فاتورتي مع بياناتك الشخصية بهدف واحد: منحك مساحة عمل آمنة، دون بيعها أو استخدامها لأغراض إعلانية أبداً.\n\nالبيانات التي نجمعها — عند إنشاء حساب، نجمع اسمك وبريدك الإلكتروني والبيانات المهنية التي تُدخلها (العملاء، المشاريع، المصاريف، العقود، إلخ). تُخزَّن هذه البيانات بشكل آمن وتحميها قواعد وصول صارمة (Row Level Security)، بحيث لا يصل إليها سواك وأعضاء فريقك الذين تُصرّح لهم بذلك.\n\nبدون إعلانات — لا تعرض فاتورتي أي إعلانات، ولا تشارك أو تؤجر أو تبيع بياناتك لأي معلنين أو وسطاء بيانات، تحت أي شكل.\n\nGoogle Analytics — نستخدم فقط أداة Google Analytics، وذلك حصراً لفهم كيفية استخدام موقعنا (الصفحات المُزارة، مدة الزيارة، مصدر الزيارات) من أجل تحسين فاتورتي. تُستخدم هذه الإحصاءات بشكل مُجمّع لتطوير الموقع، وليس لاستهدافك إعلانياً أبداً. لا تُفعَّل هذه الأداة إلا إذا وافقت على ملفات قياس الجمهور عبر شريط الموافقة، ويمكنك رفضها في أي وقت (راجع سياسة ملفات الارتباط).\n\nمدة الاحتفاظ — تُحفظ بياناتك طالما حسابك نشط. عند حذف حسابك، تُحذف بياناتك أو يُعمَّم إخفاء هويتها خلال مدة معقولة، إلا إذا فرض القانون مدة احتفاظ أطول (المحاسبة، الضرائب).\n\nالأمان — الوصول إلى بياناتك محمي بمصادقة آمنة وتشفير أثناء النقل (HTTPS) وضوابط وصول على مستوى قاعدة البيانات. راجع سياسة الأمان لدينا لمزيد من التفاصيل.\n\nالتحديثات — قد تتطور هذه السياسة مع الوقت؛ يظهر تاريخ آخر تحديث أسفل هذه الصفحة.",
       terms: "شروط الاستخدام",
       termsText: "باستخدام فاتورتي، توافق على استعمال الخدمة بشكل قانوني والحفاظ على سرية بيانات الدخول. قد تتطور الميزات لتحسين الخدمة.",
       cookies: "سياسة ملفات الارتباط",
-      cookiesText: "ملف تعريف الارتباط (cookie) هو ملف صغير يُوضع على جهازك عند زيارتك للموقع. إليك الملفات التي نستخدمها على fatorati.tech، والغرض منها.\n\nملفات ضرورية بشكل صارم — تُستخدم لتشغيل الموقع نفسه (حفظ اختيارك للغة والمظهر وموافقتك على ملفات الارتباط). لا يمكن تعطيلها ولا تتطلب موافقتك.\n\nملفات قياس الجمهور (Google Analytics) — الأداة الخارجية الوحيدة التي نستخدمها هي Google Analytics، وذلك حصراً لفهم حركة الزوار على الموقع (الصفحات المُزارة، مدة الزيارة، نوع الجهاز، المصدر التقريبي) والمساعدة على نمو الموقع. لا تُوضع هذه الملفات إلا إذا ضغطت على «موافقة» في الشريط، ويمكنك الرفض في أي وقت دون أن يؤثر ذلك على وصولك للموقع.\n\nبدون ملفات إعلانية — لا تضع فاتورتي أي ملفات إعلانية، ولا تقوم بإعادة الاستهداف، ولا تشارك أي بيانات تصفح مع شبكات إعلانية أو منصات التواصل الاجتماعي.\n\nإدارة تفضيلاتك — يمكنك قبول أو رفض ملفات قياس الجمهور عبر الشريط الذي يظهر عند أول زيارة لك. يُحفظ اختيارك على جهازك، ويمكنك تغييره بمسح بيانات هذا الموقع من متصفحك.\n\nلأي سؤال حول هذه السياسة، راسلنا على contact@fatorati.tech.",
+      cookiesText: "ملف تعريف الارتباط (cookie) هو ملف صغير يُوضع على جهازك عند زيارتك للموقع. إليك الملفات التي نستخدمها على fatorati.tech، والغرض منها.\n\nملفات ضرورية بشكل صارم — تُستخدم لتشغيل الموقع نفسه (حفظ اختيارك للغة والمظهر وموافقتك على ملفات الارتباط). لا يمكن تعطيلها ولا تتطلب موافقتك.\n\nملفات قياس الجمهور (Google Analytics) — الأداة الخارجية الوحيدة التي نستخدمها هي Google Analytics، وذلك حصراً لفهم حركة الزوار على الموقع (الصفحات المُزارة، مدة الزيارة، نوع الجهاز، المصدر التقريبي) والمساعدة على نمو الموقع. لا تُوضع هذه الملفات إلا إذا ضغطت على «موافقة» في الشريط، ويمكنك الرفض في أي وقت دون أن يؤثر ذلك على وصولك للموقع.\n\nبدون ملفات إعلانية — لا تضع فاتورتي أي ملفات إعلانية، ولا تقوم بإعادة الاستهداف، ولا تشارك أي بيانات تصفح مع شبكات إعلانية أو منصات التواصل الاجتماعي.\n\nإدارة تفضيلاتك — يمكنك قبول أو رفض ملفات قياس الجمهور عبر الشريط الذي يظهر عند أول زيارة لك. يُحفظ اختيارك على جهازك، ويمكنك تغييره بمسح بيانات هذا الموقع من متصفحك.\n\nلأي سؤال حول هذه السياسة، راسلنا على bonjour@fatorati.tech.",
     },
   },
 }
 
-export default function Landing({ onEnter }: { onEnter: () => void }) {
+export default function Landing({ onEnter = () => {}, initialPage }: { onEnter?: () => void; initialPage?: LandingPage } = {}) {
   const [lang, setLang] = useState<Lang>("fr")
   const [theme, setTheme] = useState<Theme>("light")
-  const [page, setPage] = useState<LandingPage>("home")
+  const path = useRoutePath()
+  // `initialPage` only matters while prerendering (the server has no URL of
+  // its own); in the browser the page always comes from the real URL, so
+  // every screen keeps its own link, reload and share behaviour.
+  const page: LandingPage = initialPage ?? landingPageFromPath(path) ?? "home"
   const landingRef = useLandingMotion(page)
   const t = T[lang]
   const extra = EXTRA[lang]
   const rtl = lang === "ar"
 
-  useEffect(() => {
-    setPage(getLandingPage())
-  }, [])
-
-  usePageStructuredData(page, lang, t, extra)
+  usePageHead(page, lang, t, extra)
   useMarketingAnalytics()
 
-  // Cross-page /#section links may arrive before React has mounted their target.
   useEffect(() => {
-    if (page !== "home" || getLandingPage() !== "home" || !window.location.hash) return
-    let id: string
-    try { id = decodeURIComponent(window.location.hash.slice(1)) } catch { return }
-    document.getElementById(id)?.scrollIntoView?.({ block: "start" })
+    // The document language must follow the visitor's choice: `<html lang="fr">`
+    // on Arabic content makes screen readers read it with the wrong voice and
+    // tells crawlers the wrong thing. Restored on unmount (the signed-in app is
+    // French-only).
+    const root = document.documentElement
+    const previousLang = root.lang
+    const previousDir = root.dir
+    root.lang = lang
+    root.dir = rtl ? "rtl" : "ltr"
+    return () => {
+      root.lang = previousLang
+      root.dir = previousDir
+    }
+  }, [lang, rtl])
+
+  // Anchors are gone from every URL, but three kinds of fragment can still
+  // reach this component: an old `/#pricing` bookmark (rewritten to the real
+  // `/pricing` path a visitor can share), a legacy in-page deep link, and
+  // Supabase's recovery callback (`#access_token=…`), which must be left
+  // untouched for supabase-js to consume.
+  useEffect(() => {
+    const rawHash = typeof window === "undefined" ? "" : window.location.hash.slice(1)
+    if (rawHash && !rawHash.includes("=")) {
+      let id = ""
+      try { id = decodeURIComponent(rawHash) } catch { id = "" }
+      const legacyPage = LANDING_PAGES.find((candidate) => candidate === id)
+      if (legacyPage && legacyPage !== "home") {
+        // Strip the fragment first: navigating keeps the query and fragment
+        // (Supabase's callback relies on that), and this URL must end up clean.
+        window.history.replaceState(window.history.state, "", `${window.location.pathname}${window.location.search}`)
+        navigate(landingPath(legacyPage), { replace: true })
+        return
+      }
+      const target = id ? document.getElementById(id) : null
+      if (target) {
+        target.scrollIntoView?.({ block: "start" })
+        // Drop the fragment once it has been honoured: the address bar keeps a
+        // clean, shareable URL.
+        window.history.replaceState(window.history.state, "", `${window.location.pathname}${window.location.search}`)
+      }
+    }
+
+    // A section requested from another page travels in history state
+    // (`navigate("/features", { state: { focus: "risk-preview" } })`), not in a
+    // fragment, so the URL stays clean.
+    const focus = currentHistoryState()?.focus
+    if (typeof focus === "string" && document.getElementById(focus)) {
+      document.getElementById(focus)?.scrollIntoView?.({ block: "start" })
+    }
   }, [page])
 
   const home = page === "home"
   return (
     <div ref={landingRef} className="landing-root landing-atlas min-h-screen antialiased" data-theme={theme} dir={rtl ? "rtl" : "ltr"}>
-      <Header t={t} lang={lang} setLang={setLang} theme={theme} setTheme={setTheme} home={home} onEnter={onEnter} />
+      <Header t={t} lang={lang} setLang={setLang} theme={theme} setTheme={setTheme} onEnter={onEnter} />
       <main id="main-content">
         {home && <div className="landing-hero-backdrop relative">
           <div className="grid-veil pointer-events-none absolute inset-0 h-[720px]" />
@@ -324,13 +382,13 @@ export default function Landing({ onEnter }: { onEnter: () => void }) {
         {(home || page === "contact") && <ContactSection copy={extra.contact} />}
         {(page === "home" || page === "privacy" || page === "terms" || page === "cookies") && <LegalSection copy={extra.legal} active={page === "home" ? undefined : page} />}
       </main>
-      <Footer t={t} extra={extra} home={home} onEnter={onEnter} />
+      <Footer t={t} extra={extra} onEnter={onEnter} />
       <CookieBanner lang={lang} />
     </div>
   )
 }
 
-type Dict = (typeof T)["fr"]
+export type Dict = (typeof T)["fr"]
 
 /* ------------------------------- Buttons -------------------------- */
 
@@ -339,11 +397,31 @@ function GlowButton({ children, onClick, className = "" }: { children: React.Rea
 }
 
 function GhostLink({ children, href, className = "" }: { children: React.ReactNode; href: string; className?: string }) {
-  return <a href={href} className={`landing-secondary inline-flex items-center justify-center gap-2 ${className}`}>{children}</a>
+  return <a href={href} onClick={onInternalLinkClick} className={`landing-secondary inline-flex items-center justify-center gap-2 ${className}`}>{children}</a>
 }
 
 function LandingBrand({ size = 32 }: { size?: number }) {
   return <span className="landing-brand"><Logo size={size} /></span>
+}
+
+/**
+ * The three feature previews are scroll targets *inside* `/features`, not
+ * pages of their own — so they must not invent a `#fragment` URL. If the
+ * target is already on screen (homepage or the features page) we scroll to
+ * it; otherwise we navigate to `/features` and carry the target in history
+ * state, which the `page` effect above honours after the render.
+ */
+function goToFeaturePreview(event: React.MouseEvent<HTMLAnchorElement>, id: string): void {
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+  const link = event.currentTarget
+  if ((link.target && link.target !== "_self") || link.hasAttribute("download")) return
+  event.preventDefault()
+  const target = document.getElementById(id)
+  if (target) {
+    target.scrollIntoView?.({ block: "start" })
+    return
+  }
+  navigate(landingPath("features"), { state: { focus: id } })
 }
 
 /* ------------------------------- Controls ------------------------- */
@@ -399,10 +477,6 @@ function ThemeToggle({ theme, setTheme }: { theme: Theme; setTheme: (t: Theme) =
 
 /* -------------------------------- Header -------------------------- */
 
-function sectionHref(section: Exclude<LandingPage, "home">, home: boolean): string {
-  return `${home ? "" : "/"}#${section}`
-}
-
 const MOBILE_NAV_LINKS: { section: Exclude<LandingPage, "home">; key: keyof Dict["nav"] }[] = [
   { section: "features", key: "features" },
   { section: "assistant", key: "assistant" },
@@ -417,7 +491,7 @@ const NAV_UI = {
   ar: { signIn: "تسجيل الدخول", expand: "استكشاف الميزات", overview: "جميع الميزات" },
 }
 
-function Header({ t, lang, setLang, theme, setTheme, home, onEnter }: { t: Dict; lang: Lang; setLang: (l: Lang) => void; theme: Theme; setTheme: (t: Theme) => void; home: boolean; onEnter: () => void }) {
+function Header({ t, lang, setLang, theme, setTheme, onEnter }: { t: Dict; lang: Lang; setLang: (l: Lang) => void; theme: Theme; setTheme: (t: Theme) => void; onEnter: () => void }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [desktopOpen, setDesktopOpen] = useState(false)
   const menuId = useId()
@@ -481,10 +555,10 @@ function Header({ t, lang, setLang, theme, setTheme, home, onEnter }: { t: Dict;
       if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDesktopOpen(false)
     }}>
       <div className="landing-nav-shell">
-        <a href="/" aria-label="Fatorati accueil" onClick={() => { setMobileOpen(false); setDesktopOpen(false) }}><LandingBrand /></a>
+        <a href="/" aria-label="Fatorati accueil" onClick={(event) => { onInternalLinkClick(event); setMobileOpen(false); setDesktopOpen(false) }}><LandingBrand /></a>
         <nav className="landing-nav-desktop" aria-label="Navigation du site">
           <div className="landing-nav-feature">
-            <a href={sectionHref("features", home)} onClick={() => setDesktopOpen(false)}>{t.nav.features}</a>
+            <a href={landingPath("features")} onClick={(event) => { onInternalLinkClick(event); setDesktopOpen(false) }}>{t.nav.features}</a>
             <button ref={desktopButton} type="button" className="landing-nav-expand" aria-label={ui.expand}
               aria-expanded={desktopOpen} aria-controls={desktopId} onClick={() => setDesktopOpen((open) => !open)}
               onKeyDown={(event) => {
@@ -495,7 +569,7 @@ function Header({ t, lang, setLang, theme, setTheme, home, onEnter }: { t: Dict;
               }}><ChevronDown className="h-4 w-4" /></button>
           </div>
           {MOBILE_NAV_LINKS.filter((link) => link.key !== "features").map((link) => (
-            <a key={link.section} href={sectionHref(link.section, home)} onClick={() => setDesktopOpen(false)}>{t.nav[link.key]}</a>
+            <a key={link.section} href={landingPath(link.section)} onClick={(event) => { onInternalLinkClick(event); setDesktopOpen(false) }}>{t.nav[link.key]}</a>
           ))}
         </nav>
         <div className="landing-nav-actions">
@@ -511,9 +585,9 @@ function Header({ t, lang, setLang, theme, setTheme, home, onEnter }: { t: Dict;
       </div>
       {desktopOpen && <div ref={desktopPanel} id={desktopId} className="landing-mega-menu" role="region" aria-label={t.nav.features}>
         <div className="landing-mega-inner">
-          <div className="landing-mega-intro"><p>{t.feat.title}</p><a href={sectionHref("features", home)} onClick={() => setDesktopOpen(false)}>{ui.overview} <ArrowRight className="h-4 w-4" /></a></div>
+          <div className="landing-mega-intro"><p>{t.feat.title}</p><a href={landingPath("features")} onClick={(event) => { onInternalLinkClick(event); setDesktopOpen(false) }}>{ui.overview} <ArrowRight className="h-4 w-4" /></a></div>
           <div className="landing-mega-grid">{cards.map(({ id, icon: Icon, title, description }) => (
-            <a key={id} href={`${home ? "" : "/"}#${id}`} className="landing-mega-card" onClick={() => setDesktopOpen(false)}>
+            <a key={id} href={landingPath("features")} className="landing-mega-card" onClick={(event) => { setDesktopOpen(false); goToFeaturePreview(event, id) }}>
               <span className="landing-mega-icon"><Icon className="h-5 w-5" /></span><span><strong>{title}</strong><small>{description}</small></span>
             </a>
           ))}</div>
@@ -523,7 +597,7 @@ function Header({ t, lang, setLang, theme, setTheme, home, onEnter }: { t: Dict;
         <button type="button" className="landing-mobile-overlay" aria-label="Fermer la navigation" tabIndex={-1} onClick={() => setMobileOpen(false)} />
         <div id={menuId} className="landing-mobile-panel">
           <nav aria-label="Navigation principale">{MOBILE_NAV_LINKS.map((link) => (
-            <a key={link.section} href={sectionHref(link.section, home)} onClick={() => setMobileOpen(false)}>{t.nav[link.key]}</a>
+            <a key={link.section} href={landingPath(link.section)} onClick={(event) => { onInternalLinkClick(event); setMobileOpen(false) }}>{t.nav[link.key]}</a>
           ))}</nav>
           <div className="mt-5 flex items-center gap-3"><LangSwitcher lang={lang} setLang={setLang} /><ThemeToggle theme={theme} setTheme={setTheme} /></div>
           <GlowButton onClick={enter} className="mt-5 w-full">{t.signup}</GlowButton>
@@ -549,7 +623,7 @@ function Hero({ t, onEnter }: { t: Dict; onEnter: () => void }) {
           <GlowButton onClick={onEnter} className="w-full sm:w-auto">
             {t.signup} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 rtl:rotate-180" />
           </GlowButton>
-          <GhostLink href="#features" className="w-full sm:w-auto">{t.explore}</GhostLink>
+          <GhostLink href={landingPath("features")} className="w-full sm:w-auto">{t.explore}</GhostLink>
         </div>
         <p className="landing-hero-note mz-rise mt-4 inline-flex items-center gap-1.5 text-[12.5px] text-[var(--l-faint)]" style={{ animationDelay: "0.2s" }}>
           <Check className="h-3.5 w-3.5 text-blue-400" /> {t.hero.note}
@@ -574,7 +648,7 @@ function DashboardPreview({ t }: { t: Dict }) {
           <span className="h-2.5 w-2.5 rounded-full bg-[var(--l-border-strong)]" />
           <span className="h-2.5 w-2.5 rounded-full bg-[var(--l-border-strong)]" />
           <span className="h-2.5 w-2.5 rounded-full bg-[var(--l-border-strong)]" />
-          <span className="mx-3 rounded-md bg-[var(--l-chip)] px-2 py-0.5 font-mono text-[10.5px] text-[var(--l-faint)]">fatoriti.tech/tableau</span>
+          <span className="mx-3 rounded-md bg-[var(--l-chip)] px-2 py-0.5 font-mono text-[10.5px] text-[var(--l-faint)]">fatorati.tech/dashboard</span>
         </div>
 
         <div className="flex">
@@ -988,7 +1062,7 @@ function BlogSection({ copy }: { copy: ExtraCopy["blog"] }) {
         {copy.posts.map((post) => <article key={post.title} className="landing-resource-card rounded-2xl border border-[var(--l-border)] bg-[var(--l-surface)] p-6 sm:p-7">
           <div className="flex flex-wrap items-center justify-between gap-2"><span className="rounded-full bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold text-blue-400">{post.tag}</span><time dateTime={post.iso} className="text-[11px] text-[var(--l-faint)]">{post.date}</time></div>
           <h3 className="font-display mt-4 text-[19px] font-bold text-[var(--l-heading)]">{post.title}</h3><p className="mt-2 max-w-2xl text-[13.5px] leading-relaxed text-[var(--l-muted)]">{post.desc}</p>
-          <a href="/contact/" className="mt-4 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-blue-400">Lire l'article <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" /></a>
+          <a href="/contact" onClick={onInternalLinkClick} className="mt-4 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-blue-400">Lire l'article <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" /></a>
         </article>)}
       </div>
     </section>
@@ -996,15 +1070,26 @@ function BlogSection({ copy }: { copy: ExtraCopy["blog"] }) {
 }
 
 function FaqSection({ copy }: { copy: ExtraCopy["faq"] }) {
-  const [open, setOpen] = useState(0)
+  /**
+   * Native `<details>` rather than a JS accordion: the answer text is part of
+   * the HTML document (so it is indexable and citable by search and AI
+   * crawlers even without executing JavaScript, and `FAQPage` structured data
+   * always matches the rendered text), and keyboard/mobile behaviour comes
+   * from the browser instead of our handlers.
+   */
   return (
     <section id="faq" className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
       <div className="mx-auto max-w-2xl text-center"><p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-emerald-400">{copy.eyebrow}</p><h2 className="font-display mt-3 text-[30px] font-bold text-[var(--l-heading)] sm:text-[38px]">{copy.title}</h2></div>
       <div className="mx-auto mt-12 max-w-3xl divide-y divide-[var(--l-border)] rounded-2xl border border-[var(--l-border)] bg-[var(--l-surface)] px-5 sm:px-7">
-        {copy.items.map((item, i) => <div key={item.q}>
-          <button type="button" onClick={() => setOpen(open === i ? -1 : i)} className="flex w-full items-center justify-between gap-4 py-5 text-start text-[14px] font-semibold text-[var(--l-heading)]"><span>{item.q}</span><ChevronDown className={`h-4 w-4 shrink-0 text-[var(--l-faint)] transition-transform ${open === i ? "rotate-180" : ""}`} /></button>
-          {open === i && <p className="pb-5 pe-8 text-[13.5px] leading-relaxed text-[var(--l-muted)]">{item.a}</p>}
-        </div>)}
+        {copy.items.map((item, i) => (
+          <details key={item.q} className="landing-faq" open={i === 0}>
+            <summary className="flex w-full items-center justify-between gap-4 py-5 text-start text-[14px] font-semibold text-[var(--l-heading)]">
+              <span>{item.q}</span>
+              <ChevronDown className="h-4 w-4 shrink-0 text-[var(--l-faint)]" aria-hidden="true" />
+            </summary>
+            <p className="pb-5 pe-8 text-[13.5px] leading-relaxed text-[var(--l-muted)]">{item.a}</p>
+          </details>
+        ))}
       </div>
     </section>
   )
@@ -1017,7 +1102,9 @@ function ContactSection({ copy }: { copy: ExtraCopy["contact"] }) {
         <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-blue-400">{copy.eyebrow}</p><h2 className="font-display mt-3 text-[30px] font-bold text-[var(--l-heading)] sm:text-[38px]">{copy.title}</h2><p className="mt-3 max-w-xl text-[15px] leading-relaxed text-[var(--l-muted)]">{copy.sub}</p>
         <div className="mt-8 grid gap-3 sm:grid-cols-3">
           <a href={`mailto:${copy.email}`} className="flex items-center gap-2.5 rounded-xl border border-[var(--l-border)] bg-[var(--l-panel)] p-3 text-[12px] text-[var(--l-text)] hover:border-blue-400/40"><Mail className="h-4 w-4 text-blue-400" />{copy.email}</a>
-          <a href={`tel:${copy.phone.replace(/\s/g, "")}`} className="flex items-center gap-2.5 rounded-xl border border-[var(--l-border)] bg-[var(--l-panel)] p-3 text-[12px] text-[var(--l-text)] hover:border-blue-400/40"><Phone className="h-4 w-4 text-blue-400" />{copy.phone}</a>
+          {copy.phone && (
+            <a href={telHref(copy.phone)} className="flex items-center gap-2.5 rounded-xl border border-[var(--l-border)] bg-[var(--l-panel)] p-3 text-[12px] text-[var(--l-text)] hover:border-blue-400/40"><Phone className="h-4 w-4 text-blue-400" />{copy.phone}</a>
+          )}
           <span className="flex items-center gap-2.5 rounded-xl border border-[var(--l-border)] bg-[var(--l-panel)] p-3 text-[12px] text-[var(--l-text)]"><MapPin className="h-4 w-4 shrink-0 text-blue-400" />{copy.city}</span>
         </div>
         <a href={`mailto:${copy.email}`} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-500 px-5 py-3 text-[13px] font-semibold text-white hover:bg-blue-400">{copy.cta} <Mail className="h-4 w-4" /></a>
@@ -1046,7 +1133,7 @@ function LegalSection({ copy, active }: { copy: ExtraCopy["legal"]; active?: "pr
 
 /* ----------------------------- Footer ----------------------------- */
 
-function Footer({ t, extra, home, onEnter }: { t: Dict; extra: ExtraCopy; home: boolean; onEnter: () => void }) {
+function Footer({ t, extra, onEnter }: { t: Dict; extra: ExtraCopy; onEnter: () => void }) {
   return (
     <footer className="landing-footer border-t border-[var(--l-border)] bg-[var(--l-bg-solid)]">
       <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
@@ -1059,26 +1146,26 @@ function Footer({ t, extra, home, onEnter }: { t: Dict; extra: ExtraCopy; home: 
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--l-faint)]">{extra.about.eyebrow}</p>
             <div className="mt-4 flex flex-col items-start gap-3 text-[12.5px] text-[var(--l-muted)]">
-              <a href={sectionHref("features", home)} className="hover:text-[var(--l-heading)]">{t.nav.features}</a>
-              <a href={sectionHref("benefits", home)} className="hover:text-[var(--l-heading)]">{t.nav.benefits}</a>
-              <a href={sectionHref("pricing", home)} className="hover:text-[var(--l-heading)]">{t.nav.pricing}</a>
-              <a href={sectionHref("blog", home)} className="hover:text-[var(--l-heading)]">{extra.blog.eyebrow}</a>
+              <a href={landingPath("features")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{t.nav.features}</a>
+              <a href={landingPath("benefits")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{t.nav.benefits}</a>
+              <a href={landingPath("pricing")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{t.nav.pricing}</a>
+              <a href={landingPath("blog")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{extra.blog.eyebrow}</a>
             </div>
           </div>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--l-faint)]">{extra.contact.eyebrow}</p>
             <div className="mt-4 flex flex-col items-start gap-3 text-[12.5px] text-[var(--l-muted)]">
               <a href={`mailto:${extra.contact.email}`} className="hover:text-[var(--l-heading)]">{extra.contact.email}</a>
-              <a href={sectionHref("faq", home)} className="hover:text-[var(--l-heading)]">{t.nav.faq}</a>
-              <a href={sectionHref("privacy", home)} className="hover:text-[var(--l-heading)]">{extra.legal.privacy}</a>
-              <a href={sectionHref("terms", home)} className="hover:text-[var(--l-heading)]">{extra.legal.terms}</a>
+              <a href={landingPath("faq")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{t.nav.faq}</a>
+              <a href={landingPath("privacy")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{extra.legal.privacy}</a>
+              <a href={landingPath("terms")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{extra.legal.terms}</a>
             </div>
           </div>
         </div>
         <div className="mt-8 flex flex-col items-start justify-between gap-4 text-[12px] text-[var(--l-faint)] sm:flex-row sm:items-center">
           <p>{t.footer.copy}</p>
           <div className="flex flex-wrap items-center gap-4">
-            <a href={sectionHref("cookies", home)} className="hover:text-[var(--l-heading)]">{extra.legal.cookies}</a>
+            <a href={landingPath("cookies")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{extra.legal.cookies}</a>
             <p className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> {t.footer.compliance}</p>
           </div>
         </div>
@@ -1107,7 +1194,7 @@ function CookieBanner({ lang }: { lang: Lang }) {
   if (!visible) return null
   return (
     <aside className="landing-cookie-banner fixed inset-x-4 bottom-4 z-50 mx-auto max-w-3xl rounded-2xl border border-[var(--l-border-strong)] bg-[var(--l-panel)] p-4 shadow-2xl backdrop-blur-xl sm:flex sm:items-center sm:gap-5 sm:p-5" role="dialog" aria-label={copy.link}>
-      <p className="flex-1 text-[12.5px] leading-relaxed text-[var(--l-text)]">{copy.text} <a href="/cookies/" className="font-semibold text-blue-400 hover:underline">{copy.link}</a></p>
+      <p className="flex-1 text-[12.5px] leading-relaxed text-[var(--l-text)]">{copy.text} <a href="/cookies" onClick={onInternalLinkClick} className="font-semibold text-blue-400 hover:underline">{copy.link}</a></p>
       <div className="mt-4 flex shrink-0 gap-2 sm:mt-0">
         <button type="button" onClick={() => choose("declined")} className="rounded-lg border border-[var(--l-border-strong)] px-3 py-2 text-[12px] font-semibold text-[var(--l-muted)] hover:text-[var(--l-heading)]">{copy.reject}</button>
         <button type="button" onClick={() => choose("accepted")} className="rounded-lg bg-blue-500 px-3 py-2 text-[12px] font-semibold text-white hover:bg-blue-400">{copy.accept}</button>

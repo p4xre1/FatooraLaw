@@ -19,9 +19,21 @@ export const supabaseConfigWarning = supabaseConfig.warning
 const clientUrl = isSupabaseConfigured && supabaseConfig.url ? supabaseConfig.url : "https://missing-supabase-config.supabase.co"
 const clientKey = isSupabaseConfigured && supabaseConfig.anonKey ? supabaseConfig.anonKey : "missing-supabase-anon-key"
 
+// Say it out loud, in every build: a configuration problem is diagnosable
+// from the browser console (and this message names the variable to fix), while
+// the UI only shows a banner. See docs/ENVIRONMENT.md for every source of
+// these variables.
 if (supabaseConfigProblem?.code === "secret-key") {
   // eslint-disable-next-line no-console
   console.error(supabaseConfigProblem.message)
+} else if (supabaseConfigProblem) {
+  // eslint-disable-next-line no-console
+  console.warn(
+    `[Fatorati] ${supabaseConfigProblem.message} ` +
+      "This bundle was built without a usable public Supabase configuration: " +
+      "set the variables in the environment that runs the BUILD (Cloudflare Pages / CI), not only in your local .env. " +
+      "See docs/ENVIRONMENT.md.",
+  )
 } else if (supabaseConfigWarning) {
   // eslint-disable-next-line no-console
   console.warn(supabaseConfigWarning)
