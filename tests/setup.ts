@@ -4,6 +4,13 @@ import { DEFAULT_LANGUAGE, useLanguageStore } from "../src/lib/language/store"
 
 afterEach(() => {
   cleanup()
+  // Component unmount does not reset the document attributes set by
+  // useTranslation(); restore the canonical language too, so an Arabic test
+  // cannot leave the next test's (usually French) DOM in RTL.
+  if (typeof document !== "undefined") {
+    document.documentElement.lang = DEFAULT_LANGUAGE
+    document.documentElement.dir = "ltr"
+  }
   // The language preference is a module-level zustand singleton, so clearing
   // storage alone would leave the previous test's language active in memory and
   // silently translate the next test's component. Resetting it writes through

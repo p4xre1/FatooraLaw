@@ -9,6 +9,7 @@ import { MAX_QUANTITY } from "../src/lib/businessValidation"
 import Procurement from "../src/modules/Procurement"
 import { useMizan } from "../src/store/useMizan"
 import { seedContacts, seedExpenses, seedTools } from "../src/store/seed"
+import { useLanguageStore } from "../src/lib/language/store"
 
 beforeEach(() => {
   vi.useFakeTimers()
@@ -129,4 +130,35 @@ it("refreshes subscription expiry after local midnight without needing a page re
   expect(within(row).getByText("Expire dans 0 j")).toBeDefined()
   act(() => vi.advanceTimersByTime(31_000))
   expect(within(row).getByText("Expiré")).toBeDefined()
+})
+
+
+it("renders Tools in English and Arabic from the same app-wide preference as the shell", () => {
+  act(() => useLanguageStore.getState().setLanguage("en"))
+  const view = render(<Tools />)
+  expect(screen.getByText("Subscriptions & Tools")).toBeDefined()
+  expect(screen.getByText("Tracking recurring costs and expiry dates")).toBeDefined()
+  expect(screen.getByText("Theoretical amounts of the subscriptions covering each month, without pro-rating. This chart is not a payment history.")).toBeDefined()
+  expect(document.documentElement.lang).toBe("en")
+  expect(document.documentElement.dir).toBe("ltr")
+
+  view.unmount()
+  act(() => useLanguageStore.getState().setLanguage("ar"))
+  render(<Tools />)
+  expect(screen.getByText("الاشتراكات والأدوات")).toBeDefined()
+  expect(screen.getByText("متابعة التكاليف الدورية وتواريخ الانتهاء")).toBeDefined()
+  expect(screen.getByText("هذا الرسم ليس سجلاً للمدفوعات.", { exact: false })).toBeDefined()
+  expect(document.documentElement.lang).toBe("ar")
+  expect(document.documentElement.dir).toBe("rtl")
+})
+
+it("uses translated labels and grammatical field hints in the tool form", () => {
+  act(() => useLanguageStore.getState().setLanguage("ar"))
+  render(<Tools />)
+  fireEvent.click(screen.getByRole("button", { name: "إضافة أداة" }))
+  expect(screen.getByLabelText("اسم الأداة")).toBeDefined()
+  expect(screen.getByLabelText("التكلفة الشهرية (MAD)")).toBeDefined()
+  expect(screen.getAllByText("اختيارية")).toHaveLength(2)
+  expect(screen.getByRole("button", { name: "إلغاء" })).toBeDefined()
+  expect(screen.getByRole("button", { name: "إضافة" })).toBeDefined()
 })

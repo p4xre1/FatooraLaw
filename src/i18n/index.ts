@@ -2,9 +2,11 @@ import type { LocaleId } from "../lib/locales.ts"
 import { auth } from "./auth.ts"
 import { shell } from "./shell.ts"
 import { dashboard } from "./dashboard.ts"
+import { common } from "./common.ts"
 import { shared } from "./shared.ts"
 import { audit } from "./audit.ts"
 import { team } from "./team.ts"
+import { tools } from "./tools.ts"
 
 /**
  * The application dictionary: every string the signed-in product shows, in the
@@ -21,30 +23,36 @@ import { team } from "./team.ts"
  * `t.<area>`.
  */
 const en = {
+  common: common.en,
   shared: shared.en,
   auth: auth.en,
   sidebar: shell.en,
   dashboard: dashboard.en,
   audit: audit.en,
   team: team.en,
+  tools: tools.en,
 }
 
 const fr: typeof en = {
+  common: common.fr,
   shared: shared.fr,
   auth: auth.fr,
   sidebar: shell.fr,
   dashboard: dashboard.fr,
   audit: audit.fr,
   team: team.fr,
+  tools: tools.fr,
 }
 
 const ar: typeof en = {
+  common: common.ar,
   shared: shared.ar,
   auth: auth.ar,
   sidebar: shell.ar,
   dashboard: dashboard.ar,
   audit: audit.ar,
   team: team.ar,
+  tools: tools.ar,
 }
 
 export type Translation = typeof en

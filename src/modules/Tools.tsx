@@ -7,11 +7,16 @@ import { daysUntil, validDateRange } from "../lib/calendarDates"
 import { MAX_AMOUNT, parseAmount } from "../lib/businessValidation"
 import { monthlySubscriptionCosts, subscriptionStatus } from "../lib/subscriptions"
 import { num } from "../lib/mizan"
+import { useTranslation } from "../lib/language/store"
 import { useFormats } from "../lib/language/formats"
 import { AreaChart } from "../components/charts"
 import { Card, SectionTitle, Btn, Badge, Modal, Field, Input, Table, Th, Td, IconBtn } from "../components/kit"
 
 export default function Tools() {
+  const { t: copy } = useTranslation()
+  const t = copy.tools
+  const common = copy.common
+  const { modules } = copy.shared
   const { date } = useFormats()
   const { tools, addTool, removeTool } = useMizan()
   const [open, setOpen] = useState(false)
@@ -23,34 +28,34 @@ export default function Tools() {
 
   return (
     <div className="mz-view space-y-5">
-      <SectionTitle title="Abonnements & Outils" sub="Suivi des coûts récurrents et des dates d'expiration" action={<Btn onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> Ajouter un outil</Btn>} />
+      <SectionTitle title={modules.tools} sub={t.subtitle} action={<Btn onClick={() => setOpen(true)}><Plus className="h-4 w-4" /> {t.addTool}</Btn>} />
       <div className="grid gap-4 sm:grid-cols-3">
         <Card className="p-4">
-          <p className="text-[12px] text-muted">Coût mensuel actif</p>
+          <p className="text-[12px] text-muted">{t.activeMonthlyCost}</p>
           <p className="tnum mt-1.5 text-[26px] font-bold leading-none text-ink">{num(total)} <span className="text-[13px] font-semibold text-muted">MAD</span></p>
-          <p className="mt-2 text-[11.5px] text-faint">Hors abonnements expirés ou à venir</p>
+          <p className="mt-2 text-[11.5px] text-faint">{t.activeMonthlyCostHint}</p>
         </Card>
         <Card className="p-4">
-          <p className="text-[12px] text-muted">Outils actifs</p>
+          <p className="text-[12px] text-muted">{t.activeTools}</p>
           <p className="tnum mt-1.5 text-[26px] font-bold leading-none text-ink">{active.length}</p>
-          <p className="mt-2 text-[11.5px] text-faint">sur {tools.length} abonnements enregistrés</p>
+          <p className="mt-2 text-[11.5px] text-faint">{t.ofRecorded(tools.length)}</p>
         </Card>
         <Card className="p-4">
-          <p className="text-[12px] text-muted">Expire sous 30 jours</p>
+          <p className="text-[12px] text-muted">{t.expiringSoon}</p>
           <p className="tnum mt-1.5 text-[26px] font-bold leading-none text-ink">{expiringSoon}</p>
-          <p className="mt-2 inline-flex items-center gap-1 text-[11.5px] font-semibold text-warn"><AlertCircle className="h-3.5 w-3.5" /> à renouveler bientôt</p>
+          <p className="mt-2 inline-flex items-center gap-1 text-[11.5px] font-semibold text-warn"><AlertCircle className="h-3.5 w-3.5" /> {t.renewSoon}</p>
         </Card>
       </div>
       <Card className="p-5">
         <div className="mb-1 flex items-center justify-between">
-          <h2 className="text-[14px] font-bold text-ink">Coûts mensuels prévus</h2>
-          <Badge tone="brand" dot>7 derniers mois</Badge>
+          <h2 className="text-[14px] font-bold text-ink">{t.projectedTitle}</h2>
+          <Badge tone="brand" dot>{t.lastSevenMonths}</Badge>
         </div>
-        <p className="mb-3 text-[12px] text-muted">Montants théoriques des abonnements couvrant chaque mois, sans prorata. Ce graphique n'est pas un historique des paiements.</p>
-        <AreaChart labels={trend.labels} series={[{ name: "Coût prévu", values: trend.values }]} height={200} format={(value) => `${num(value)} MAD`} />
+        <p className="mb-3 text-[12px] text-muted">{t.projectedNote}</p>
+        <AreaChart labels={trend.labels} series={[{ name: t.projectedSeries, values: trend.values }]} height={200} format={(value) => `${num(value)} MAD`} />
       </Card>
       <Card className="overflow-hidden">
-        <Table head={<><Th>Outil</Th><Th className="text-right">Coût / mois</Th><Th>Date de début</Th><Th>Expiration</Th><Th>Statut</Th><Th /></>}>
+        <Table head={<><Th>{t.table.tool}</Th><Th className="text-right">{t.table.costPerMonth}</Th><Th>{t.table.startDate}</Th><Th>{t.table.expiry}</Th><Th>{common.status}</Th><Th /></>}>
           {tools.map((tool) => {
             const status = subscriptionStatus(tool, today)
             const days = daysUntil(tool.expiry, today)
@@ -60,16 +65,16 @@ export default function Tools() {
                 <Td><span className="flex items-center gap-2.5 font-semibold text-ink"><span className="grid h-7 w-7 place-items-center rounded-lg bg-brand-50 text-brand"><Wrench className="h-3.5 w-3.5" /></span>{tool.name}</span></Td>
                 <Td className="tnum text-right font-semibold text-ink">{num(tool.cost)} MAD</Td>
                 <Td className="tnum text-muted">{tool.start ? date(tool.start) : "—"}</Td>
-                <Td className="tnum text-muted">{tool.expiry ? date(tool.expiry) : "Sans échéance"}</Td>
+                <Td className="tnum text-muted">{tool.expiry ? date(tool.expiry) : t.noExpiry}</Td>
                 <Td>
-                  {status === "expired" ? <Badge tone="serious" dot>Expiré</Badge> : status === "scheduled" ? <Badge tone="brand" dot>À venir</Badge> : status === "unknown" ? <Badge tone="neutral">Dates à vérifier</Badge> : soon ? <Badge tone="warn" dot>Expire dans {days} j</Badge> : <Badge tone="good" dot>Actif</Badge>}
+                  {status === "expired" ? <Badge tone="serious" dot>{t.status.expired}</Badge> : status === "scheduled" ? <Badge tone="brand" dot>{t.status.scheduled}</Badge> : status === "unknown" ? <Badge tone="neutral">{t.status.unknown}</Badge> : soon ? <Badge tone="warn" dot>{t.status.expiresIn(days!)}</Badge> : <Badge tone="good" dot>{t.status.active}</Badge>}
                 </Td>
-                <Td className="text-right"><IconBtn onClick={() => removeTool(tool.id)} aria-label={`Supprimer ${tool.name}`}><Trash2 className="h-4 w-4" /></IconBtn></Td>
+                <Td className="text-right"><IconBtn onClick={() => removeTool(tool.id)} aria-label={t.removeAria(tool.name)}><Trash2 className="h-4 w-4" /></IconBtn></Td>
               </tr>
             )
           })}
         </Table>
-        {tools.length === 0 && <p className="p-6 text-center text-sm text-muted">Aucun abonnement.</p>}
+        {tools.length === 0 && <p className="p-6 text-center text-sm text-muted">{t.empty}</p>}
       </Card>
       {open && <AddTool onClose={() => setOpen(false)} onAdd={(tool) => { addTool(tool); setOpen(false) }} />}
     </div>
@@ -77,6 +82,9 @@ export default function Tools() {
 }
 
 function AddTool({ onClose, onAdd }: { onClose: () => void; onAdd: (tool: Omit<SubscriptionTool, "id">) => void }) {
+  const { t: copy } = useTranslation()
+  const t = copy.tools
+  const { common } = copy
   const [name, setName] = useState("")
   const [cost, setCost] = useState("")
   const [start, setStart] = useState("")
@@ -85,22 +93,22 @@ function AddTool({ onClose, onAdd }: { onClose: () => void; onAdd: (tool: Omit<S
   const amount = parseAmount(cost)
   const valid = !!name.trim() && amount !== null && validDateRange(start, expiry)
   return (
-    <Modal title="Ajouter un outil" onClose={onClose}>
+    <Modal title={t.modalTitle} onClose={onClose}>
       <form className="space-y-4" onSubmit={(event) => {
         event.preventDefault()
         if (!valid || amount === null) return
         try { onAdd({ name, cost: amount, start, expiry }) }
-        catch (err) { setError(err instanceof Error ? err.message : "Impossible d'ajouter l'abonnement.") }
+        catch (err) { setError(err instanceof Error ? err.message : t.addError) }
       }}>
         {error && <p role="alert" className="text-sm text-serious">{error}</p>}
-        <Field label="Nom de l'outil"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="ex. Figma Organisation" autoFocus /></Field>
-        <Field label="Coût mensuel (MAD)"><Input type="number" min={0} max={MAX_AMOUNT} step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="299" className="tnum" /></Field>
+        <Field label={t.toolName}><Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t.toolNamePlaceholder} autoFocus /></Field>
+        <Field label={t.monthlyCost}><Input type="number" min={0} max={MAX_AMOUNT} step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="299" className="tnum" /></Field>
         <div className="grid grid-cols-2 gap-3.5">
-          <Field label="Date de début" hint="Facultative"><Input type="date" value={start} onChange={(e) => setStart(e.target.value)} className="tnum" /></Field>
-          <Field label="Expiration" hint="Facultative"><Input type="date" value={expiry} onChange={(e) => setExpiry(e.target.value)} className="tnum" /></Field>
+          <Field label={t.table.startDate} hint={common.optionalFem}><Input type="date" value={start} onChange={(e) => setStart(e.target.value)} className="tnum" /></Field>
+          <Field label={t.table.expiry} hint={common.optionalFem}><Input type="date" value={expiry} onChange={(e) => setExpiry(e.target.value)} className="tnum" /></Field>
         </div>
-        {!validDateRange(start, expiry) && <p role="alert" className="text-sm text-serious">L'expiration ne peut pas précéder la date de début.</p>}
-        <div className="flex justify-end gap-2 pt-1"><Btn variant="outline" type="button" onClick={onClose}>Annuler</Btn><Btn type="submit" disabled={!valid}><Plus className="h-4 w-4" /> Ajouter</Btn></div>
+        {!validDateRange(start, expiry) && <p role="alert" className="text-sm text-serious">{t.dateOrderError}</p>}
+        <div className="flex justify-end gap-2 pt-1"><Btn variant="outline" type="button" onClick={onClose}>{common.cancel}</Btn><Btn type="submit" disabled={!valid}><Plus className="h-4 w-4" /> {common.add}</Btn></div>
       </form>
     </Modal>
   )
