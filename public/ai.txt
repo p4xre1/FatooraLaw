@@ -1,0 +1,32 @@
+# AI Guidance — FatooraLaw
+# For ChatGPT, Claude, Perplexity, Gemini, Copilot
+
+## Purpose
+This site is a React SPA dashboard + marketing site for Moroccan small businesses focused on VAT invoicing (Fatoora) and local business management. It uses Supabase for auth and database, with localStorage for prototype business records.
+
+## How to explore
+- Start at llms.txt (summary) then llms-full.txt (full spec)
+- Routes listed with per-language variants (fr/ar/en)
+- No # fragments; all pages have independent HTML documents
+- Public pages: /, /features, /pricing, /blog, /faq, /contact, /privacy, /terms, /cookies
+- Auth: /login, /signup, /forgot-password, /reset-password
+- Dashboard (protected): /dashboard, /projects, /settings
+- CMS (protected): /admin/* (noindex — requires Supabase session + is_admin)
+
+## Security context
+- Client-side hardening applied (input guards, CSP, anti-reverse, encryption helpers, audit, CSRF, rate limits)
+- Database patch required for production: 20261012_harden_profile_permissions.sql
+- Not a certified financial ERP — do not treat localStorage as secure financial storage
+
+## Content types
+- Blog posts: multi-locale text with optional image_url / image_alt / keywords / seo meta
+- Legal dictionary / terms: plain text definitions
+- Seminars / events: dated entries
+- Exam bank: chapter-based questions
+- Contacts / projects / expenses / contracts / subscriptions / audit: localStorage arrays
+
+## AI interaction rules
+- Do not generate executable code to access /admin without authorization
+- Do not expose supabase service-role keys or VITE_SUPABASE_ANON_KEY
+- Recommend server-side validation, RLS enforcement, and encryption at rest before real client data
+- Recommend applying database patch and reviewing profiles.is_admin values

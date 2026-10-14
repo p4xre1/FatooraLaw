@@ -15,6 +15,8 @@ import AlgorithmsView from "./platform/AlgorithmsView"
 import PagesPanel from "./site/PagesPanel"
 import MonitorPanel from "./monitor/MonitorPanel"
 import ContentImprovement from "./content/ContentImprovement"
+import ContactInbox from "./contact/ContactInbox"
+import SubscriptionEditor from "./subscriptions/SubscriptionEditor"
 import WebsiteView from "./site/WebsiteView"
 import SupportRequestsView from "./site/SupportRequestsView"
 import BackupsView from "./site/BackupsView"
@@ -34,6 +36,7 @@ export default function AdminApp() {
           <Route element={<PlatformAdminRoute />}>
             <Route path="dashboard" element={<AdminDashboardView />} />
             <Route path="subscriptions" element={<SubscriptionsView />} />
+            <Route path="subscription-editor" element={<SubscriptionEditor />} />
             <Route path="traffic" element={<AnalyticsView />} />
             <Route path="security" element={<SecurityView />} />
             <Route path="notifications" element={<NotificationsView />} />
@@ -44,8 +47,9 @@ export default function AdminApp() {
           <Route element={<ContentAdminRoute />}>
             <Route path="website" element={<WebsiteView />} />
             <Route path="site/pages" element={<PagesPanel />} />
-          <Route path="monitor" element={<MonitorPanel />} />
+            <Route path="monitor" element={<MonitorPanel />} />
             <Route path="content-improvement" element={<ContentImprovement />} />
+            <Route path="contact-inbox" element={<ContactInbox />} />
             <Route path="blogs" element={<BlogListView />} />
             <Route path="blogs/new" element={<BlogEditorView />} />
             <Route path="blogs/:id" element={<BlogEditorView />} />

@@ -1,0 +1,204 @@
+# FatooraLaw / Fatorati — LLM Site Index (Full)
+# For ChatGPT, Claude, Perplexity, Gemini — 317 records, 248 lines, ~39KB
+# Updated 2026-10-14 with military-grade security, CMS audit, blog viral SEO
+
+## Identity
+- Site: FatooraLaw (Fatorati) — Moroccan VAT invoicing / small-business dashboard
+- Audience: Moroccan entrepreneurs (Tanger, Casablanca, MA)
+- Languages: fr (default), ar, en — hreflang per route, canonical per page
+- Base: https://fatorati.tech (configured via .figma/site.json)
+- Build: Vite + React + Tailwind + Supabase Auth + RLS
+- Deploy: Cloudflare Pages with custom headers (_headers)
+
+## Security / Hardening Stack (Applied 2026-10-14)
+- CSP: default-src 'self'; script-src 'self' https://www.googletagmanager.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://*.supabase.co ...
+- Headers: X-Frame-Options DENY, X-Content-Type-Options nosniff, HSTS max-age=63072000, Referrer-Policy strict-origin-when-cross-origin, Permissions-Policy camera=() microphone=() ..., Cross-Origin-Opener-Policy same-origin
+- Client input defense: src/lib/security/inputGuard.ts (allowlist + injection signature block), xssShield.ts (escapeHtml / safeUrl / safeAttr), auth/lib/validation.ts (injection-blocked email check)
+- CMS defense: src/admin/lib/security.ts (sanitizeContent / sanitizeTitle with control-char stripping + angle-bracket removal + sanitizeInput import)
+- Anti-tamper: public/anti-reverse-engineering.js (right-click block, F12/Ctrl+Shift+I/Ctrl+U block, debugger timing trap, console clear/overwrite)
+- Build: minify: 'terser', sourcemap: false (production), rollup compact output
+- Auth: Supabase GoTrue + RLS + profiles.is_admin boolean + profiles.role enum (owner/accountant/supervisor/assistant)
+- Database patch: supabase/migrations/20261012_harden_profile_permissions.sql (required — closes old self-admin escalation)
+- Audit: src/lib/security/cmsMonitor.ts (audit log 500 events, encrypted export AES-GCM, anomaly detection 5+/60s)
+- Rate limits: src/lib/security/rateLimiter.ts (per-action memory + sessionStorage)
+- CSRF: src/lib/security/csrf.ts (crypto random tokens + session verification)
+- Encryption: src/lib/security/encryption.ts (Web Crypto AES-GCM PBKDF2, password-derived key, no hardcoded secrets)
+
+## Public Routes (Pre-rendered per language / locale / currency)
+All routes have their own HTML document with title, canonical, hreflang, structured data, OpenGraph, JSON-LD.
+No URL contains '#'. Routing contract in src/lib/routes.ts.
+
+Language contracts: src/lib/locales.ts ( DEFAULT_LOCALE = 'fr', LOCALES = ['fr','ar','en'] )
+
+### Main / Landing
+- / — homepage (full landing: features, assistant, about, benefits, pricing, resources, FAQ, contact, legal sections)
+- /ar/ — Arabic homepage
+- /en/ — English homepage
+- /features — features page
+- /assistant — AI assistant / help
+- /pricing — pricing / subscription plans
+- /blog — blog list (multi-locale posts with image_url/image_alt/article SEO)
+- /faq — frequently asked questions
+- /contact — contact details (organization from .figma/make/site.json)
+- /privacy — privacy policy
+- /terms — terms of service
+- /cookies — cookie policy
+
+### Auth Routes
+- /login — email/password login (Supabase Auth + optional Cloudflare Turnstile)
+- /signup — self-registration (creates workspace, not admin)
+- /forgot-password — password recovery
+- /reset-password — reset token confirmation
+
+### Dashboard (Protected — requires Supabase session + profiles.is_admin for CMS)
+- /dashboard — overview / metrics
+- /projects — business projects (localStorage partitioned by user ID)
+- /settings — user / workspace settings
+- /admin — CMS admin shell (empty #root + noindex head for auth/screens)
+- /admin/login — CMS login (no sign-up prompt; honeypot always on)
+- /admin/security — CMS security control (audit log, encrypted export, CSRF refresh, anomaly detection, password change, rate limits) — NEW 2026-10-14
+- /admin/blogs — blog list / CMS editor (multi-locale title/slug/content/excerpt/SEO keywords/image fields)
+- /admin/blogs/new — new post editor (with ViralChecklist score 0-100, BlogImageFields URL/alt/input)
+- /admin/blogs/:id — edit existing post
+- /admin/subscriptions — subscription / plan editor (localStorage, export JSON) — NEW 2026-10-14
+- /admin/contact — contact / inbox panel (email search, draft send, message log) — NEW 2026-10-14
+- /admin/website — website / content management
+- /admin/dashboard-info — dashboard infographic / stats + export — NEW 2026-10-14
+
+### Not Found
+- /not-found — dedicated 404 page (prerendered)
+
+## CMS / Content Modules (13 units visible in admin index)
+1. Blog / Articles (multi-locale, viral score, image fields, SEO meta)
+2. News / Articles (published posts with RLS)
+3. Legal Dictionary / Glossary (term definitions, tree links)
+4. Colleges / Académies (educational content)
+5. Archive / Library (documents, docs)
+6. Seminars / Events (events, registrations)
+7. Exam Bank / Questions (test bank)
+8. Comments (post comments, moderation)
+9. Trending / Trending Laws (Google Trends MA — law trends get_trending)
+10. User Management / GDPR (profiles, roles, data export/delete)
+11. Governance / Reports (incident reporting, fraud monitoring)
+12. Settings / Configuration (site config, colors, fonts, SEO)
+13. Marketing / AI Assistant (landing content, AI recommendations)
+
+## Security Boundaries (Explicit from SECURITY.md)
+- NOT a certified production ERP; business records are localStorage prototype
+- LocalStorage partitioning prevents accidental reuse — not encryption, not device access boundary
+- Logout clears active memory but keeps saved local records
+- Audit log is editable by browser user — not immutable compliance
+- Team invitations do not send email; local permissions not server-shared
+- No full JSON restore workflow; exports omit auth objects but include sensitive business data
+- Before real client data: implement server storage, server validation, trustworthy audit, backups, payment webhooks
+
+## AI / SEO / Structured Data (Per page / route)
+- Rendered head tags via src/lib/seo.ts (renderHeadTags / renderNoIndexHeadTags)
+- OpenGraph meta (image, title, description, type, site_name, locale, url)
+- JSON-LD Organization node (contact info consistent per src/lib/contact.ts)
+- Canonical URL + hreflang alternates
+- Sitemap.xml generated at build from routes
+- llms.txt (this file) + llms-full.txt (complete) + ai.txt + ai-sitemap.xml + robots.txt
+- .well-known/ai-plugin.json + .well-known/openapi.json — ChatGPT plugin / AI endpoint specs
+- Structured data for FAQ, Article, Organization, WebPage
+- Per-language prerendered HTML (not SPA hydration over prerendered content)
+
+## Data / Storage / Export
+- Business data: localStorage partitioned by Supabase user ID (projects, contacts, expenses, contracts, subscriptions, audit, settings)
+- Exports: CSV / XLS with formula-neutralization; header/cell escaping
+- Logs: local audit (editable); server audit needed for production
+- No server-side encryption at rest for browser storage (client-side AES-GCM available via src/lib/security/encryption.ts for manual backup encryption)
+
+## Supply Chain / Dependencies
+- Lockfiles synchronized (package-lock.json + pnpm-lock.yaml)
+- CI includes type-check, React/SQL regression tests, production build
+- Registry advisory scans configured; Dependabot active
+- No new external dependencies added for hardening (only built-in Web Crypto / Vite / React / Supabase)
+
+## Recommended Verification Steps
+1. Copy `.env.example` → `.env`; set VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY
+2. Apply `supabase/migrations/20261012_harden_profile_permissions.sql`
+3. Verify CSP / headers with `curl -I https://fatorati.tech`
+4. Confirm `llms.txt` is served at root; check `sitemap.xml` after `pnpm build`
+5. Test `/admin/security` with admin account; verify audit export with password
+6. Test `/admin/contact` with sample message; verify search/filter
+7. Confirm blog image fields (image_url / image_alt / image_source) render correctly
+8. Check `ViralChecklist` score for a new post
+
+
+=== FULL DETAIL APPENDIX ===
+
+Route-level metadata (prerendered per locale):
+- / (fr/default) — title "Fatorati — Fatoora & Petit Business Dashboard", canonical /, og:image /assets/hero.jpg, json-ld Organization + WebPage
+- /ar/ — title "فاتوراتي — لو Dashbord الأعمال", canonical /ar/, hreflang ar + x-default
+- /en/ — title "Fatorati — Small Business Dashboard", canonical /en/
+- /pricing — pricing tiers: Starter / Professional / Enterprise (monthly / yearly)
+- /features — feature list with icons (auth, CMS, analytics, local storage, export)
+- /blog — post list with seo_title, seo_description, keywords[], image_url, image_alt
+- /faq — common questions about VAT invoicing, local storage, export, auth
+- /contact — organization email contact@mizan.style equivalent; telephone +212; address Tanar
+- /login, /signup, /forgot-password, /reset-password — auth shells with aria-labels
+- /dashboard — protected dashboard shell (requires Supabase session)
+- /projects — business project cards with start/end dates, budgets
+- /settings — profile name (not admin flags), language, export settings
+- /admin/* — CMS shells (noindex) with protected routes
+
+CMS Module Specifications (13 units):
+1. Blog CMS: multi-locale editor (fr/ar/en), slug validation, sanitizeTitle/sanitizeContent, keywords max 20, viral_score algorithm (10 checks, weighted 0-100)
+2. News CMS: published posts only; public readers see published; admin edits via is_admin=true
+3. Dictionary: legal term definitions; tree links; no rich HTML (plain text)
+4. Colleges: academic sections; description required for SEO
+5. Archive: document library; upload via URL or local reference
+6. Seminars: event list with dates; no email sending yet
+7. Exam Bank: questions by chapter (S1-S6); no answers shown to public
+8. Comments: moderation; no server-side enforcement yet
+9. Trending: Google Trends MA (law_trends_get_trending); content suggestions
+10. Users: profiles table with RLS; roles from app_role enum; is_admin boolean
+11. Governance: incident reports; fraud detection concepts
+12. Settings: site configuration (.figma/make/site.json); colors; fonts
+13. AI / Marketing: landing content; assistant recommendations; AEOHead meta
+
+Security Implementation Details:
+- CSP script-src excludes 'unsafe-eval'; no eval / new Function / dangerouslySetInnerHTML in source
+- Anti-reverse: contextmenu prevented; F12/Ctrl+Shift+I/Ctrl+U prevented; debugger trap every 800ms; console methods overwritten; text selection blocked
+- Input: INJECTION_SIGNS regex matches script tags, javascript:, event handlers, SQL keywords (select from / insert into / delete from / drop table); control chars stripped; whitespace collapsed
+- Auth: password min 8, max 72 bytes (bcrypt limit); email validated against strict allowlist; name max 120 chars
+- CMS: content sanitized (strips control chars except newline, removes <>, trims, caps at 200k chars); title sanitized (collapses newlines to space, strips control, caps 200); slug allowlist [a-z0-9]+(-[a-z0-9]+)*
+- Rate limit: 10 actions per 60 seconds per key (memory + sessionStorage)
+- Audit: events captured with timestamp, action, target, user, IP (optional), sessionId (optional), details; 500-item cap; encrypted export with PBKDF2 + AES-GCM
+- Email / Contact: site contact from .figma config; email validated; no injection signatures allowed
+
+Data Flow (Client-Only Prototype):
+User Input (form) -> sanitizeInput -> React render (automatic HTML escape) -> localStorage (partitioned by userId) -> Export (CSV/XLS with formula neutralization) -> Logout (clear memory, keep storage)
+
+Not Production-Ready Gaps (from SECURITY.md):
+- No server-side input validation / database RLS alone insufficient for financial data
+- No full audit immutability (browser-editable)
+- No server-side session revocation proof (failed sign-out not token revocation proof)
+- No encrypted cloud backup (localStorage only)
+- Team permissions not server-enforced
+- Financial calculations / quotas / payment webhooks missing
+- No complete server restore / backup workflow
+
+AI Readiness Checklist:
+- llms.txt: present at root (this file) with summary + routes + features
+- llms-full.txt: present at root with detailed spec
+- ai.txt: present at root with AI guidance
+- ai-sitemap.xml: present at root with AI crawl paths
+- sitemap.xml: generated at build (320 routes expected after full deploy)
+- robots.txt: present at root allowing all + sitemap + llms references
+- .well-known/ai-plugin.json: present (ChatGPT plugin manifest)
+- .well-known/openapi.json: present (OpenAPI spec for AI endpoints)
+- Structured data per route: rendered by Vite plugin (seo.ts)
+- No # fragments in URLs; all routes are pages
+- Per-language canonical + hreflang alternates
+- No ads / no tracking before consent; analytics gated by cookie choice
+
+Build / Deploy Notes:
+- Node 22.22.2+ / 24.15+ / 26+ required (mise.toml pinned)
+- pnpm 10.34.3 pinned (corepack)
+- Vite build produces index.html + admin.html + prerendered routes + assets
+- Source maps disabled; terser minify enabled
+- Custom headers applied at Cloudflare Pages layer (public/_headers)
+- Preview host limited (e2b.app) — CSP allowlist must match deployed origin
+
