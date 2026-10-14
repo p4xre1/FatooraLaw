@@ -6,7 +6,6 @@ import { useToday } from "../hooks/useToday"
 import { daysUntil, validDateRange } from "../lib/calendarDates"
 import { MAX_AMOUNT, parseAmount } from "../lib/businessValidation"
 import { monthlySubscriptionCosts, subscriptionStatus } from "../lib/subscriptions"
-import { num } from "../lib/mizan"
 import { useTranslation } from "../lib/language/store"
 import { useFormats } from "../lib/language/formats"
 import { AreaChart } from "../components/charts"
@@ -17,7 +16,7 @@ export default function Tools() {
   const t = copy.tools
   const common = copy.common
   const { modules } = copy.shared
-  const { date } = useFormats()
+  const { date, number } = useFormats()
   const { tools, addTool, removeTool } = useMizan()
   const [open, setOpen] = useState(false)
   const today = useToday()
@@ -32,7 +31,7 @@ export default function Tools() {
       <div className="grid gap-4 sm:grid-cols-3">
         <Card className="p-4">
           <p className="text-[12px] text-muted">{t.activeMonthlyCost}</p>
-          <p className="tnum mt-1.5 text-[26px] font-bold leading-none text-ink">{num(total)} <span className="text-[13px] font-semibold text-muted">MAD</span></p>
+          <p className="tnum mt-1.5 text-[26px] font-bold leading-none text-ink">{number(total)} <span className="text-[13px] font-semibold text-muted">MAD</span></p>
           <p className="mt-2 text-[11.5px] text-faint">{t.activeMonthlyCostHint}</p>
         </Card>
         <Card className="p-4">
@@ -52,7 +51,7 @@ export default function Tools() {
           <Badge tone="brand" dot>{t.lastSevenMonths}</Badge>
         </div>
         <p className="mb-3 text-[12px] text-muted">{t.projectedNote}</p>
-        <AreaChart labels={trend.labels} series={[{ name: t.projectedSeries, values: trend.values }]} height={200} format={(value) => `${num(value)} MAD`} />
+        <AreaChart labels={trend.labels} series={[{ name: t.projectedSeries, values: trend.values }]} height={200} format={(value) => `${number(value)} MAD`} />
       </Card>
       <Card className="overflow-hidden">
         <Table head={<><Th>{t.table.tool}</Th><Th className="text-right">{t.table.costPerMonth}</Th><Th>{t.table.startDate}</Th><Th>{t.table.expiry}</Th><Th>{common.status}</Th><Th /></>}>
@@ -63,7 +62,7 @@ export default function Tools() {
             return (
               <tr key={tool.id} className="transition-colors hover:bg-canvas/60">
                 <Td><span className="flex items-center gap-2.5 font-semibold text-ink"><span className="grid h-7 w-7 place-items-center rounded-lg bg-brand-50 text-brand"><Wrench className="h-3.5 w-3.5" /></span>{tool.name}</span></Td>
-                <Td className="tnum text-right font-semibold text-ink">{num(tool.cost)} MAD</Td>
+                <Td className="tnum text-right font-semibold text-ink">{number(tool.cost)} MAD</Td>
                 <Td className="tnum text-muted">{tool.start ? date(tool.start) : "—"}</Td>
                 <Td className="tnum text-muted">{tool.expiry ? date(tool.expiry) : t.noExpiry}</Td>
                 <Td>

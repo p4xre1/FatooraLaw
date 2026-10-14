@@ -25,7 +25,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (m: ModuleKey) =
   // The app-wide language preference, shared with the navigation rail and the
   // auth screens. It used to be this module's own FR/AR key plus its own toggle
   // button, which let the dashboard and the rail disagree.
-  const { language, dir, t: copy } = useTranslation()
+  const { language, dir, tag, t: copy } = useTranslation()
   const t = copy.dashboard
   const m = useMemo(() => dashboardData({ projects, expenses, contacts, audit }, range, today, t.months), [projects, expenses, contacts, audit, range, today, t])
   const cur = settings.currency
@@ -84,19 +84,19 @@ export default function Dashboard({ onNavigate }: { onNavigate: (m: ModuleKey) =
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{cards.map((card) => <Card key={card.label} className="p-5">
         <div className="flex items-start justify-between"><span className={`grid h-9 w-9 place-items-center rounded-lg ${card.chip}`}><card.icon className="h-4.5 w-4.5" strokeWidth={2.2} /></span><span className="text-[11.5px] text-muted">{card.detail}</span></div>
-        <p className="mt-4 text-[12px] font-medium text-muted">{card.label}</p><p className="tnum mt-1 text-[22px] font-bold leading-none tracking-tight">{dashboardMoney(card.value, cur)}</p><p className="mt-2 text-[11px] text-faint">{t.allDates}</p>
+        <p className="mt-4 text-[12px] font-medium text-muted">{card.label}</p><p className="tnum mt-1 text-[22px] font-bold leading-none tracking-tight">{dashboardMoney(card.value, cur, false, tag)}</p><p className="mt-2 text-[11px] text-faint">{t.allDates}</p>
       </Card>)}</div>
       <p className="flex items-start gap-2 text-[12px] leading-relaxed text-muted"><Info className="mt-0.5 h-4 w-4 shrink-0" />{t.cashNote}</p>
 
       <div className="grid gap-4 lg:grid-cols-3">
         {widgets.flow && <Card className="p-5 lg:col-span-2"><div className="mb-3"><h2 className="text-[14px] font-bold">{t.chartExpenses}</h2><p className="text-[12px] text-muted">{t.chartExpensesSub} · {cur}</p></div>
-          {m.monthly.periodCount ? <AreaChart labels={m.monthly.labels} series={[{ name: t.seriesExpense, values: m.monthly.values }]} format={(n) => dashboardMoney(n, cur, true)} /> : <EmptyChart>{t.emptyPeriod}</EmptyChart>}
+          {m.monthly.periodCount ? <AreaChart labels={m.monthly.labels} series={[{ name: t.seriesExpense, values: m.monthly.values }]} format={(n) => dashboardMoney(n, cur, true, tag)} /> : <EmptyChart>{t.emptyPeriod}</EmptyChart>}
         </Card>}
         {widgets.breakdown && <Card className="p-5"><h2 className="text-[14px] font-bold">{t.chartBreakdown}</h2><p className="mb-4 text-[12px] text-muted">{t.chartBreakdownSub}</p>{byCategory.length ? <Donut segments={byCategory} /> : <EmptyChart>{t.emptyCategory}</EmptyChart>}</Card>}
       </div>
 
       {widgets.projects && <Card className="p-5"><div className="mb-3 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-[14px] font-bold">{t.chartProjects}</h2><p className="text-[12px] text-muted">{t.chartProjectsSub}</p></div><Legend series={[{ name: t.seriesBudget, values: [] }, { name: t.seriesCollected, color: "var(--chart-2)", values: [] }]} /></div>
-        {m.projectChart.some((p) => p.budget > 0 || p.paid > 0) ? <BarChart labels={m.projectChart.map((p) => p.name.length > 22 ? `${p.name.slice(0, 21)}…` : p.name)} series={[{ name: t.seriesBudget, values: m.projectChart.map((p) => p.budget) }, { name: t.seriesCollected, color: "var(--chart-2)", values: m.projectChart.map((p) => p.paid) }]} format={(n) => dashboardMoney(n, cur, true)} /> : <EmptyChart>{t.emptyProjects}</EmptyChart>}
+        {m.projectChart.some((p) => p.budget > 0 || p.paid > 0) ? <BarChart labels={m.projectChart.map((p) => p.name.length > 22 ? `${p.name.slice(0, 21)}…` : p.name)} series={[{ name: t.seriesBudget, values: m.projectChart.map((p) => p.budget) }, { name: t.seriesCollected, color: "var(--chart-2)", values: m.projectChart.map((p) => p.paid) }]} format={(n) => dashboardMoney(n, cur, true, tag)} /> : <EmptyChart>{t.emptyProjects}</EmptyChart>}
       </Card>}
 
       <Card><header className="flex items-center justify-between border-b border-line px-5 py-3.5"><h2 className="text-[14px] font-bold">{t.recent}</h2><Btn variant="ghost" size="sm" onClick={() => onNavigate("audit")}>{t.viewLog}</Btn></header>

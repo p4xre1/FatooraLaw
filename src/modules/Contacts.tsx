@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { Plus, Search, Upload, Download, MessageCircle, Mail, Trash2, Users } from "lucide-react"
 import type { Contact } from "../store/types"
 import { useMizan } from "../store/useMizan"
-import { money, toCSV, parseCSV } from "../lib/mizan"
+import { toCSV, parseCSV } from "../lib/mizan"
 import { useFormats } from "../lib/language/formats"
 import { useTranslation } from "../lib/language/store"
 import { Card, SectionTitle, Btn, Badge, Table, Th, Td, Modal, Field, Input, Select, EmptyState, IconBtn } from "../components/kit"
@@ -11,12 +11,12 @@ const FACETS: ("all" | "client" | "supplier")[] = ["all", "client", "supplier"]
 type HistoryKind = "project" | "contract"
 
 export default function Contacts() {
-  const { date } = useFormats()
+  const { date, money: formatMoney } = useFormats()
   const { t: copy } = useTranslation()
   const t = copy.contacts
   const common = copy.common
   const modules = copy.shared.modules
-  const { auth, contacts, projects, contracts, addContact, removeContact, importContacts } = useMizan()
+  const { auth, contacts, projects, contracts, settings, addContact, removeContact, importContacts } = useMizan()
   const [q, setQ] = useState("")
   const [facet, setFacet] = useState<(typeof FACETS)[number]>("all")
   const [ledger, setLedger] = useState<Contact | null>(null)
@@ -126,7 +126,7 @@ export default function Contacts() {
                 <Td className="tnum text-muted">{c.ice}</Td>
                 <Td className="text-muted">{c.phone}</Td>
                 <Td className="text-muted">{c.city}</Td>
-                <Td className={`tnum text-end font-semibold ${c.balance > 0 ? "text-warn" : c.balance < 0 ? "text-serious" : "text-muted"}`}>{money(c.balance)}</Td>
+                <Td className={`tnum text-end font-semibold ${c.balance > 0 ? "text-warn" : c.balance < 0 ? "text-serious" : "text-muted"}`}>{formatMoney(c.balance, settings.currency)}</Td>
                 <Td>
                   <div className="flex justify-end gap-0.5">
                     <IconBtn title={t.whatsapp} onClick={() => window.open(`https://wa.me/${c.phone.replace(/[^\d]/g, "")}`, "_blank")}><MessageCircle className="h-4 w-4" /></IconBtn>
@@ -146,13 +146,13 @@ export default function Contacts() {
             <Info label={t.table.type} value={t.type[ledger.type]} />
             <Info label={t.table.ice} value={ledger.ice} />
             <Info label={t.phone} value={ledger.phone} />
-            <Info label={t.table.balance} value={money(ledger.balance)} accent={ledger.balance > 0} />
+            <Info label={t.table.balance} value={formatMoney(ledger.balance, settings.currency)} accent={ledger.balance > 0} />
           </div>
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted">{t.history}</p>
           {historyFor(ledger.id).length === 0 ? <p className="py-6 text-center text-[13px] text-muted">{t.noTransactions}</p> : (
             <Table head={<><Th>{common.date}</Th><Th>{t.table.type}</Th><Th>{common.name}</Th><Th className="text-end">{common.amount}</Th></>}>
               {historyFor(ledger.id).map((h, i) => (
-                <tr key={i}><Td className="text-muted">{date(h.ts)}</Td><Td><Badge tone="neutral">{t.historyKind[h.kind as HistoryKind]}</Badge></Td><Td className="font-medium">{h.label}</Td><Td className="tnum text-end font-semibold">{money(h.amount)}</Td></tr>
+                <tr key={i}><Td className="text-muted">{date(h.ts)}</Td><Td><Badge tone="neutral">{t.historyKind[h.kind as HistoryKind]}</Badge></Td><Td className="font-medium">{h.label}</Td><Td className="tnum text-end font-semibold">{formatMoney(h.amount, settings.currency)}</Td></tr>
               ))}
             </Table>
           )}

@@ -4,9 +4,9 @@ import type { Contract, Settings } from "../store/types"
 import { useMizan } from "../store/useMizan"
 import { MAX_AMOUNT, parseAmount } from "../lib/businessValidation"
 import { todayISO } from "../lib/calendarDates"
-import { dashboardMoney } from "../lib/dashboardData"
 import { contractDate, legalCompany, legalData } from "../lib/legalData"
 import { useTranslation } from "../lib/language/store"
+import { useFormats } from "../lib/language/formats"
 import { Card, SectionTitle, Btn, Badge, Modal, Field, Input, Select } from "../components/kit"
 
 type ContractType = Contract["type"]
@@ -25,6 +25,7 @@ const STATUS_TONE: Record<ContractStatus, "neutral" | "warn" | "good"> = {
 
 export default function LegalVault() {
   const { tag, t: copy } = useTranslation()
+  const { decimalMoney } = useFormats()
   const t = copy.legal
   const common = copy.common
   const modules = copy.shared.modules
@@ -56,7 +57,7 @@ export default function LegalVault() {
           const Icon = TYPE_ICON[contract.type]
           return <Card key={contract.id} className="flex flex-wrap items-center gap-4 p-4">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-navy text-white"><Icon className="h-5 w-5" /></span>
-            <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="truncate text-[13.5px] font-bold text-ink">{contract.title}</p><Badge tone={STATUS_TONE[contract.status]} dot>{t.status[contract.status]}</Badge></div><p className="mt-0.5 text-[12px] text-muted">{clientName(contract.clientId)} · {contractDate(contract.date, tag, t.missingDate)} · <span className="tnum font-semibold text-ink">{dashboardMoney(contract.value, settings.currency)}</span></p></div>
+            <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="truncate text-[13.5px] font-bold text-ink">{contract.title}</p><Badge tone={STATUS_TONE[contract.status]} dot>{t.status[contract.status]}</Badge></div><p className="mt-0.5 text-[12px] text-muted">{clientName(contract.clientId)} · {contractDate(contract.date, tag, t.missingDate)} · <span className="tnum font-semibold text-ink">{decimalMoney(contract.value, settings.currency)}</span></p></div>
             <div className="flex flex-wrap gap-1.5">
               {contract.status !== "signed" && <Btn variant="emerald" size="sm" aria-label={t.markSigned(contract.title)} onClick={() => setTracking({ contract, status: "signed" })}><PenLine className="h-4 w-4" />{t.markSignedButton}</Btn>}
               {contract.status === "draft" && <Btn variant="outline" size="sm" aria-label={t.markSent(contract.title)} onClick={() => setTracking({ contract, status: "sent" })}><Send className="h-4 w-4" /></Btn>}
@@ -74,6 +75,7 @@ export default function LegalVault() {
 
 function ContractPreview({ contract, company, client, currency, onClose }: { contract: Contract; company: string; client: string; currency: Settings["currency"]; onClose: () => void }) {
   const { tag, t: copy } = useTranslation()
+  const { decimalMoney } = useFormats()
   const t = copy.legal
   const p = t.preview
   return <Modal title={contract.title} onClose={onClose} wide>
@@ -84,7 +86,7 @@ function ContractPreview({ contract, company, client, currency, onClose }: { con
         <div><dt className="text-muted">{p.client}</dt><dd className="font-semibold">{client}</dd></div>
         <div><dt className="text-muted">{p.type}</dt><dd>{t.type[contract.type]}</dd></div>
         <div><dt className="text-muted">{p.date}</dt><dd>{contractDate(contract.date, tag, t.missingDate)}</dd></div>
-        <div><dt className="text-muted">{p.amount}</dt><dd className="tnum font-semibold">{dashboardMoney(contract.value, currency)}</dd></div>
+        <div><dt className="text-muted">{p.amount}</dt><dd className="tnum font-semibold">{decimalMoney(contract.value, currency)}</dd></div>
         <div><dt className="text-muted">{p.status}</dt><dd>{t.status[contract.status]}</dd></div>
       </dl>
       <div className="mt-6 border-t border-line pt-4"><h4 className="font-bold">{p.contentTitle}</h4><p className="mt-2 text-muted">{p.contentBody}</p></div>

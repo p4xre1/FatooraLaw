@@ -78,6 +78,7 @@ const LANGUAGE_NEUTRAL = new Set([
   "contacts.table.ice",
   "contacts.whatsapp",
   "contacts.phonePlaceholder",
+  "procurement.export",
 ])
 /** Scripts that have no business in any of the three languages we publish. */
 const FOREIGN =

@@ -6,17 +6,22 @@ const currencyLocale: Record<Settings["currency"], string> = {
   USD: "en-US",
 }
 
-export function money(n: number, currency: Settings["currency"] = "MAD", compact = false): string {
+export function money(
+  n: number,
+  currency: Settings["currency"] = "MAD",
+  compact = false,
+  locale = currencyLocale[currency],
+): string {
   const v = Math.round(n)
-  const formatted = new Intl.NumberFormat(currencyLocale[currency], {
+  const formatted = new Intl.NumberFormat(locale, {
     notation: compact ? "compact" : "standard",
     maximumFractionDigits: compact ? 1 : 0,
   }).format(v)
   return `${formatted} ${currency}`
 }
 
-export function num(n: number): string {
-  return new Intl.NumberFormat("fr-MA").format(n)
+export function num(n: number, locale = "fr-MA"): string {
+  return new Intl.NumberFormat(locale).format(n)
 }
 
 /**
