@@ -7,6 +7,7 @@ import { shared } from "./shared.ts"
 import { audit } from "./audit.ts"
 import { team } from "./team.ts"
 import { tools } from "./tools.ts"
+import { calendar } from "./calendar.ts"
 
 /**
  * The application dictionary: every string the signed-in product shows, in the
@@ -31,6 +32,7 @@ const en = {
   audit: audit.en,
   team: team.en,
   tools: tools.en,
+  calendar: calendar.en,
 }
 
 const fr: typeof en = {
@@ -42,6 +44,7 @@ const fr: typeof en = {
   audit: audit.fr,
   team: team.fr,
   tools: tools.fr,
+  calendar: calendar.fr,
 }
 
 const ar: typeof en = {
@@ -53,6 +56,7 @@ const ar: typeof en = {
   audit: audit.ar,
   team: team.ar,
   tools: tools.ar,
+  calendar: calendar.ar,
 }
 
 export type Translation = typeof en

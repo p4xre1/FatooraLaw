@@ -15,13 +15,19 @@ import { LOCALE_IDS } from "../src/lib/locales"
 
 type Leaf = string | ((...args: never[]) => string)
 
-function leaves(node: unknown, prefix: string, out: [string, Leaf][] = []): [string, Leaf][] {
+function leaves(
+  node: unknown,
+  prefix: string,
+  out: [string, Leaf][] = [],
+): [string, Leaf][] {
   if (typeof node === "string") {
     out.push([prefix, node])
   } else if (typeof node === "function") {
     out.push([prefix, node as Leaf])
   } else if (node && typeof node === "object") {
-    for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
+    for (const [key, value] of Object.entries(
+      node as Record<string, unknown>,
+    )) {
       leaves(value, prefix ? `${prefix}.${key}` : key, out)
     }
   }
@@ -29,18 +35,22 @@ function leaves(node: unknown, prefix: string, out: [string, Leaf][] = []): [str
 }
 
 /** Resolve a leaf to the strings it can produce, exercising plural branches. */
-function render(leaf: Leaf): string[] {
+function render(leaf: Leaf, locale: string): string[] {
   if (typeof leaf === "string") return [leaf]
-  // Call with 1 and 2 to reach both sides of a `n === 1 ? "" : "s"` branch, and
-  // with a name so string-argument keys are covered too.
-  return [
-    (leaf as unknown as (n: number) => string)(1),
-    (leaf as unknown as (n: number) => string)(2),
-    (leaf as unknown as (n: string) => string)("Fatorati"),
-  ]
+  // Exercise both sides of number-based plural branches, string interpolation,
+  // and the two-string date/aria-label formatters. Passing realistic arguments
+  // also ensures no function silently formats `undefined` in the integrity run.
+  const fn = leaf as unknown as (...args: unknown[]) => string
+  const month = {
+    fr: "septembre 2026",
+    en: "September 2026",
+    ar: "شتنبر 2026",
+  }[locale]
+  return [fn(1, month), fn(2, month), fn("Fatorati", month), fn("23", month)]
 }
 
-const ARABIC = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/
+const ARABIC =
+  /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/
 
 /**
  * Leaves that are not a fixed key set. `dashboard.categories` maps a *stored*
@@ -58,20 +68,36 @@ const OPEN_RECORDS = new Set(["dashboard.categories"])
  * checks below are what stop an untranslated English string reaching the Arabic
  * column, and every entry here is a hole in them.
  */
-const LANGUAGE_NEUTRAL = new Set(["auth.common.emailPlaceholder", "team.emailPlaceholder"])
+const LANGUAGE_NEUTRAL = new Set([
+  "auth.common.emailPlaceholder",
+  "team.emailPlaceholder",
+  // Product/service names stay in their registered brand spelling in Arabic.
+  "calendar.events.adobe.label",
+  "calendar.events.microsoft.label",
+  "calendar.events.sage.label",
+])
 /** Scripts that have no business in any of the three languages we publish. */
-const FOREIGN = /[\u0400-\u04FF\u0590-\u05FF\u0900-\u097F\u0E00-\u0E7F\u3000-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF]/
+const FOREIGN =
+  /[\u0400-\u04FF\u0590-\u05FF\u0900-\u097F\u0E00-\u0E7F\u3000-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF]/
 
-const TREES = LOCALE_IDS.map((id) => ({ id, entries: leaves(translations[id], "") }))
+const TREES = LOCALE_IDS.map((id) => ({
+  id,
+  entries: leaves(translations[id], ""),
+}))
 
 function isOpenRecord(path: string): boolean {
-  return [...OPEN_RECORDS].some((open) => path === open || path.startsWith(`${open}.`))
+  return [...OPEN_RECORDS].some(
+    (open) => path === open || path.startsWith(`${open}.`),
+  )
 }
 
 it("publishes the same keys in every language", () => {
   const [first, ...rest] = TREES
-  const keysOf = (tree: (typeof TREES)[number]) =>
-    tree.entries.map(([path]) => path).filter((path) => !isOpenRecord(path)).sort()
+  const keysOf = (tree: typeof TREES[number]) =>
+    tree.entries
+      .map(([path]) => path)
+      .filter((path) => !isOpenRecord(path))
+      .sort()
   const keys = keysOf(first)
   expect(keys.length).toBeGreaterThan(100)
   for (const tree of rest) {
@@ -82,7 +108,7 @@ it("publishes the same keys in every language", () => {
 it("has no empty value in any language", () => {
   for (const { id, entries } of TREES) {
     for (const [path, leaf] of entries) {
-      for (const value of render(leaf)) {
+      for (const value of render(leaf, id)) {
         expect(value.trim().length, `${id}: ${path}`).toBeGreaterThan(0)
       }
     }
@@ -92,7 +118,7 @@ it("has no empty value in any language", () => {
 it("keeps every string in the script of its own language", () => {
   for (const { id, entries } of TREES) {
     for (const [path, leaf] of entries) {
-      for (const value of render(leaf)) {
+      for (const value of render(leaf, id)) {
         // A stray fragment of an unrelated script is how a bad paste ships: it
         // still renders, still typechecks, and only a reader of that language
         // would notice.
@@ -111,7 +137,11 @@ it("keeps every string in the script of its own language", () => {
 })
 
 it("does not reuse the French or English string as the Arabic one", () => {
-  const byPath = new Map(TREES.flatMap(({ id, entries }) => entries.map(([path, leaf]) => [`${id}:${path}`, leaf] as const)))
+  const byPath = new Map(
+    TREES.flatMap(({ id, entries }) =>
+      entries.map(([path, leaf]) => [`${id}:${path}`, leaf] as const),
+    ),
+  )
   const fr = TREES.find((t) => t.id === "fr")!
   let compared = 0
   for (const [path, leaf] of fr.entries) {
@@ -125,7 +155,11 @@ it("does not reuse the French or English string as the Arabic one", () => {
     compared++
     expect(arabic, `ar:${path} still holds the French "${leaf}"`).not.toBe(leaf)
     const english = byPath.get(`en:${path}`)!
-    if (typeof english === "string") expect(arabic, `ar:${path} still holds the English "${english}"`).not.toBe(english)
+    if (typeof english === "string")
+      expect(
+        arabic,
+        `ar:${path} still holds the English "${english}"`,
+      ).not.toBe(english)
   }
   expect(compared).toBeGreaterThan(100)
 })
