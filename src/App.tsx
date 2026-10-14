@@ -122,6 +122,17 @@ export default function App() {
     return logout()
   }
 
+  /**
+   * The single sign-out path for every "se déconnecter" control in the shell —
+   * the top bar, the sidebar's account menu and the no-access screen. Clearing
+   * the dev-session marker first matters: without it the next reload would sign
+   * the same tab straight back in (see lib/localDevMode).
+   */
+  function signOutAndGoHome() {
+    void signOut()
+    navigate("/")
+  }
+
   // Development-only: restore the opt-in local session in this tab (no-op in
   // production builds and whenever Supabase is configured — see lib/localDevMode).
   // When Supabase is not configured and no user is signed in, automatically enter
@@ -219,7 +230,7 @@ export default function App() {
 
   const current = routeModule && allowed[routeModule] ? routeModule : firstAllowedModule(auth, team)
   if (!current) {
-    return <NoAccess onSignOut={() => { void signOut(); navigate("/") }} />
+    return <NoAccess onSignOut={signOutAndGoHome} />
   }
   const title = NAV.find((n) => n.key === current)?.label ?? "Fatorati"
 
@@ -238,9 +249,10 @@ export default function App() {
         allowed={allowed}
         mobileOpen={mobileOpen}
         setMobileOpen={setMobileOpen}
+        onLogout={signOutAndGoHome}
       />
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar title={title} onMenu={() => setMobileOpen(true)} onNavigate={go} onLogout={() => { void signOut(); navigate("/") }} />
+        <Topbar title={title} onMenu={() => setMobileOpen(true)} onNavigate={go} onLogout={signOutAndGoHome} />
         <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:px-8">
           <NoIndexTitle title={`${title} | Fatorati`} />
           <LocalSaveNotice />

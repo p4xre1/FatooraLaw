@@ -6,11 +6,8 @@ import {
 import type { ModuleKey } from "../store/types"
 import { NAV, Logo } from "./nav"
 import { modulePath } from "../lib/routes"
-import { navigate } from "../lib/router"
 import { DEFAULT_LOCALE, LOCALES, isLocaleId, localeInfo, type LocaleId } from "../lib/locales"
 import { useMizan } from "../store/useMizan"
-import { isSupabaseConfigured, supabase } from "../lib/supabase"
-import { forgetLocalDevSession } from "../lib/localDevMode"
 
 /**
  * The left navigation rail — structure, spacing and behaviour only.
@@ -209,12 +206,12 @@ export default function Sidebar({
   mobileOpen: boolean
   setMobileOpen: (v: boolean) => void
   /**
-   * Preferred: the shell's own sign-out (`App.tsx` already owns one, and passes
-   * an equivalent to `<Topbar/>`). Optional so this component stays drop-in —
-   * when it is absent the rail signs out through the same primitives the shell
-   * uses, and `useSupabaseAuth`'s `SIGNED_OUT` listener finishes the teardown.
+   * The shell's single sign-out path (`App.signOutAndGoHome`, shared with the
+   * top bar and the no-access screen). Required on purpose: sign-out clears the
+   * dev-session marker and the Supabase session, and a second implementation
+   * living in this file would be free to drift from it.
    */
-  onLogout?: () => void
+  onLogout: () => void
 }) {
   const auth = useMizan((s) => s.auth)
   const [lang, setLang] = useState<LocaleId>(readLang)
@@ -348,26 +345,10 @@ export default function Sidebar({
     // The rail stays open so the visitor can see the labels change.
   }
 
-  /** Faithful to `App.signOut()` + `useSupabaseAuth.logout()` without a prop. */
-  async function selfSignOut() {
-    forgetLocalDevSession()
-    useMizan.getState().signOut() // Lock the local UI immediately, even offline.
-    try {
-      if (isSupabaseConfigured) await supabase.auth.signOut({ scope: "local" })
-    } catch {
-      /* The local dashboard is already locked; the shell listener reconciles. */
-    }
-    navigate("/")
-  }
-
   function signOut() {
     setAccountOpen(false)
     setMobileOpen(false)
-    if (onLogout) {
-      onLogout()
-      return
-    }
-    void selfSignOut()
+    onLogout()
   }
 
   const initials = auth?.name.split(" ").slice(0, 2).map((word) => word[0]).join("") ?? "U"

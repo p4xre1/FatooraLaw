@@ -29,7 +29,7 @@ type Props = {
   allowed: Record<ModuleKey, boolean>
   mobileOpen: boolean
   setMobileOpen: (v: boolean) => void
-  onLogout?: () => void
+  onLogout: () => void
 }
 
 function renderSidebar(overrides: Partial<Props> = {}) {
@@ -41,6 +41,7 @@ function renderSidebar(overrides: Partial<Props> = {}) {
     allowed: ALL,
     mobileOpen: true,
     setMobileOpen: vi.fn(),
+    onLogout: vi.fn(),
     ...overrides,
   }
   const view = render(<Sidebar {...props} />)
@@ -110,7 +111,7 @@ it("auto-expands 'Plus d'outils' when the active route lives inside it", () => {
   const { rerender } = renderSidebar({ active: "dashboard" })
   expect(screen.queryByRole("link", { name: "Coffre juridique" })).toBeNull()
 
-  rerender(<Sidebar active="legal" onNavigate={vi.fn()} collapsed={false} setCollapsed={vi.fn()} allowed={ALL} mobileOpen setMobileOpen={vi.fn()} />)
+  rerender(<Sidebar active="legal" onNavigate={vi.fn()} collapsed={false} setCollapsed={vi.fn()} allowed={ALL} mobileOpen setMobileOpen={vi.fn()} onLogout={vi.fn()} />)
   const legal = screen.getByRole("link", { name: "Coffre juridique" })
   expect(legal.getAttribute("aria-current")).toBe("page")
   expect(screen.getByRole("button", { name: /Plus d'outils/ }).getAttribute("aria-expanded")).toBe("true")
@@ -298,7 +299,7 @@ it("closes both popovers on Escape", () => {
   expect(document.getElementById("sidebar-account-menu")).toBeNull()
 })
 
-it("signs out through the shell callback when one is provided", () => {
+it("signs out through the shell's callback rather than a path of its own", () => {
   const onLogout = vi.fn()
   renderSidebar({ onLogout })
   fireEvent.click(screen.getByRole("button", { name: "Menu du compte" }))
