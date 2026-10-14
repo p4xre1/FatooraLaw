@@ -1,9 +1,10 @@
-import { render } from "@testing-library/react"
+import { fireEvent, render, screen, within } from "@testing-library/react"
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
-import { expect, it } from "vitest"
+import { afterEach, beforeEach, expect, it, vi } from "vitest"
 import { Brand, BrandIcon } from "../src/components/Brand"
 import { Logo } from "../src/components/nav"
+import Landing from "../src/marketing/Landing"
 
 /**
  * The brand mark and the navbar spacing are the two things a redesign is most
@@ -150,16 +151,43 @@ it("keeps the page-link words apart, and the underline under the words", () => {
   expect(gap, "the desktop nav has no fluid column gap").not.toBeNull()
 
   // The complaint this answers: the links read as one line because the gap was
-  // smaller than the space between two words inside a label. Never let the
-  // minimum fall back under 1rem, and keep it growing with the viewport.
+  // smaller than the space between two words inside a label. 1.5rem is the
+  // floor — the earlier 0.85rem (13.6 px) must never come back — and the clamp
+  // still grows with the viewport instead of being a single fixed value.
   const [min, max] = [Number(gap![1]), Number(gap![2])]
-  expect(min).toBeGreaterThanOrEqual(1)
+  expect(min).toBeGreaterThanOrEqual(1.5)
   expect(max).toBeGreaterThan(min)
 
-  // The visible separation is gap + padding, and the hover underline must be
-  // inset by exactly the padding so it stays under the text, not under the
-  // click target. One custom property drives both.
-  expect(css).toMatch(/--nav-link-pad:\s*0?\.\d+rem/)
+  // What a visitor actually sees is the gap plus the two paddings (rem at the
+  // 16 px root size); anything under 30 px stops reading as separate words at
+  // this font size.
+  const REM = 16
+  const pad = Number(`0.${css.match(/--nav-link-pad:\s*0?\.(\d+)rem/)?.[1] ?? 0}`)
+  expect(min * REM + 2 * pad * REM).toBeGreaterThanOrEqual(30)
+
+  // The hover underline must be inset by exactly the padding so it stays under
+  // the text, not under the click target. One custom property drives both.
   expect(css).toMatch(/padding-inline:\s*var\(--nav-link-pad\)/)
   expect(css).toMatch(/inset-inline:\s*var\(--nav-link-pad,\s*0\)/)
+})
+
+it("moves the sign-in action into the drawer wherever the bar cannot hold it", () => {
+  const css = source("src/marketing/landing.css")
+  // The bar's sign-in link returns only at 1360 px, together with the language
+  // and theme controls...
+  const wide = css.match(/@media \(min-width: 1360px\) \{([\s\S]*?)\n\}/)?.[1] ?? ""
+  expect(wide).toMatch(/\.landing-login-link \{ display: inline-block; \}/)
+  expect(wide).toMatch(/\.landing-nav-preferences \{ display: flex; \}/)
+  // ...and the drawer's copy is what covers the 1160-1360 px band in between,
+  // so it must not be a display:none dead end.
+  const narrow = css.match(/@media \(min-width: 1160px\) \{([\s\S]*?)\n\}/)?.[1] ?? ""
+  expect(narrow).toMatch(/\.landing-drawer-login \{ display: inline-flex; \}/)
+
+  // And it really is in the drawer, wired to the same auth callback.
+  const enter = vi.fn()
+  render(<Landing onEnter={enter} />)
+  fireEvent.click(screen.getByRole("button", { name: "Ouvrir le menu" }))
+  const drawer = screen.getByRole("navigation", { name: "Navigation principale" }).parentElement!
+  fireEvent.click(within(drawer).getByRole("button", { name: "Se connecter" }))
+  expect(enter).toHaveBeenCalledOnce()
 })

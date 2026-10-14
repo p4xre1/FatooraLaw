@@ -922,6 +922,12 @@ function Header({ t, lang, onLocaleChange, theme, setTheme, onEnter }: { t: Dict
             <a key={link.section} href={to(link.section)} onClick={(event) => { onInternalLinkClick(event); setMobileOpen(false) }}>{t.nav[link.key]}</a>
           ))}</nav>
           <div className="mt-5 flex items-center gap-3"><LangSwitcher lang={lang} onLocaleChange={onLocaleChange} /><ThemeToggle theme={theme} setTheme={setTheme} /></div>
+          {/* Between 1160 and 1360 px the bar spends its width on the page
+              links, so the sign-in action waits here instead — one click away,
+              in the same drawer the language and theme controls use. It is
+              hidden below 1160 px (CSS), where this button would duplicate the
+              auth screen the sign-up button already opens. */}
+          <button type="button" className="landing-drawer-login landing-secondary mt-5 w-full items-center justify-center" onClick={enter}>{ui.signIn}</button>
           <GlowButton onClick={enter} className="mt-5 w-full">{t.signup}</GlowButton>
         </div>
       </>}

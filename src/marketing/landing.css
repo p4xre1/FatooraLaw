@@ -120,28 +120,31 @@
 /* ---------------------------------------------------------------------------
    Desktop navigation — spacing.
 
-   The eight page links used to sit a fixed 0.85rem (13.6 px) apart, which reads
-   as one run-on line: the gap was smaller than the space between two words
-   inside a single label. The words now get a fluid column gap *plus* their own
-   inline padding, so the visual separation is 24 px at the 1160 px breakpoint
-   and ~34 px on a wide desktop, and each link is a real click target instead of
-   a text-width one.
+   The eight page links used to sit a fixed 0.85rem (13.6 px) apart: less than
+   the space between two words inside a single label, so the row read as one
+   run-on line. They now get a fluid column gap (23.4 → 25.6 px) *plus* 0.3rem
+   of inline padding per link, i.e. ~33-35 px of clear air between one word and
+   the next — two and a half times the old spacing — and each word is a real
+   click target rather than a text-width one.
 
-   The numbers are measured, not guessed (HarfBuzz shaping, the Inter/Tajawal
-   files the page actually loads, 13.5 px/weight 550 — the labels are 430 px in
-   French, 362 px in English and 381 px in Arabic):
+   The budget is measured, not guessed (HarfBuzz shaping of the actual labels
+   with the Inter/Tajawal files the page loads, at 13.5 px / weight 550: 430 px
+   in French, 381 px in Arabic, 362 px in English, plus the 30 px chevron and
+   9.6 px of padding per link, so the link row is 539 px):
 
-     at 1160 px  content 1090 px = lock-up 115 + links 539 + actions 246
-                 + 2 shell gaps 46  →  7 gaps of ≤18.9 px available
-     at 1360 px  content 1280 px with the language/theme controls back in the
-                 bar  →  7 gaps of ≤26 px available
+     at 1160 px  content 1090 = lock-up 115 + links 539 + actions 146 (sign-up
+                 and the menu button) + 46 of shell gaps → 245 px left for the
+                 7 gaps, i.e. 35 px each available, 23.4 used
+     at ≥1360 px content 1280 with language, theme and sign-in back in the bar
+                 → 194 px for the 7 gaps, i.e. 27.7 px each available, 25.6 used
 
-   hence the clamp below (14.8 px at 1160, 24 px from ~1650 px up) and the
-   0.3rem inline padding that appears as soon as the nav row itself does. */
+   Under 1160 px the row is not shown at all (the drawer carries the links), and
+   the sign-in link lives in that drawer between 1160 and 1360 px — the one
+   thing that had to move for the links to get this much room. */
 .landing-root.landing-atlas .landing-nav-desktop {
   display: none;
   align-items: center;
-  column-gap: clamp(1rem, 1.9vw - 0.45rem, 1.5rem);
+  column-gap: clamp(1.5rem, 0.5vw + 1.1rem, 1.6rem);
   font-size: 13.5px;
   font-weight: 550;
 }
@@ -186,6 +189,12 @@
   white-space: nowrap;
 }
 .landing-root.landing-atlas .landing-login-link:hover { color: var(--l-primary); }
+/* The sign-in action in the drawer. The drawer is what the narrow layouts use
+   for everything secondary, and between 1160 and 1360 px it is also where the
+   sign-in link lives (the bar keeps that width for the page links). Hidden
+   below 1160 px, where the auth screen the sign-up button already opens is the
+   single entry point — i.e. exactly the behaviour the page had before. */
+.landing-root.landing-atlas .landing-drawer-login { display: none; }
 .landing-root.landing-atlas .landing-control {
   border-color: transparent;
   background: transparent;
@@ -365,27 +374,29 @@
 /* ---------------------------------------------------------------------------
    Two desktop tiers, because there are two different widths of room.
 
-   ≥1160 px — the page links and the sign-in link, and nothing else: the
-              language switcher and the theme toggle stay in the drawer (the
-              hamburger is still shown), which is what keeps the links from
-              being squeezed at exactly the width where they used to overflow.
-   ≥1360 px — the shell has reached its 1360 px maximum, so there is room for
-              the language switcher and theme toggle in the bar as well, and
-              for real padding on each link. The drawer retires here.
+   ≥1160 px — the page links, the sign-up button and the menu button. The
+              language switcher, the theme toggle *and* the sign-in link stay in
+              the drawer (the hamburger is still shown): that is the space the
+              page links need to sit 33-35 px apart without the bar overflowing.
+   ≥1360 px — the shell has reached its 1360 px maximum and the links sit at
+              their clamp, so there is room for all three back in the bar and
+              the drawer retires.
    --------------------------------------------------------------------------- */
 @media (min-width: 1160px) {
   .landing-root.landing-atlas .landing-nav-desktop { display: flex; }
-  .landing-root.landing-atlas .landing-login-link { display: inline-block; }
   /* Click-target padding, not just visual air: 0.3rem per side on top of the
      column gap, and the hover underline is inset by the same amount so it stays
      under the words rather than under the padding. Declared on the shell (an
      ancestor of the links) so both the rule and its `::after` read one value. */
   .landing-root.landing-atlas .landing-nav-shell { --nav-link-pad: 0.3rem; }
   .landing-root.landing-atlas .landing-nav-desktop a { padding-inline: var(--nav-link-pad); }
+  /* The drawer's copy of the sign-in action — see `.landing-drawer-login`. */
+  .landing-root.landing-atlas .landing-drawer-login { display: inline-flex; }
   .landing-root.landing-atlas .landing-mega-menu { display: block; position: absolute; top: 100%; inset-inline: 0; background: var(--l-panel); border-bottom: 1px solid var(--l-border); box-shadow: 0 24px 42px -20px rgb(9 30 66 / 22%); animation: landing-menu-enter 170ms ease-out both; }
 }
 @media (min-width: 1360px) {
   .landing-root.landing-atlas .landing-nav-preferences { display: flex; }
+  .landing-root.landing-atlas .landing-login-link { display: inline-block; }
   .landing-root.landing-atlas .landing-menu-toggle,
   .landing-root.landing-atlas .landing-mobile-panel,
   .landing-root.landing-atlas .landing-mobile-overlay { display: none; }
