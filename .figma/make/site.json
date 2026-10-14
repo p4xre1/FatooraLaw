@@ -11,6 +11,7 @@
     "addressLocality": "Tanger",
     "addressCountry": "MA",
     "foundingDate": "2026-01-01",
+    "sameAs": ["https://github.com/p4xre1/FatooraLaw"],
     "knowsAbout": ["Gestion des TPE au Maroc", "TVA et échéances DGI", "Loi 09-08 / CNDP", "Suivi des abonnements"]
   },
   "icons": {

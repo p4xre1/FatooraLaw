@@ -3,7 +3,7 @@
  * Mirrors Mizan governance/reports + analytics
  */
 import { useState, useEffect } from "react"
-import { ShieldAlert, Clock, Users, Globe, FileAlert } from "lucide-react"
+import { ShieldAlert, Clock, Users, Globe, FileWarning } from "lucide-react"
 import PlanGate from "../../components/PlanGate"
 
 export default function MonitorPanel() {
@@ -36,7 +36,7 @@ export default function MonitorPanel() {
           <div className="mt-3 space-y-1 text-xs"><div className="flex justify-between"><span>Blocked attempts</span><span>0</span></div><div className="flex justify-between"><span>Suspicious patterns</span><span>0</span></div></div>
         </div>
         <div className="rounded-xl border bg-gradient-to-br from-rose-50 to-white p-5 shadow-sm">
-          <h3 className="font-bold flex items-center gap-2"><FileAlert /> Reports / بلاغات</h3>
+          <h3 className="font-bold flex items-center gap-2"><FileWarning /> Reports / بلاغات</h3>
           <div className="text-sm text-gray-600 mt-2">CMS audit events capture user actions. For real incident reports, add a server-side report form. Current log: <strong>{stats.reports}</strong> events.</div>
         </div>
         <div className="rounded-xl border bg-gradient-to-br from-amber-50 to-white p-5 shadow-sm">

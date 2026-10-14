@@ -7,7 +7,7 @@ export const CONTENT_PUBLISHED = "2026-01-01"
 export const CONTENT_UPDATED = "2026-10-13"
 
 /** Real, owned profile. Do not add a sameAs URL that does not resolve. */
-export const GITHUB_URL = ""
+export const GITHUB_URL = "https://github.com/p4xre1/FatooraLaw"
 
 /** Official sources cited on every public page. The sentences quoted from them are short and checked. */
 export const SOURCES = {
