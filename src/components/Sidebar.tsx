@@ -294,16 +294,21 @@ export default function Sidebar({
   const matches = (key: ModuleKey, text: string) =>
     !query || text.toLowerCase().includes(query) || (NAV_BY_KEY.get(key)?.label ?? "").toLowerCase().includes(query)
 
-  const buildItems = (keys: ModuleKey[]): Item[] => keys
+  /** Permission-filtered rows. The pinned footer uses this directly: it is
+   *  pinned, so a search that matches nothing must not remove Paramètres. */
+  const rows = (keys: ModuleKey[]): Item[] => keys
     .filter((key) => allowed[key])
     .map((key) => {
       const entry = NAV_BY_KEY.get(key)!
       const text = label(key)
       return { id: key, href: modulePath(key), icon: entry.icon, label: text, on: active === key, moduleKey: key }
     })
-    .filter((item) => matches(item.moduleKey!, item.label))
 
-  const invoiceItem: Item | null = INVOICE_ROUTE_ENABLED && (!query || matches("dashboard", t.invoices))
+  /** Rows inside the searchable rail: permission-filtered, then query-filtered. */
+  const buildItems = (keys: ModuleKey[]): Item[] =>
+    rows(keys).filter((item) => matches(item.moduleKey!, item.label))
+
+  const invoiceItem: Item | null = INVOICE_ROUTE_ENABLED && (!query || t.invoices.toLowerCase().includes(query))
     ? { id: "invoices", href: "/invoices", icon: FileText, label: t.invoices, on: false, moduleKey: null }
     : null
 
@@ -317,7 +322,7 @@ export default function Sidebar({
   const accountItems = ACCOUNT_MODULES
     .filter((key) => allowed[key])
     .map((key) => ({ key, icon: NAV_BY_KEY.get(key)!.icon, label: label(key) }))
-  const settingsItem = buildItems(["settings"])[0] ?? null
+  const settingsItem = rows(["settings"])[0] ?? null
 
   const quickActions = [
     { icon: FolderPlus, label: t.newProject, to: "projects" as ModuleKey },
