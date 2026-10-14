@@ -16,6 +16,8 @@
  *    this file ran before a row reaches the database.
  */
 
+import { sanitizeInput } from "../../lib/security/inputGuard"
+
 export const MAX_TITLE_LENGTH = 200
 export const MAX_SLUG_LENGTH = 200
 export const MAX_CONTENT_LENGTH = 200_000
@@ -29,7 +31,8 @@ const CONTROL_CHARS_EXCEPT_NEWLINE = /[\u0000-\u0009\u000B\u000C\u000E-\u001F\u0
 
 /** Multi-line body text: strips control chars (keeps \n) and angle brackets, caps length. */
 export function sanitizeContent(input: string): string {
-  return input
+  const base = sanitizeInput(input)
+  return base
     .replace(CONTROL_CHARS_EXCEPT_NEWLINE, "")
     .replace(/[<>]/g, "")
     .trim()
@@ -38,7 +41,8 @@ export function sanitizeContent(input: string): string {
 
 /** Single-line fields (titles): also collapses newlines, since a title has none. */
 export function sanitizeTitle(input: string): string {
-  return input
+  const base = sanitizeInput(input)
+  return base
     .replace(/[\r\n]+/g, " ")
     .replace(CONTROL_CHARS_EXCEPT_NEWLINE, "")
     .replace(/[<>]/g, "")
