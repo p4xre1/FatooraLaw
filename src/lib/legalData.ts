@@ -51,7 +51,7 @@ export function legalCompany(settings: Settings): string {
 }
 
 /** Date-only display must not move a contract to the previous day in UTC- zones. */
-export function contractDate(value: string): string {
+export function contractDate(value: string, locale: string, missingLabel: string): string {
   const day = calendarDay(value)
-  return day === null ? "Date non renseignée" : new Intl.DateTimeFormat("fr-MA", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(day * 86_400_000))
+  return day === null ? missingLabel : new Intl.DateTimeFormat(locale, { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(day * 86_400_000))
 }

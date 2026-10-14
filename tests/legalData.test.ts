@@ -59,8 +59,11 @@ it("skips malformed records with a warning count rather than crashing or repairi
   expect(contracts[0]).toBeNull()
 })
 
-it("formats date-only values consistently without timezone day shifting", () => {
-  expect(contractDate("2026-10-13")).toBe(contractDate("13/10/2026"))
-  expect(contractDate("2026-10-13")).toContain("13")
-  expect(contractDate("not-a-date")).toBe("Date non renseignée")
+it("formats contract dates for the active locale without timezone day shifting", () => {
+  const french = contractDate("2026-10-13", "fr-MA", "Date non renseignée")
+  expect(french).toBe(contractDate("13/10/2026", "fr-MA", "Date non renseignée"))
+  expect(french).toContain("13")
+  expect(contractDate("2026-10-13", "en", "Date not provided")).not.toBe(french)
+  expect(contractDate("2026-10-13", "ar-MA", "لم يتم تحديد التاريخ")).not.toBe(french)
+  expect(contractDate("not-a-date", "ar-MA", "لم يتم تحديد التاريخ")).toBe("لم يتم تحديد التاريخ")
 })
