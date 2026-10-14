@@ -9,6 +9,8 @@ import { team } from "./team.ts"
 import { tools } from "./tools.ts"
 import { calendar } from "./calendar.ts"
 import { risk } from "./risk.ts"
+import { contacts } from "./contacts.ts"
+import { inventory } from "./inventory.ts"
 
 /**
  * The application dictionary: every string the signed-in product shows, in the
@@ -35,6 +37,8 @@ const en = {
   tools: tools.en,
   calendar: calendar.en,
   risk: risk.en,
+  contacts: contacts.en,
+  inventory: inventory.en,
 }
 
 const fr: typeof en = {
@@ -48,6 +52,8 @@ const fr: typeof en = {
   tools: tools.fr,
   calendar: calendar.fr,
   risk: risk.fr,
+  contacts: contacts.fr,
+  inventory: inventory.fr,
 }
 
 const ar: typeof en = {
@@ -61,6 +67,8 @@ const ar: typeof en = {
   tools: tools.ar,
   calendar: calendar.ar,
   risk: risk.ar,
+  contacts: contacts.ar,
+  inventory: inventory.ar,
 }
 
 export type Translation = typeof en

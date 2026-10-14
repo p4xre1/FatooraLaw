@@ -75,6 +75,9 @@ const LANGUAGE_NEUTRAL = new Set([
   "calendar.events.adobe.label",
   "calendar.events.microsoft.label",
   "calendar.events.sage.label",
+  "contacts.table.ice",
+  "contacts.whatsapp",
+  "contacts.phonePlaceholder",
 ])
 /** Scripts that have no business in any of the three languages we publish. */
 const FOREIGN =

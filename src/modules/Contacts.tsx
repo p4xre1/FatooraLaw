@@ -4,13 +4,21 @@ import type { Contact } from "../store/types"
 import { useMizan } from "../store/useMizan"
 import { money, toCSV, parseCSV } from "../lib/mizan"
 import { useFormats } from "../lib/language/formats"
+import { useTranslation } from "../lib/language/store"
 import { Card, SectionTitle, Btn, Badge, Table, Th, Td, Modal, Field, Input, Select, EmptyState, IconBtn } from "../components/kit"
+
+const FACETS: ("all" | "client" | "supplier")[] = ["all", "client", "supplier"]
+type HistoryKind = "project" | "contract"
 
 export default function Contacts() {
   const { date } = useFormats()
+  const { t: copy } = useTranslation()
+  const t = copy.contacts
+  const common = copy.common
+  const modules = copy.shared.modules
   const { auth, contacts, projects, contracts, addContact, removeContact, importContacts } = useMizan()
   const [q, setQ] = useState("")
-  const [facet, setFacet] = useState<"all" | "client" | "supplier">("all")
+  const [facet, setFacet] = useState<(typeof FACETS)[number]>("all")
   const [ledger, setLedger] = useState<Contact | null>(null)
   const [creating, setCreating] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
@@ -35,10 +43,19 @@ export default function Contacts() {
 
   function exportCsv() {
     try {
-      toCSV(filtered.map((c) => ({ Nom: c.name, Type: c.type, ICE: c.ice, Téléphone: c.phone, Email: c.email, Ville: c.city, Solde: c.balance })), "fatorati-contacts.csv")
+      toCSV(filtered.map((c) => ({
+        [t.table.name]: c.name,
+        [t.table.type]: c.type,
+        [t.table.ice]: c.ice,
+        [t.phone]: c.phone,
+        [t.email]: c.email,
+        [t.table.city]: c.city,
+        [t.table.balance]: c.balance,
+      })), "fatorati-contacts.csv")
       setExportError(null)
-    } catch { setExportError("Impossible d'exporter les contacts. Réessayez.") }
+    } catch { setExportError(t.exportError) }
   }
+
   async function onImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     e.target.value = ""
@@ -48,21 +65,21 @@ export default function Contacts() {
     setImportError(null)
     setImporting(true)
     try {
-      if (file.size > 2 * 1024 * 1024) throw new Error("Le fichier CSV ne doit pas dépasser 2 Mo.")
+      if (file.size > 2 * 1024 * 1024) throw new Error(t.fileTooLarge)
       const text = await file.text()
       if (revision !== importRevision.current || useMizan.getState().auth?.id !== ownerId) return
       const rows = parseCSV(text).slice(1).filter((r) => r[0]?.trim())
-      if (rows.length > 10_000) throw new Error("Import limité à 10 000 contacts par fichier.")
+      if (rows.length > 10_000) throw new Error(t.tooManyRows(10_000))
       const contacts = rows.map((r) => {
-        if (r.length !== 7) throw new Error("Le CSV doit contenir 7 colonnes : Nom, Type, ICE, Téléphone, Email, Ville, Solde.")
+        if (r.length !== 7) throw new Error(t.columnError(t.csvColumns))
         const balance = Number(r[6])
-        if (!Number.isFinite(balance)) throw new Error("Le CSV contient un solde invalide.")
+        if (!Number.isFinite(balance)) throw new Error(t.invalidBalance)
         return { name: r[0], type: r[1] === "supplier" ? "supplier" as const : "client" as const, ice: r[2], phone: r[3], email: r[4], city: r[5], balance }
       })
       importContacts(contacts)
     } catch (error) {
       if (revision === importRevision.current && useMizan.getState().auth?.id === ownerId) {
-        setImportError(error instanceof Error ? error.message : "Impossible de lire le fichier CSV.")
+        setImportError(error instanceof Error ? error.message : t.readFailure)
       }
     } finally {
       if (revision === importRevision.current) setImporting(false)
@@ -70,51 +87,51 @@ export default function Contacts() {
   }
 
   const historyFor = (id: string) => [
-    ...projects.filter((p) => p.clientId === id).map((p) => ({ ts: p.start, label: p.name, amount: p.budget, kind: "Projet" })),
-    ...contracts.filter((c) => c.clientId === id).map((c) => ({ ts: c.date, label: c.title, amount: c.value, kind: "Contrat" })),
+    ...projects.filter((p) => p.clientId === id).map((p) => ({ ts: p.start, label: p.name, amount: p.budget, kind: "project" as const })),
+    ...contracts.filter((c) => c.clientId === id).map((c) => ({ ts: c.date, label: c.title, amount: c.value, kind: "contract" as const })),
   ].sort((a, b) => (a.ts < b.ts ? 1 : -1))
 
   return (
     <div className="mz-view space-y-5">
       {exportError && <p role="alert" className="text-sm text-serious">{exportError}</p>}
       {importError && <p role="alert" className="text-sm text-serious">{importError}</p>}
-      <SectionTitle title="Clients & Fournisseurs" sub="CRM & grand livre des tiers" action={
+      <SectionTitle title={modules.contacts} sub={t.subtitle} action={
         <div className="flex flex-wrap gap-2">
-          <input aria-label="Fichier CSV" ref={fileRef} type="file" accept=".csv" className="hidden" onChange={onImport} />
-          <Btn variant="outline" size="sm" disabled={importing} onClick={() => fileRef.current?.click()}><Upload className="h-4 w-4" /> {importing ? "Import en cours…" : "Importer CSV"}</Btn>
-          <Btn variant="outline" size="sm" onClick={exportCsv}><Download className="h-4 w-4" /> Exporter</Btn>
-          <Btn onClick={() => setCreating(true)}><Plus className="h-4 w-4" /> Ajouter</Btn>
+          <input aria-label={t.fileInput} ref={fileRef} type="file" accept=".csv" className="hidden" onChange={onImport} />
+          <Btn variant="outline" size="sm" disabled={importing} onClick={() => fileRef.current?.click()}><Upload className="h-4 w-4" /> {importing ? t.importing : t.import}</Btn>
+          <Btn variant="outline" size="sm" onClick={exportCsv}><Download className="h-4 w-4" /> {t.export}</Btn>
+          <Btn onClick={() => setCreating(true)}><Plus className="h-4 w-4" /> {t.add}</Btn>
         </div>
       } />
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-faint" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher nom, ICE, ville…" className="pl-9" />
+          <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-faint" />
+          <Input aria-label={t.searchLabel} value={q} onChange={(e) => setQ(e.target.value)} placeholder={t.searchPlaceholder} className="ps-9" />
         </div>
         <div className="inline-flex rounded-lg border border-line-strong bg-surface p-1">
-          {([["all", "Tous"], ["client", "Clients"], ["supplier", "Fournisseurs"]] as const).map(([k, l]) => (
-            <button key={k} onClick={() => setFacet(k)} className={`rounded-md px-3 py-1.5 text-[12.5px] font-semibold transition-colors ${facet === k ? "bg-brand text-white" : "text-muted hover:text-ink"}`}>{l}</button>
+          {FACETS.map((k) => (
+            <button key={k} type="button" aria-pressed={facet === k} onClick={() => setFacet(k)} className={`rounded-md px-3 py-1.5 text-[12.5px] font-semibold transition-colors ${facet === k ? "bg-brand text-white" : "text-muted hover:text-ink"}`}>{t.filters[k]}</button>
           ))}
         </div>
       </div>
 
       <Card>
-        {filtered.length === 0 ? <EmptyState icon={<Users className="h-5 w-5" />} text="Aucun contact." /> : (
-          <Table head={<><Th>Nom</Th><Th>Type</Th><Th>ICE</Th><Th>Contact</Th><Th>Ville</Th><Th className="text-end">Solde</Th><Th /></>}>
+        {filtered.length === 0 ? <EmptyState icon={<Users className="h-5 w-5" />} text={t.empty} /> : (
+          <Table head={<><Th>{t.table.name}</Th><Th>{t.table.type}</Th><Th>{t.table.ice}</Th><Th>{t.table.contact}</Th><Th>{t.table.city}</Th><Th className="text-end">{t.table.balance}</Th><Th /></>}>
             {filtered.map((c) => (
               <tr key={c.id} className="transition-colors hover:bg-canvas/60">
-                <Td><button onClick={() => setLedger(c)} className="font-semibold text-ink hover:text-brand">{c.name}</button></Td>
-                <Td><Badge tone={c.type === "client" ? "brand" : "neutral"}>{c.type === "client" ? "Client" : "Fournisseur"}</Badge></Td>
+                <Td><button type="button" onClick={() => setLedger(c)} className="font-semibold text-ink hover:text-brand">{c.name}</button></Td>
+                <Td><Badge tone={c.type === "client" ? "brand" : "neutral"}>{t.type[c.type]}</Badge></Td>
                 <Td className="tnum text-muted">{c.ice}</Td>
                 <Td className="text-muted">{c.phone}</Td>
                 <Td className="text-muted">{c.city}</Td>
                 <Td className={`tnum text-end font-semibold ${c.balance > 0 ? "text-warn" : c.balance < 0 ? "text-serious" : "text-muted"}`}>{money(c.balance)}</Td>
                 <Td>
                   <div className="flex justify-end gap-0.5">
-                    <IconBtn title="WhatsApp" onClick={() => window.open(`https://wa.me/${c.phone.replace(/[^\d]/g, "")}`, "_blank")}><MessageCircle className="h-4 w-4" /></IconBtn>
-                    <IconBtn title="Email" onClick={() => window.open(`mailto:${c.email}`)}><Mail className="h-4 w-4" /></IconBtn>
-                    <IconBtn title="Supprimer" onClick={() => removeContact(c.id)} className="hover:bg-serious-50 hover:text-serious"><Trash2 className="h-4 w-4" /></IconBtn>
+                    <IconBtn title={t.whatsapp} onClick={() => window.open(`https://wa.me/${c.phone.replace(/[^\d]/g, "")}`, "_blank")}><MessageCircle className="h-4 w-4" /></IconBtn>
+                    <IconBtn title={t.emailAction} onClick={() => window.open(`mailto:${c.email}`)}><Mail className="h-4 w-4" /></IconBtn>
+                    <IconBtn title={common.delete} aria-label={`${t.deleteAria} ${c.name}`} onClick={() => removeContact(c.id)} className="hover:bg-serious-50 hover:text-serious"><Trash2 className="h-4 w-4" /></IconBtn>
                   </div>
                 </Td>
               </tr>
@@ -126,16 +143,16 @@ export default function Contacts() {
       {ledger && (
         <Modal title={ledger.name} onClose={() => setLedger(null)} wide>
           <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Info label="Type" value={ledger.type === "client" ? "Client" : "Fournisseur"} />
-            <Info label="ICE" value={ledger.ice} />
-            <Info label="Téléphone" value={ledger.phone} />
-            <Info label="Solde" value={money(ledger.balance)} accent={ledger.balance > 0} />
+            <Info label={t.table.type} value={t.type[ledger.type]} />
+            <Info label={t.table.ice} value={ledger.ice} />
+            <Info label={t.phone} value={ledger.phone} />
+            <Info label={t.table.balance} value={money(ledger.balance)} accent={ledger.balance > 0} />
           </div>
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted">Historique financier</p>
-          {historyFor(ledger.id).length === 0 ? <p className="py-6 text-center text-[13px] text-muted">Aucune transaction.</p> : (
-            <Table head={<><Th>Date</Th><Th>Type</Th><Th>Libellé</Th><Th className="text-end">Montant</Th></>}>
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted">{t.history}</p>
+          {historyFor(ledger.id).length === 0 ? <p className="py-6 text-center text-[13px] text-muted">{t.noTransactions}</p> : (
+            <Table head={<><Th>{common.date}</Th><Th>{t.table.type}</Th><Th>{common.name}</Th><Th className="text-end">{common.amount}</Th></>}>
               {historyFor(ledger.id).map((h, i) => (
-                <tr key={i}><Td className="text-muted">{date(h.ts)}</Td><Td><Badge tone="neutral">{h.kind}</Badge></Td><Td className="font-medium">{h.label}</Td><Td className="tnum text-end font-semibold">{money(h.amount)}</Td></tr>
+                <tr key={i}><Td className="text-muted">{date(h.ts)}</Td><Td><Badge tone="neutral">{t.historyKind[h.kind as HistoryKind]}</Badge></Td><Td className="font-medium">{h.label}</Td><Td className="tnum text-end font-semibold">{money(h.amount)}</Td></tr>
               ))}
             </Table>
           )}
@@ -152,19 +169,22 @@ function Info({ label, value, accent }: { label: string; value: string; accent?:
 }
 
 function CreateContact({ onClose, onCreate }: { onClose: () => void; onCreate: (c: Omit<Contact, "id">) => void }) {
+  const { t: copy } = useTranslation()
+  const t = copy.contacts
+  const common = copy.common
   const [f, setF] = useState<Omit<Contact, "id">>({ type: "client", name: "", ice: "", phone: "", email: "", city: "", balance: 0 })
   return (
-    <Modal title="Nouveau contact" onClose={onClose}>
+    <Modal title={t.newContact} onClose={onClose}>
       <div className="space-y-4">
-        <Field label="Type"><Select value={f.type} onChange={(e) => setF({ ...f, type: e.target.value as Contact["type"] })}><option value="client">Client</option><option value="supplier">Fournisseur</option></Select></Field>
-        <Field label="Nom / Raison sociale"><Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
+        <Field label={t.table.type}><Select value={f.type} onChange={(e) => setF({ ...f, type: e.target.value as Contact["type"] })}><option value="client">{t.type.client}</option><option value="supplier">{t.type.supplier}</option></Select></Field>
+        <Field label={t.nameOrCompany}><Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
         <div className="grid grid-cols-2 gap-4">
-          <Field label="ICE"><Input value={f.ice} onChange={(e) => setF({ ...f, ice: e.target.value })} /></Field>
-          <Field label="Ville"><Input value={f.city} onChange={(e) => setF({ ...f, city: e.target.value })} /></Field>
-          <Field label="Téléphone"><Input value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} placeholder="+212 6…" /></Field>
-          <Field label="Email"><Input value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></Field>
+          <Field label={t.table.ice}><Input value={f.ice} onChange={(e) => setF({ ...f, ice: e.target.value })} /></Field>
+          <Field label={t.table.city}><Input value={f.city} onChange={(e) => setF({ ...f, city: e.target.value })} /></Field>
+          <Field label={t.phone}><Input value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} placeholder={t.phonePlaceholder} /></Field>
+          <Field label={t.email}><Input value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></Field>
         </div>
-        <Btn className="w-full" disabled={!f.name.trim()} onClick={() => onCreate(f)}>Enregistrer</Btn>
+        <Btn className="w-full" disabled={!f.name.trim()} onClick={() => onCreate(f)}>{common.save}</Btn>
       </div>
     </Modal>
   )
