@@ -1,0 +1,1321 @@
+================================================================================
+ FATORATI / FATTOORALAW  —  COMPLETE SITE SCAN + DASHBOARD FUNCTION REFERENCE
+================================================================================
+ Repository : p4xre1/FatooraLaw  (branch scanned: main @ 8d72d69)
+ Scanned on : 2026-10-14
+ Author     : full source-code scan + production build inspection
+ Method     : 1) every screen file under src/ was read (public site, auth, the
+                 13 signed-in modules, the whole /admin CMS)
+              2) a real production build was run: `pnpm build`
+                 -> Vite client bundle + SSR bundle + scripts/prerender.mjs
+                 -> 36/36 public documents prerendered (12 pages x 3 languages)
+                 -> 55 unique HTML documents emitted in dist/
+              3) the built site was served (`pnpm preview`) and checked live:
+                 /  /ar/pricing  /en/faq  /dashboard  /admin/login  /sitemap.xml
+                 -> all HTTP 200, correct per-language <title> per URL
+              4) every claim below is taken from the file named next to it.
+
+ NOTE ON LANGUAGE OF THE UI
+   Public site  : French (default), Arabic (/ar/...), English (/en/...)
+   Signed-in app: French by default, switchable to Arabic / English, RTL aware
+   Admin CMS    : Arabic, whole panel rendered RTL (dir="rtl" lang="ar")
+
+
+================================================================================
+ TABLE OF CONTENTS
+================================================================================
+ PART 0  What this product is (3 applications in one repository)
+ PART 1  Repository map — which folder holds what
+ PART 2  Every URL the site can serve (complete route map)
+ PART 3  The public website, part by part
+         3.1 Global shell (header, footer, cookie banner, announcements)
+         3.2 Home page sections, in page order
+         3.3 The 11 standalone public pages
+         3.4 Blog article pages
+         3.5 Interactive widgets
+         3.6 Language, theme and text-direction behaviour
+         3.7 SEO / GEO / AIO layer — the files generated for machines
+         3.8 Analytics and consent
+         3.9 Accessibility and motion
+         3.10 Visual system and styling
+ PART 4  Authentication screens + first-run onboarding
+ PART 5  The dashboard — app shell and all 13 modules, function by function
+ PART 6  The storage engine — how the dashboard saves data
+ PART 7  Cross-cutting dashboard functions (exports, plans, roles, i18n, security)
+ PART 8  The admin CMS (/admin) — access model and every screen
+ PART 9  Server side — Supabase schema, RPCs, migrations, RLS
+ PART 10 Build, deploy, configuration, tests
+ PART 11 Honesty list — what is real, what is demo, what is a stub
+ PART 12 Quick reference — route -> file -> what it does
+ PART 13 Where to change what (maintenance map)
+
+
+================================================================================
+ PART 0 — WHAT THIS PRODUCT IS
+================================================================================
+ONE repository contains THREE applications (they share one bundle and one Router):
+
+  A. PUBLIC MARKETING SITE
+     /  /features  /assistant  /about  /benefits  /pricing  /blog  /faq
+     /contact  /privacy  /terms  /cookies   — each also at /ar/... and /en/...
+     Plus /blog/<slug> article pages, published from the CMS.
+     Fully prerendered to static HTML (one document per page per language).
+
+  B. SIGNED-IN BUSINESS APPLICATION (the dashboard)
+     13 modules: /dashboard /projects /contacts /procurement /inventory
+     /calendar /risk /tools /legal /reports /team /audit /settings
+
+  C. ADMIN CMS
+     /admin/* — 18 routes, split into two separate roles:
+     platform operators (subscriptions, traffic, security, notifications,
+     system rules, support, backups) and content editors (website, pages,
+     blog, monitor, content improvement, contact inbox).
+
+TECHNOLOGY (package.json)
+  React 19.3, Vite 8, TypeScript 5.7, Tailwind 4 (via @tailwindcss/vite),
+  react-router 8 (only for /admin), a small custom router for the main app
+  (src/lib/router.ts), Zustand 5 for state, Supabase JS v2 (auth + Postgres),
+  lucide-react icons, self-hosted fonts (Sora, JetBrains Mono, Tajawal),
+  Vitest + Testing Library (47 test files), Wrangler for Cloudflare Pages.
+
+  The product is described in its own README as a prototype: business records
+  live in the browser's localStorage, not in a production ERP database.
+
+
+================================================================================
+ PART 1 — REPOSITORY MAP
+================================================================================
+  index.html            SPA entry served to browsers
+  admin.html            entry used for /admin (served by the host rewrite)
+  src/App.tsx           THE app router: decides public page / auth / module / 404
+  src/entry-server.tsx  SSR entry used only at build time to prerender pages
+  src/main.tsx          browser bootstrap
+
+  src/lib/              pure logic: routes, locales, SEO, Supabase client,
+                        storage keys, plan gates, formatters, security toolkit
+  src/modules/          the 13 signed-in modules (one file each) + auth screens
+  src/components/       shared UI: kit.tsx (Card/Btn/Modal/Table...), Sidebar,
+                        Topbar, OnboardingModal, PlanGate, NotFound, charts.tsx
+  src/marketing/        Landing.tsx (the whole marketing site), landing.css,
+                        references.tsx (official-sources section), contentMeta.ts
+  src/admin/            the CMS: AdminApp (routes), AdminLayout, platform/*,
+                        site/*, blogs/*, monitor/*, content/*, contact/*,
+                        security/*, lib/adminAuth.ts
+  src/store/            Zustand store (useMizan.ts), types.ts, seed.ts, defaults.ts
+  src/i18n/             22 modules: one dictionary per screen area, in fr / ar / en
+  src/hooks/            useSupabaseAuth, useOnboarding, useToday
+  public/               robots.txt, sitemap-related machine files, _headers,
+                        ai.txt, llms-full.txt, security.txt, anti-reverse-eng.js
+  scripts/              prerender.mjs (build-time page generation), ci.sh, setup.sh
+  supabase/             schema.sql (~92 KB) + migrations/
+  docs/                 the written documentation set (this file lives here)
+  tests/                47 Vitest suites, including a PGlite-backed schema test
+
+
+================================================================================
+ PART 2 — EVERY URL THE SITE CAN SERVE
+================================================================================
+The single source of truth is src/lib/routes.ts. Conventions enforced there:
+paths are absolute, lowercase, no trailing slash, and NO URL CONTAINS "#".
+
+PUBLIC PAGES (Landing) — 12 pages, each emitted 3 times (fr / ar / en)
+  /                      home (only page served from /)
+  /features              features
+  /assistant             the "Fatorati Assistant" explainer page
+  /about                 about
+  /benefits              benefits
+  /pricing               plans + one-time products + releases/downloads
+  /blog                  article index
+  /blog/<slug>           one article (exists only when published in the CMS)
+  /faq                   questions
+  /contact               contact details + support request form
+  /privacy  /terms  /cookies   legal texts
+  Arabic  : /ar  /ar/features  /ar/pricing  ... (same set)
+  English : /en  /en/features  /en/pricing  ... (same set)
+
+AUTH SCREENS — one URL each, French only, always noindex
+  /login  /signup  /forgot-password  /reset-password
+
+SIGNED-IN MODULES — one URL each, French only, always noindex
+  /dashboard  /projects  /contacts  /procurement  /inventory  /calendar
+  /risk  /tools  /legal  /reports  /team  /audit  /settings
+
+ANYTHING ELSE
+  /404 and every unknown path -> the NotFound page (with a home button)
+
+ADMIN CMS
+  /admin/login
+  /admin                                  -> redirects by role
+  /admin/dashboard                        platform overview
+  /admin/subscriptions                    plans, accounts, requests
+  /admin/subscription-editor              legacy localStorage plan editor
+  /admin/traffic                          analytics / page views
+  /admin/security                         access management + audit
+  /admin/notifications                    platform notifications
+  /admin/algorithms                       system rules (publish + tracking)
+  /admin/support                          support requests inbox
+  /admin/backups                          revisions + backups
+  /admin/website                          content hub (multi-language CMS)
+  /admin/site/pages                       page meta editor
+  /admin/monitor                          monitoring panel
+  /admin/content-improvement              blog SEO/viral scorer
+  /admin/contact-inbox                    messages inbox
+  /admin/blogs  /admin/blogs/new  /admin/blogs/:id   blog list + editor
+
+BUILD OUTPUT (verified with `find dist -name "*.html"`)
+  55 unique documents = 36 public (12 pages x 3 languages)
+                       + 1 not-found
+                       + 18 private shells (4 auth + 13 modules + /admin)
+  Each document is written twice for host compatibility:
+     dist/<path>/index.html   and   dist/<path>.html
+  dist/_redirects rewrites every public URL to its index.html explicitly, so
+  the same URL resolves identically on any static host.
+
+
+================================================================================
+ PART 3 — THE PUBLIC WEBSITE, PART BY PART
+================================================================================
+All of it lives in src/marketing/Landing.tsx (single file, ~1660 lines) plus
+src/marketing/landing.css and src/marketing/references.tsx.
+The component reads its PAGE and its LANGUAGE from the URL:
+/ar/pricing is the Arabic pricing page, /pricing the French one.
+
+3.1 GLOBAL SHELL — every public page renders these four parts
+--------------------------------------------------------------------------------
+ HEADER (function Header)
+   - logo linking to / (per language)
+   - desktop navigation: Features (a "mega menu" panel listing the feature
+     cards and linking straight to the preview widgets), then Assistant,
+     Benefits, Pricing, Blog, FAQ, About, Contact
+   - the menu is keyboard driven: Escape closes it, a click outside closes it,
+     focus returns to the button (refs + document listeners)
+   - mobile: a hamburger that opens a full-screen drawer; a backdrop button
+     labelled "Fermer la navigation" closes it
+   - LanguageSwitcher — a real navigation, not a re-render: choosing a
+     language navigates to /ar/... or /en/... so the URL, the back button and
+     shares all keep the language
+   - ThemeToggle — light/dark switch, applied through data-theme on the
+     landing root, aria-label "Basculer le thème"
+   - "Enter" buttons (sign up / sign in) -> onEnter -> navigate to /login
+
+ ANNOUNCEMENT STRIP (function AnnouncementStrip)
+   Renders at most one active announcement published in the CMS
+   (/admin/website -> Announcements), with a dismiss button. Expired
+   announcements (ends_at in the past) are skipped.
+
+ FOOTER (function Footer)
+   Brand block, navigation columns, legal links (Privacy / Terms / Cookies),
+   contact details read from .figma/make/site.json through src/lib/contact.ts,
+   and the sign-in entry point.
+
+ COOKIE BANNER (function CookieBanner)
+   Bottom dialog, "Accept" / "Decline". The choice is stored under the
+   localStorage key fatorati-cookie-consent and broadcast as the
+   fatorati:cookie-consent event, which is what switches analytics on or off
+   (see 3.8). It is dismissible only by choosing.
+
+3.2 HOME PAGE SECTIONS — in the order they appear on /
+--------------------------------------------------------------------------------
+ 1) HERO (function Hero)
+    Headline + subtitle from i18n; call-to-action buttons; the hero can be
+    overridden by CMS content (headline, subheadline, CTA, hero image) when a
+    published row exists for the locale.
+ 2) DASHBOARD PREVIEW MOCKUP (function DashboardPreview)
+    A static, illustrative picture of the product (cards + a trend chart), so
+    visitors see the tool before signing up. It is a mock-up, not live data.
+ 3) FEATURES (function Features)
+    - the three built-in feature cards: Calendar preview, Risk preview,
+      Tools preview — each embeds a live mini-widget (see 3.5)
+    - CMS-managed feature cards (function CmsFeatureCard) published per locale
+      from /admin/website -> Features
+ 4) ASSISTANT (function Assistant)
+    Describes the Fatorati Assistant: a panel that serves Moroccan legal rules
+    and ready-to-use contract templates (examples shown: "Contrat de prestation
+    — art. 723 DOC", "Clause de confidentialité (Loi 09-08)", "Facture
+    conforme ICE + TVA 20 %"). Has its own page: /assistant.
+ 5) ABOUT (function AboutSection) — the project's positioning and audience.
+ 6) BENEFITS (function BenefitsSection) — four benefits (save time, stay
+    compliant, pilot from your pocket, work as a team).
+ 7) PRICING (function PricingSection)
+    - three plans with prices read from the same copy the JSON-LD uses:
+      Essentiel 0 MAD, Pro 199 MAD / month, Équipe 499 MAD / month
+    - choosing a plan leads to sign-up (no payment provider is integrated)
+ 8) ONE-TIME PRODUCTS (function OneTimeProductsSection)
+    Products published in the CMS with a price and an EXTERNAL purchase URL.
+    Clicking records a "purchase_click" event — explicitly labelled as a click
+    out, not a confirmed payment.
+ 9) RELEASES + DOWNLOADS (function DownloadReleaseSection)
+    Version notes published in the CMS and per-platform download links.
+    A click records a "download_click" event = a click, not a completed
+    download.
+10) BLOG (function BlogSection)
+    Cards of the latest published articles (title, excerpt, image); on /blog it
+    lists everything; each card links to /blog/<slug>.
+11) FAQ (function FaqSection)
+    Accordion of questions; the same questions feed the FAQPage structured data.
+12) CONTACT (function ContactSection) — email / phone / city from
+    src/lib/contact.ts (a placeholder phone number is never published).
+13) SUPPORT REQUEST FORM (function SupportRequestForm, /contact page)
+    Name, email, category (contact / bug / feedback / feature), subject and
+    message; writes a row into the Supabase table cms_support_requests, which
+    platform operators read in /admin/support.
+14) LEGAL SECTION (function LegalSection)
+    Privacy, Terms and Cookies texts; on the home page the section is shown
+    with no tab active, on /privacy /terms /cookies it opens the right one.
+15) REFERENCE SECTION (src/marketing/references.tsx)
+    A table of official Moroccan figures with their sources (VAT 20 %; CGI
+    article 208 penalties 20 % / 10 %+5 %; Law 09-08 published 18 February
+    2009, BO n° 5714; the plan prices) and a Q&A block. Present on every
+    public page.
+
+3.3 THE 11 STANDALONE PUBLIC PAGES
+--------------------------------------------------------------------------------
+Each non-home page renders a page-specific lead (function PageIntro) plus the
+sections marked with it in the render tree:
+  /features   -> full Features section
+  /assistant  -> the Assistant section + entry buttons
+  /about      -> About section
+  /benefits   -> Benefits section
+  /pricing    -> Pricing + one-time products + releases/downloads
+  /blog       -> blog index (all published articles)
+  /faq        -> FAQ
+  /contact    -> contact details + support request form
+  /privacy    -> legal section, privacy tab
+  /terms      -> legal section, terms tab
+  /cookies    -> legal section, cookies tab
+A CMS-managed page (table cms_pages) can replace the built-in content of its
+slug entirely: if the CMS publishes page X for the requested locale, the page
+renders the CMS body (component ManagedPage) instead of the built-in sections.
+
+3.4 BLOG ARTICLE PAGES  (/blog/<slug>, /ar/blog/<slug>, /en/blog/<slug>)
+--------------------------------------------------------------------------------
+  Component BlogArticlePage / BlogArticleView (same file).
+  - reads the article from Supabase (published only) or, at build time, from
+    the prerendered payload so the HTML is complete before JavaScript runs
+  - renders title, author, date, cover image with alt text, the body split into
+    paragraphs, and a language switcher between the article's translations
+  - emits its own canonical URL, hreflang alternates for the languages that
+    actually have a translation, and BlogPosting structured data
+  - articles that do not exist in a requested language are not emitted as URLs
+  - "Enter" CTA -> sign in
+
+3.5 INTERACTIVE WIDGETS (embedded in the features cards)
+--------------------------------------------------------------------------------
+  CalendarWidget   a month grid with 7 pre-set events (renewals, payments,
+                   legal deadlines) and a selected-day panel. Illustrative.
+  RiskWidget       a list of risk rows (TVA, corporate tax, contracts,
+                   insurance, registry, social, privacy) with High/Medium/OK
+                   levels. Illustrative.
+  SubscriptionWidget  a mini table of software subscriptions with monthly cost
+                   and status. Illustrative.
+  TrendChart       an inline SVG spend trend with a hover crosshair. The
+                   numbers are sample data, labelled as an example in the copy.
+All four are marketing illustrations; the real screens are in the dashboard.
+
+3.6 LANGUAGE, THEME AND TEXT-DIRECTION BEHAVIOUR
+--------------------------------------------------------------------------------
+  - src/lib/locales.ts is the locale table: fr (fr-MA, prefix ""), ar (ar-MA,
+    prefix /ar, RTL), en (en, prefix /en). It is the only place that knows an
+    hreflang code.
+  - <html lang dir> is set from the URL while a public page is mounted and
+    restored when leaving, so Arabic is genuinely RTL for screen readers and
+    crawlers.
+  - Legacy anchors: an old /#pricing bookmark is rewritten client-side to the
+    real /pricing URL (the fragment is stripped), and Supabase's
+    #access_token=... recovery hash is deliberately left untouched.
+  - Theme (light/dark) is landing-scoped state, applied as data-theme.
+
+3.7 SEO / GEO / AIO LAYER — everything published for machines
+--------------------------------------------------------------------------------
+  src/lib/seo.ts owns the copy: PAGE_SEO (title/description per page),
+  PAGE_COPY (per page per language), canonicalUrl(), hreflangAlternates(),
+  buildSitemapXml(), buildLlmsTxt().
+  src/marketing/Landing.tsx::buildJsonLd() builds per-page structured data
+  (Organization, WebSite, Service/Product with offers, FAQPage, AboutPage,
+  ItemList, BlogPosting on articles).
+  scripts/prerender.mjs writes, at build time:
+    - one HTML document per public route per language, each with its <title>,
+      meta description, canonical, hreflang alternates, OpenGraph and JSON-LD
+      already in the HTML (no JavaScript needed to be indexable)
+    - dist/sitemap.xml — every localized URL with xhtml:link alternates and
+      x-default, plus published blog articles
+    - dist/llms.txt — a machine summary fed by the same route list
+    - dist/_redirects — the explicit rewrite table described in PART 2
+  Existing static machine files: robots.txt (disallows /admin/ and explicitly
+  allows GPTBot, ClaudeBot, PerplexityBot, Google-Extended, Applebot, CCBot,
+  etc.), ai.txt (AI guidance), ai-sitemap.xml,
+  .well-known/ai-plugin.json and .well-known/openapi.json, security.txt,
+  plus llms.txt (a machine index of routes and security context) and
+  llms-full.txt (the fuller specification).
+  public/_headers (CSP + X-Frame-Options: DENY + HSTS + Referrer-Policy +
+  Permissions-Policy + X-Robots-Tag: noindex on /admin/*, immutable caching on
+  /assets/*, Content-Language per language tree).
+  Private screens are triple-protected from indexing: robots.txt, the
+  X-Robots-Tag header, and a noindex meta tag applied at runtime
+  (applyNoIndexHead in src/lib/seo.ts).
+
+3.8 ANALYTICS AND CONSENT
+--------------------------------------------------------------------------------
+  src/lib/cookieConsent.ts — the banner's choice; when accepted it loads Google
+  Analytics (id from .figma/make/site.json) with ad signals denied; when
+  declined or unanswered, no Google script or request is made at all.
+  src/lib/siteAnalytics.ts — FIRST-PARTY, consent-gated measurement through
+  Supabase RPCs: record_site_page_view (path, locale, referring host) and
+  record_site_event (download_click / purchase_click). Explicitly no IP, no
+  account id, no user agent, no cookie, no visitor identifier. Failures never
+  block navigation. Platform operators can purge old rows in /admin/traffic.
+
+3.9 ACCESSIBILITY AND MOTION
+--------------------------------------------------------------------------------
+  - a skip target (#main-content) with a single <main>
+  - every icon-only control carries aria-label; menus use role="menu",
+    aria-haspopup, aria-expanded, aria-controls
+  - the mega menu and mobile drawer manage focus and Escape
+  - useLandingMotion() reveals sections once and respects
+    prefers-reduced-motion / the site config's ignoreReducedMotion flag
+  - Google Analytics is never loaded before consent (see 3.8)
+
+3.10 VISUAL SYSTEM AND STYLING
+--------------------------------------------------------------------------------
+  src/marketing/landing.css — everything is scoped under .landing-atlas so the
+  landing cannot leak styles into the dashboard. Blue/white enterprise palette,
+  self-hosted Inter-parity type scale, restrained motion. The dashboard keeps
+  its own theme (src/index.css tokens: canvas/surface/line/ink/brand/warn/
+  serious/good, chart colours, sidebar tokens).
+
+
+================================================================================
+ PART 4 — AUTHENTICATION SCREENS + FIRST-RUN ONBOARDING
+================================================================================
+FILES: src/components/Auth.tsx, src/modules/auth/** (forms split per screen:
+SignInForm, SignUpForm, ForgotPasswordForm, shared AuthShell / FormAlert /
+PasswordField), src/hooks/useSupabaseAuth.ts.
+
+ WHY THEY HAVE URLS: the login form used to be local state, so it could not be
+ linked, bookmarked or opened in a new tab. Each screen now owns a URL and the
+ URL is the source of truth (src/App.tsx maps URL -> view).
+
+ /login
+   - e-mail + password, "show password" toggle, submit button with loading state
+   - "forgot password" link -> /forgot-password, "create account" -> /signup
+   - signing in calls supabase.auth.signInWithPassword; success is picked up by
+     useSupabaseAuth, which reads the user's profile row (name, role) and calls
+     store.signIn(name, email, role, userId)
+   - the account's data partition is switched at that moment (see PART 6)
+
+ /signup
+   - full name, e-mail, password (+ password rules display), a checkbox linking
+     to the privacy policy, and the "already have an account" link
+   - account creation goes through Supabase Auth; the profile row is created by
+     a database trigger (supabase/schema.sql)
+
+ /forgot-password
+   - e-mail field -> Supabase sends the reset mail; the screen explains that a
+     link will be sent and never reveals whether the address exists
+
+ /reset-password
+   - shown when Supabase hands back a recovery session (App.tsx watches for it
+     and forces this route); two fields (new password + confirmation), then
+     back to /login
+
+ CLIENT-SIDE GUARDS (src/modules/auth/lib/validation.ts) — friendly feedback
+ only; the real enforcement is Supabase + RLS:
+   e-mail shape + max 254 chars, injection signatures stripped/refused,
+   password 8..72 bytes (bcrypt limit), sanitizeInput() removes control
+   characters and script/SQL signatures.
+ PROVIDER ERROR MAPPING (src/modules/auth/lib/authErrors.ts + Auth.tsx):
+   raw GoTrue English errors are translated to friendly French (invalid
+   credentials, e-mail already registered, weak password, e-mail not confirmed,
+   rate limit, network) — a raw provider error is never shown.
+ IDLE AUTO-LOGOUT: src/lib/useIdleLogout.ts — 20 minutes without mouse,
+   keyboard or touch activity signs the user out and lands on /login with an
+   explanatory message (IDLE_TIMEOUT_MS in App.tsx).
+ LOCAL DEVELOPMENT MODE: src/lib/localDevMode.ts — when Supabase is not
+   configured (and only in a dev build) the app can run on a local, clearly
+   labelled development account; the Topbar shows a "local dev" badge so it can
+   never be mistaken for a real session.
+ THE "NO ACCESS" SCREEN: an account whose role/team permissions allow no module
+   at all sees a dedicated screen with a sign-out button.
+ UNCONFIGURED NOTICE: src/components/SupabaseSetupNotice.tsx explains which
+   .env variables are missing and how to set them.
+
+ FIRST-RUN ONBOARDING MODAL (src/components/OnboardingModal.tsx +
+ src/hooks/useOnboarding.ts + src/lib/onboardingTypes.ts)
+   - shown once per account, after sign-in, when the user has no row in the
+     Supabase table onboarding_responses
+   - questions: "how did you hear about us" (Google search, social media, word
+     of mouth, online ad, blog article, other + free text) and "what kind of
+     business are you" (small company, self-employed, professional,
+     tradesperson, individual), plus a notification opt-in
+   - deliberately FAILS OPEN: if the questionnaire cannot be read, the
+     dashboard is shown rather than blocked
+   - completion is recorded server-side as a response row, always scoped to the
+     signed-in user
+
+
+================================================================================
+ PART 5 — THE DASHBOARD: APP SHELL AND ALL 13 MODULES
+================================================================================
+5.0 THE SHELL (src/App.tsx, src/components/Sidebar.tsx, Topbar.tsx, nav.tsx)
+--------------------------------------------------------------------------------
+ ROUTING RULES (enforced by redirect effects, never by silently swapping screen)
+   - signed OUT + private URL      -> /login, remembering where you were headed
+                                      so sign-in returns you there
+   - signed IN + / or /login       -> first module you are allowed to open
+                                      (dashboard for a full account)
+   - signed IN + public page       -> still shown (e.g. /pricing stays reachable)
+   - unknown path                  -> NotFound
+ SIDEBAR (left navigation rail)
+   - the 13 modules in fixed order, grouped: Pilotage (dashboard) /
+     Opérations (projects, contacts, procurement, inventory) /
+     Suivi & Échéances (calendar, risk, tools) / Conformité (legal, reports) /
+     Administration (team, audit, settings)
+   - collapses to an icon rail; persists its own preferences
+     (localStorage key mizan.sidebar.more)
+   - "Plus d'outils" collapsible row contains risk / legal / tools; team and
+     audit live in the account popover
+   - module SEARCH matches the module name in every UI language, so typing
+     "dépenses" finds "Purchases & Expenses" even in English
+   - a primary action button and quick actions (new project, new expense,
+     generate contract); the invoice item is behind a disabled flag
+     (INVOICE_ROUTE_ENABLED = false) because no invoicing module exists yet
+   - all offsets use logical properties (ps/pe/ms/me, start/end) so the rail
+     mirrors correctly in RTL
+ TOPBAR
+   - page title, mobile menu button, "Quick actions" menu (new project / new
+     expense / generate contract -> the corresponding module), account menu
+     (name, e-mail, role badge, "profile & company" -> settings, sign out),
+     development-only "local dev" badge
+   - menus close on outside click and on Escape
+ EVERY PAGE ALSO CARRIES: LocalSaveNotice (a banner that tells the truth about
+ where records are stored and whether a write failed) and a noindex head.
+
+--------------------------------------------------------------------------------
+5.1 /dashboard — "Tableau de bord" (src/modules/Dashboard.tsx)
+--------------------------------------------------------------------------------
+ PURPOSE: the money and activity overview, computed only from the account's own
+ records (src/lib/dashboardData.ts).
+ ON SCREEN
+   - 4 summary cards, all-time totals in the account currency:
+       * Budgets des projets      = sum of project budgets you typed (not
+                                    invoiced revenue)
+       * Encaissements saisis     = sum of the "paid" amount you typed per
+                                    project (no dated payment history exists)
+       * Dépenses approuvées      = sum of expenses with status approved only
+       * Soldes clients à recouvrer = sum of positive client balances (money
+                                    owed to you; negative balances ignored)
+   - a period selector 6 / 8 / 12 months (default 8) that drives every chart
+   - three toggleable widgets (a "Widgets" button opens the show/hide row):
+       * Dépenses mensuelles   — area chart of approved expenses per month
+       * Répartition           — donut of approved expenses by category
+       * Budgets et encaissements — grouped bars, top 8 projects by budget
+   - three quick-action tiles (new project / new expense / new contract) that
+     navigate to the module
+   - "Activité récente" feed of the last audit events with severity badges, and
+     a link to the full audit log
+   - honesty notes rendered in the UI: a cash note stating that "collected"
+     means typed amounts, not a bank balance, and that no monthly revenue or
+     cash-flow is estimated without dated payment history
+ FUNCTIONS
+   - doExport("csv" | "excel" | "pdf"): CSV and Excel of the monthly approved
+     expense series (disabled when the period has no entries); PDF calls
+     window.print(); exports run inside runAsync() which reports a failure
+     instead of crashing
+   - the widget toggles; the period selector
+ EMPTY / DATA-QUALITY STATES
+   - no records at all -> "Aucune donnée financière enregistrée" card instead
+     of fake numbers
+   - dashboardRecords() hides rows left over from old demo seeds and reports
+     "N exemple(s) préchargé(s) exclus de cette vue"
+   - invalid rows (non-finite amounts, unknown statuses, bad dates) are rejected
+     and counted in an alert line
+   - money is summed in integer cents to avoid floating-point drift
+
+--------------------------------------------------------------------------------
+5.2 /projects — "Projets" (src/modules/Projects.tsx)
+--------------------------------------------------------------------------------
+ LIST: name, client, status (planning / active / on hold / done), progress bar,
+ budget, paid, cost, start and end dates.
+ ACTIONS
+   - "Nouveau projet" modal: name, client, budget, start/end dates; adds the
+     project and logs the action
+   - "Jalons" (milestones) modal per project: tick each milestone done/undone
+     (toggleMilestone)
+   - equipment assignment modal: attach or detach inventory items
+     (assignStock) to the project; the modal shows which items are currently
+     assigned ("ici")
+   - editing a project updates status/progress and recomputes the row
+ DATA: projects + stock items + contacts (client names).
+
+--------------------------------------------------------------------------------
+5.3 /contacts — "Clients & Fournisseurs" (src/modules/Contacts.tsx)
+--------------------------------------------------------------------------------
+ LIST: type (client / supplier), name, ICE number, phone, e-mail, city and the
+ BALANCE (positive = they owe you, negative = you owe them).
+ FUNCTIONS
+   - create / edit a contact in a modal (type, name, ICE, phone, e-mail, city,
+     balance)
+   - delete a contact (per-round button with its own aria-label)
+   - CSV IMPORT: file picker (accepts .csv); rows are parsed and inserted; a
+     busy state is shown while importing
+   - CSV EXPORT of the current list
+   - search box that filters by the fields you see
+   - subtitle counts (how many contacts of each type)
+
+--------------------------------------------------------------------------------
+5.4 /procurement — "Achats & Dépenses" (src/modules/Procurement.tsx)
+--------------------------------------------------------------------------------
+ LIST of expenses: date, vendor, category, payment method, amount, receipt
+ indicator, status.
+ SUMMARY CARDS
+   - total of the CURRENTLY FILTERED expenses
+   - total still pending
+   - a pending counter with "Tout approuver" (approve all pending rows)
+ FILTERS: free-text search, payment method (transfer / check / cash), status
+ (pending / approved).
+ ACTIONS
+   - "Nouvelle dépense" modal: date, vendor, category, amount, method, receipt
+     checkbox, note; validated through businessValidation (non-negative,
+     capped, required fields)
+   - approve a single row (status pending -> approved)
+   - delete a row
+   - Excel export of the filtered list
+ DATA: expenses + contacts (as vendors) + the account currency from settings.
+
+--------------------------------------------------------------------------------
+5.5 /inventory — "Stock & Matériel" (src/modules/Inventory.tsx)
+--------------------------------------------------------------------------------
+ LIST: item name, SKU, quantity, minimum quantity, unit, type (material /
+ equipment), assigned project.
+ FUNCTIONS
+   - low-stock banner: items whose quantity is at or below their minimum are
+     summarised in a warning card
+   - "Nouvel article" modal: name, SKU, quantity, minimum, unit, type
+   - quantity +/- buttons per row (subtract disabled at 0; add disabled at
+     MAX_QUANTITY)
+   - assignment: a select per row that assigns the item to a project or returns
+     it to "non affecté"
+   - search box
+ DATA: stock items + projects.
+
+--------------------------------------------------------------------------------
+5.6 /calendar — "Calendrier" (src/modules/Calendar.tsx)
+--------------------------------------------------------------------------------
+ WHAT IT IS: an illustrative month view, NOT a connected calendar.
+   - a Monday-first month grid for September 2026 with 7 fixed entries
+     (2 renewals, 3 payments, 2 legal deadlines)
+   - hover/selection of a day shows that day's entries with type badges
+     (renew / pay / legal)
+   - an "upcoming" list of the month's entries
+   - month navigation buttons (aria-labelled "mois précédent / mois suivant")
+     and a day-selection aria-label
+   - a translated notice states on screen that this is a SAMPLE month
+   - weekday names, month names and numbers are formatted with Intl for the
+     active language
+ The dashboard's real deadline material (subscription expiries, contract
+ dates) is in /tools and /legal.
+
+--------------------------------------------------------------------------------
+5.7 /risk — "Gestion des Risques" (src/modules/Risk.tsx)
+--------------------------------------------------------------------------------
+ WHAT IT IS: a fixed, illustrative risk register — no user data is involved.
+   - three counters (high / medium / OK)
+   - filter chips (all / high / medium / OK, aria-pressed)
+   - search across label, category and description
+   - seven risk rows: TVA, impôt sur les sociétés, contract renewal, registry
+     (RC/ICE), insurance, social contributions (CNSS), personal-data privacy —
+     each with a category badge, a level badge, a description and a due date
+     when it has one
+   - an explicit demo notice is rendered above the list
+ Source of the words: src/i18n/risk.ts; nothing here writes to the store.
+
+--------------------------------------------------------------------------------
+5.8 /tools — "Abonnements & Outils" (src/modules/Tools.tsx)
+--------------------------------------------------------------------------------
+ PURPOSE: track the software subscriptions the business pays for.
+ LIST/TABLE: tool name, monthly cost, start date, expiry date and a computed
+ STATUS (active / expired / scheduled / unknown — src/lib/subscriptions.ts)
+   active    = started, not yet expired
+   scheduled = starts in the future
+   expired   = expiry date already passed
+   unknown   = unparseable dates
+ FUNCTIONS
+   - "Ajouter un outil" modal: name, monthly cost (validated, max MAX_AMOUNT)
+     and a date range; adds the tool
+   - delete a tool (per-row button)
+   - a PROJECTED COST card: the planned full monthly cost of subscriptions
+     whose date ranges overlap each of the last 7 months (monthlySubscription
+     Costs) — the copy states it is a planned figure, not payment history and
+     not a forecast of confirmed debits
+
+--------------------------------------------------------------------------------
+5.9 /legal — "Coffre juridique" (src/modules/LegalVault.tsx)
+--------------------------------------------------------------------------------
+ PURPOSE: keep contracts and their signature status in order.
+ LIST: contract title, type (construction / service / rental), client, value,
+ date, status (draft / sent / signed).
+ FUNCTIONS
+   - add a contract (modal: type, title, client, value, date)
+   - "Mark as signed" / "Mark as sent" actions, both routed through a
+     CONFIRMATION modal that explains what the status change means before it is
+     applied (no silent state change)
+   - a printable preview of a contract record (window.print())
+   - rows and counters are derived from src/lib/legalData.ts, which re-validates
+     stored contracts and falls back safely when the company settings are
+     missing
+
+--------------------------------------------------------------------------------
+5.10 /reports — "Rapports & Fiscalité" (src/modules/Reports.tsx)
+--------------------------------------------------------------------------------
+ PURPOSE: period reporting for the accountant.
+ ON SCREEN
+   - period selector 6 / 8 / 12 months
+   - a monthly table/chart of approved expenses for the selected window
+   - a totals card: approved expenses, collected amounts, receivables — the
+     same figures the dashboard's four cards show, restated per period
+   - a TAX card explaining the current limits in plain words (what the tool does
+     and does not compute about VAT/IS); it deliberately does not invent a tax
+     liability
+ FUNCTIONS
+   - export the expense series (CSV)
+   - "PDF" = window.print() for a clean printed report (disabled with no data)
+   - empty state card when the account has no records in the window
+   - emits the Fatorati header/footer notes configured in Settings
+
+--------------------------------------------------------------------------------
+5.11 /team — "Équipe & Rôles" (src/modules/Team.tsx)
+--------------------------------------------------------------------------------
+ PURPOSE: who may open which module (UI permissions; database RLS stays the
+ real boundary).
+ LIST: members with role badge (owner / accountant / supervisor / assistant),
+ active state, and their permission grid.
+ FUNCTIONS
+   - "Inviter" modal: name, e-mail, role; adds a pending team member
+     (inviteMember)
+   - activate / deactivate a member (the owner row cannot be deactivated)
+   - change a member's role
+   - toggle each module permission per member (setPermission) — the same 13
+     modules as the navigation rail
+   - subtitle shows how many members are active
+ The sidebar and App.tsx read these permissions through allowedModules()
+ (src/lib/permissions.ts); a member who is deactivated gets no modules at all.
+
+--------------------------------------------------------------------------------
+5.12 /audit — "Journal d'audit" (src/modules/AuditLog.tsx)
+--------------------------------------------------------------------------------
+ PURPOSE: the account's own change history.
+ CONTENT: chronological events with actor, action, target, module, severity
+ badge (info / warning / critical) and a relative timestamp ("just now", x
+ minutes ago — Intl.RelativeTimeFormat).
+ FUNCTIONS
+   - search box over actions and targets
+   - export the log (CSV)
+   - empty state when nothing has happened yet
+ WHAT GETS LOGGED AUTOMATICALLY (src/store/useMizan.ts): sign-in and sign-out,
+   and every write the modules perform (project/expense/contact/stock/contract/
+   team/tool/settings changes). The log keeps the most recent 500 events.
+
+--------------------------------------------------------------------------------
+5.13 /settings — "Paramètres" (src/modules/Settings.tsx)
+--------------------------------------------------------------------------------
+ FOUR BLOCKS + LOCAL DATA
+   1) LOCAL DATA card
+        - "Exporter une sauvegarde" — a JSON backup of the current account
+        - when a legacy (older version) backup is detected, an extra button
+          offers to export that too
+        - clear copy about where the data lives and how it is protected
+   2) IDENTITY (Identité de l'entreprise)
+        - LOGO upload: accepts the allowed image types, read as a data URL and
+          validated (size/type checks, src/lib/logoValidation.ts), removable
+        - company name, ICE, IF (tax id), RC (registry), city and address
+   3) FISCAL
+        - currency select MAD / EUR / USD
+        - VAT rate field, validated (0..100, isTaxRate) with an inline error
+   4) DOCUMENTS
+        - header note and footer note printed on generated/printed documents
+   SAVE: the header button changes state (primary -> "Enregistré" with a check)
+     and only enables when the VAT rate is valid and no logo read is pending;
+     write failures are surfaced instead of swallowed.
+   Every change is written through the store (updateSettings) and logged.
+
+
+================================================================================
+ PART 6 — THE STORAGE ENGINE (src/store/useMizan.ts, defaults.ts, seed.ts)
+================================================================================
+ WHAT IT IS: one Zustand store persisted to localStorage, holding
+   settings, projects, contacts, expenses, stock, contracts, team, tools, audit
+   plus the current session (auth).
+ PER-ACCOUNT PARTITIONING
+   - storage key while signed out : mizan.store.v2.signed-out
+   - storage key while signed in  : mizan.store.v2.<encodeURIComponent(userId)>
+   - signIn() switches the storage name, resets the in-memory state to empty
+     defaults and rehydrates, so a new account can never inherit another
+     account's (or the demo's) records
+   - signOut() keeps the account's saved records on disk but removes them from
+     memory and stops writing into that account's key
+ INPUT SANITISATION: every stored string passes sanitize() — angle brackets
+   removed, control characters removed, trimmed, capped at 400 characters —
+   before it enters state (XSS/injection defence in depth).
+ WRITE-TIME VALIDATION: businessValidation.ts enforces non-negative amounts
+   (MAX_AMOUNT 999 999 999 999.99), quantities (MAX_QUANTITY), a valid VAT rate
+   (0..100), valid date ranges, and calendar helpers in calendarDates.ts.
+ FAILED-WRITE DETECTION: localSaveStatus.ts wraps the storage engine; a write
+   that fails (private mode, quota, disabled storage) surfaces in the
+   LocalSaveNotice banner instead of being silently lost.
+ LEGACY DATA: legacyBackup.ts + the dashboard's seed-provenance detector keep
+   old demo rows out of views without deleting them, and can export a copy.
+ WHAT IS **NOT** HERE: no server sync. The Supabase tables in PART 9 exist for
+ auth, CMS content, subscriptions and analytics; the business records of the
+ signed-in modules are browser-local in this release. The README, SECURITY.md
+ and the in-app notices all state this.
+
+
+================================================================================
+ PART 7 — CROSS-CUTTING DASHBOARD FUNCTIONS
+================================================================================
+ 7.1 LANGUAGE / i18n
+   src/lib/language/store.ts — app-wide language (ar / en / fr) with
+   localStorage key fatoora.language; hooks useAppLanguage() and
+   useTranslation() give every module its dictionary, its dir (rtl for Arabic)
+   and the matching Intl locale tag. 22 dictionaries in src/i18n/.
+   src/i18n/shared.ts owns the shared vocabulary: module names, role names,
+   severity names — typed as Record<ModuleKey, string>, so adding a module is a
+   compile error until it is named in all three languages.
+   Module titles for reference:
+     dashboard Tableau de bord · projects Projets · contacts Clients &
+     Fournisseurs · procurement Achats & Dépenses · inventory Stock & Matériel ·
+     calendar Calendrier · risk Gestion des Risques · tools Abonnements &
+     Outils · legal Coffre juridique · reports Rapports & Fiscalité ·
+     team Équipe & Rôles · audit Journal d'audit · settings Paramètres
+
+ 7.2 FORMATTING (src/lib/mizan.ts)
+   money() / num() / fmtDate() / fmtDateTime() / timeAgo() — locale is a
+   REQUIRED argument on the date functions so a screen cannot accidentally print
+   French dates inside an Arabic UI. roleTints maps roles to colours only.
+
+ 7.3 EXPORTS (all client-side, no server)
+   toJSON() backup, toCSV(), toExcel() (an Excel-compatible HTML table, not a
+   binary workbook) and PDF through window.print(). CSV output neutralises
+   formula injection (a leading = + - @ in a string is prefixed with an
+   apostrophe) and numbers stay numeric. Downloads are triggered through a
+   temporary blob URL that is revoked after the browser has consumed it.
+
+ 7.4 ROLES AND PERMISSIONS
+   store/types.ts: Role = owner | accountant | supervisor | assistant.
+   seed.ts::perms() default permission sets per role.
+   permissions.ts::allowedModules(auth, team) — the owner gets every module; a
+   team member gets exactly the toggles set in /team; an unknown or inactive
+   member gets nothing. The comment in that file is explicit: this is module
+   visibility for the UI, RLS (or in this release the local store) is the
+   actual boundary.
+
+ 7.5 PLAN GATING (src/lib/planLimits.ts + src/components/PlanGate.tsx)
+   Tiers: none / essential / pro / pro_max.
+   Features per tier:
+     none      dashboard, contacts
+     essential + calendar, calendar_deadlines
+     pro       + contracts, legal_vault, reports, exports, roles_permissions,
+                 blog_cms
+     pro_max   + multi_user, advanced_audit, priority_support, monitor_site,
+                 content_improvement
+   getUserPlan() reads localStorage "user_plan", falling back to the
+   "subscriptions" list (highest active tier). hasFeature() gates CMS panels
+   such as /admin/monitor (advanced audit) and the blog editor.
+   PlanGate renders a locked card with the tier, the missing feature and an
+   upgrade route (WhatsApp number) when the feature is not included.
+   NOTE: this decision is taken in the browser; it is a product gate, not a
+   security control.
+
+ 7.6 SECURITY TOOLKIT (src/lib/security/)
+   cmsMonitor.ts  — local CMS audit log (500 events), anomaly detection
+                    (5+ events / 60 s), AES-GCM encrypted export
+   csrf.ts        — random token generation, session storage, verification
+   encryption.ts  — Web Crypto AES-GCM with PBKDF2 key derivation; no hardcoded
+                    secret; cryptoAvailable() reports support
+   inputGuard.ts  — sanitizeInput / escapeHtml / isSafeEmail / isSafeText /
+                    toSafeNumber / sanitizeDeepValue
+   rateLimiter.ts — class RateLimiter(windowMs, max) used to throttle actions
+                    such as encrypted audit export
+   xssShield.ts   — safeText / safeHtml / safeUrl (protocol allowlist) /
+                    safeAttr
+
+
+================================================================================
+ PART 8 — THE ADMIN CMS (/admin)
+================================================================================
+FILES: src/admin/** (AdminApp.tsx, AdminLayout.tsx, ProtectedRoute.tsx,
+PlatformAdminRoute.tsx, ContentAdminRoute.tsx, LoginView.tsx, platform/*,
+site/*, blogs/*, monitor/*, content/*, contact/*, security/*, lib/*).
+
+ 8.1 ACCESS MODEL — TWO SEPARATE ROLES
+   useAdminAuth() (src/admin/lib/adminAuth.ts) resolves four states:
+     checking / unauthenticated / forbidden / authenticated
+   It reads the signed-in user's own rows:
+     - profiles.is_admin = true                 -> CONTENT admin
+     - a row in platform_admins for the user_id -> PLATFORM admin
+   Both queries are scoped to the user by RLS. ProtectedRoute is the layout
+   guard for every /admin route and redirects before any admin UI mounts;
+   PlatformAdminRoute / ContentAdminRoute narrow the nested groups. The file
+   comments repeat the important part: this is a UX gate, the security boundary
+   is Postgres RLS through is_admin().
+   /admin/login reuses the same SignInForm as the app (no second copy of auth
+   logic) with: no sign-up path (admin accounts are provisioned out of band), a
+   honeypot field that is always on, optional Cloudflare Turnstile
+   (VITE_TURNSTILE_SITE_KEY), and an explicit "you are signed in but you are
+   not an admin" notice when the guard turned you away.
+   AdminLayout: sticky header, role-filtered navigation (desktop + a scrollable
+   mobile row), a link back to the public site, a sign-out button, and a
+   noindex meta tag added while the panel is mounted. The whole panel is
+   dir="rtl" lang="ar".
+
+ 8.2 THE ADMIN API LAYER
+   src/admin/platform/client.ts — all Supabase access for platform screens:
+     types PlanCode (starter/pro/business/enterprise), SubscriptionStatus
+     (trialing/active/past_due/paused/canceled), PurchaseStatus (new/contacted/
+     paid/rejected), Plan, AccountSubscription, PurchaseRequest, PageView,
+     SiteEvent, PlatformSettings, SystemNotification, AdminAuditEvent,
+     AccessAccount
+     functions getPlatformSettings, getBlogPublishRules, savePlatformSettings,
+     listPlans, savePlan, listSubscriptions, updateSubscription,
+     listPurchaseRequests, updatePurchaseRequest, listPageViews, listSiteEvents,
+     purgePageViews, listAdminAuditEvents, listAccessAccounts, updateAccessRole,
+     listSystemNotifications, createSystemNotification,
+     setSystemNotificationActive + PLAN_LABELS / PLAN_STATUS_LABELS
+   src/admin/site/client.ts — all Supabase access for content screens:
+     listHomepageContent, saveHomepageContent, listManagedPages,
+     saveManagedPage, deleteManagedPage, listSeoSettings, saveSeoSetting,
+     deleteSeoSetting, listAssets, uploadCmsAsset, updateCmsAsset,
+     deleteCmsAsset, listFeatures/saveFeature/deleteFeature,
+     listReleases/saveRelease/deleteRelease, listDownloads/saveDownload/
+     deleteDownload, listProducts/saveProduct/deleteProduct,
+     listAnnouncements/saveAnnouncement/deleteAnnouncement,
+     listSupportRequests, updateSupportRequest, listCmsRevisions,
+     listCmsBackups, createCmsBackup, restoreCmsBackup
+   Every save passes the acting user id, which is what the database writes into
+   the audit trail.
+
+ 8.3 PLATFORM SCREENS (platform admins only)
+   /admin/dashboard — "مركز التحكم" (control centre)
+     Reads plans, subscriptions, purchase requests, page views (last 30 days),
+     site events, notifications and the 8 latest admin audit events.
+     Metrics, each with its own honesty caption:
+       * active accounts (active or trialing) out of all accounts
+       * nominal monthly value = sum of the plan prices of paying accounts,
+         captioned "an estimate from registered plans; not confirmed revenue"
+       * new purchase/subscription requests awaiting follow-up
+       * visits in the last 30 days (capped at the latest 5,000 events)
+       * download clicks — captioned "clicks on a link, not confirmed
+         downloads"
+       * purchase clicks — captioned "click-outs only, not confirmed payments"
+     Plus: the latest operator actions (subscription/settings/permission changes
+     with actor e-mail and time), the notification centre (active alerts with
+     severity), and a "subscriptions by plan" grid showing each plan's price,
+     how many accounts are on it and whether the plan is available or hidden.
+   /admin/subscriptions — plans, customer accounts, requests
+     * plan catalogue: price and limits (users, contacts, projects, storage),
+       "تعديل الحدود" opens an editor per plan (monthly price, max users,
+       max contacts, max projects, ...)
+     * customer accounts: search by name/e-mail/id, then edit plan, status and
+       seats per account and save
+     * subscription requests: each request's status can be moved through
+       new -> contacted -> paid -> rejected
+     * the screen states plainly that no payment gateway is involved and
+       "paid" is recorded manually
+   /admin/subscription-editor — a legacy client-side plan/price editor writing
+     to localStorage ("subscriptions") that feeds the client-side plan gates
+     described in 7.5
+   /admin/traffic — analytics
+     * period selector (7/30/90 days), metric cards: page views, distinct
+       paths (explicitly "pages, not unique visitors"), download clicks,
+       purchase clicks, languages measured
+     * a daily bar chart labelled for screen readers, a most-viewed-pages
+       table, and a language/referrer-host breakdown (referrer hostname only)
+     * CSV export; "delete older than 90 days" purge button
+     * states that measurement is first-party, consent-gated, without IPs or
+       personal identifiers
+   /admin/security — access management + audit
+     * metrics: number of platform admins, content editors, distinct actors in
+       the audit log
+     * access management: search an account by e-mail, then switch the
+       "content editor" and "platform operator" switches per account
+       (updateAccessRole), with an explanation of what each role can and cannot
+       do, and the note that only accounts that already have a role are listed
+       until you search
+     * the last 100 protected operations with actor, action, target and time
+       (subscription/plan/settings/notification/role changes are all recorded)
+   /admin/notifications — platform notifications
+     * create form: title, severity (info/warning/critical), optional expiry and
+       message (up to 2000 characters)
+     * active notifications list with a "close" action and a previous-entries
+       list where a notification can be reactivated; expired items are marked
+       "منتهي"
+   /admin/algorithms — "قواعد النظام والتحكم" (system rules)
+     Three switches actually stored in platform_settings:
+       tracking_enabled        (site page-view measurement on/off)
+       require_translations    (blog publishing requires fr + ar + en)
+       require_seo_metadata    (blog publishing requires SEO title/description)
+     Save writes the row with the operator id and records it in the audit log;
+     a "revert" button restores the last saved values; a card explains what is
+     NOT controlled here (plan prices, access rights — those have their own
+     protected screens — and there are deliberately no risk-scoring weights,
+     because the product has no defined model).
+   /admin/support — support request inbox (only platform operators see it)
+     Requests from the public form: status filter, per-request status change
+     (new / in progress / resolved) and an internal note that the customer never
+     sees.
+   /admin/backups — revisions and backups
+     * create a labelled backup (content, pages, SEO, asset metadata, features,
+       releases, downloads, products, announcements, blog posts and their
+       translations — binary image files and request/payment rows are NOT
+       included)
+     * list existing backups and restore one
+     * browse the content revision log with a read-only JSON snapshot preview
+
+ 8.4 CONTENT SCREENS (content admins and platform admins)
+   /admin/website — the hub. Explains that published content appears on the
+     public site, and that static-generated copies need a rebuild to be
+     reflected in the HTML files and the sitemap. Its navigation lists the
+     panels below.
+   /admin/site/* panels (each starts with the shared PanelCard: title,
+     description, optional locale selector)
+     * Homepage       headline, subheadline, primary CTA, hero image URL and
+                      feature cards, per locale, with an explicit "leave
+                      unpublished to keep an internal draft" note
+     * Pages          title / description / body / hidden per path, with a note
+                      that hiding a page needs a rebuild for true exclusion
+     * SEO            title, description, canonical and an "exclude from
+                      indexing" switch per route per language (adds noindex and
+                      removes the URL from the sitemap at build time)
+     * Assets         image library: upload PNG/JPEG/WebP/SVG up to 10 MB with
+                      alt text per locale; files are public once published
+     * Features       one record per feature key per language, with an optional
+                      image from the asset library; only published records are
+                      shown publicly
+     * Releases       version, channel, notes, fixes and compatibility; the
+                      published release appears with the download links
+     * Downloads      per-platform download links with version, label and
+                      instructions per language; a click is recorded as a click
+                      only
+     * Products       one-time products: price, currency and an external
+                      purchase URL; explicitly not e-commerce (no payment
+                      provider, no webhooks)
+     * Announcements  public messages shown on the site (separate from the
+                      internal operator notifications)
+   /admin/blogs — blog list: title, slug, published state, and two per-language
+     readiness columns (content ready FR/AR/EN and SEO metadata ready FR/AR/EN),
+     open/delete actions, retry on load failure.
+   /admin/blogs/new and /admin/blogs/:id — the editor:
+     three locale tabs (FR base + AR + EN translations), title, slug, content,
+     excerpt, SEO title, SEO description, comma-separated keywords, plus
+     per-locale image URL and alt text; author name; published switch.
+     Publishing rules come from getBlogPublishRules(): when the operator has
+     switched on "require translations" every language must be complete, and
+     when "require SEO metadata" is on, SEO fields are mandatory before
+     publishing. Drafts can always be saved.
+     All content passes src/admin/lib/security.ts sanitisation.
+   /admin/monitor — monitoring panel (illustrative): counters for IP
+     addresses, report events, an approximate hourly rate and users, derived
+     from the local CMS audit log and the profiles store, with cards explaining
+     that real IP logging and full analytics require an edge function /
+     Cloudflare analytics. The advanced layer is behind PlanGate
+     ("advanced_audit").
+   /admin/content-improvement — blog quality scorer: paste title, slug,
+     content, excerpt, SEO title/description, keywords and image/alt, and get a
+     0–100 score with each weighted check listed (title 40–70 characters,
+     excerpt 120–160, SEO title 40–60, SEO description 120–155, content > 1000
+     characters, keyword in the first 100 characters, image + alt, 3–7 unique
+     keywords) plus a viral-content checklist and publishing tips. Scoring
+     logic: src/admin/blogs/viralStandards.ts.
+   /admin/contact-inbox — message inbox that reads/writes the local
+     "contact_inbox" store: search, mark read, and a draft composer that adds a
+     message locally. It states that real mail sync needs an external
+     integration; nothing is actually sent.
+   /admin/site/pages — the "all site pages" editor currently used by the CMS
+     navigation: edits title / description / body and a Hidden flag per path and
+     writes to localStorage under "cms_pages" with a note that a rebuild is
+     needed for build-time exclusion. (See PART 11 — this panel is not wired to
+     Supabase like its siblings.)
+
+ 8.5 HOW CMS CONTENT REACHES VISITORS
+   src/lib/siteCms.ts reads only PUBLISHED rows (published = true,
+   active = true, sort_order respected) for the requested path + locale:
+   homepage, page, SEO settings, features, active announcements in their date
+   window, releases, downloads and products.
+   The landing renders that data (AnnouncementStrip, Hero, CmsFeatureCard,
+   ManagedPage, OneTimeProductsSection, DownloadReleaseSection,
+   buildManagedSiteHead for per-route CMS SEO).
+   At build time the same data is baked into the prerendered documents through
+   src/lib/siteCmsPrerender.ts, so a published change appears immediately in the
+   SPA and in the static HTML after the next build.
+   The blog reads through src/lib/blog.ts (posts + post_translations), and the
+   prerenderer emits one document per published localized article and appends it
+   to the sitemap, llms.txt and _redirects.
+
+
+================================================================================
+ PART 9 — SERVER SIDE (Supabase)
+================================================================================
+Files: supabase/schema.sql (~92 KB, the full definition) and
+supabase/migrations/*.sql (5 migrations, including
+20261012_harden_profile_permissions.sql — required to close an old
+self-admin-escalation path — 20261013_cms_control_center.sql and
+20261014_cms_site_operations.sql).
+
+TABLES DEFINED IN THE SCHEMA
+  Accounts & workspace : profiles, company_settings, contacts, projects,
+                         expenses, stock_items, contracts, team_members,
+                         audit_events, subscriptions, calendar_events
+  Commercial platform  : plan_catalog, account_subscriptions, usage_monthly,
+                         purchase_requests, platform_admins
+  Content / CMS        : posts, post_translations, cms_homepage_content,
+                         cms_pages, cms_seo_settings, cms_assets, cms_features,
+                         cms_releases, cms_downloads, cms_products,
+                         cms_support_requests, cms_announcements,
+                         cms_content_revisions, cms_backups
+  Analytics & control  : platform_settings, site_page_views, site_analytics_events,
+                         admin_audit_events, system_notifications
+  Onboarding           : onboarding_responses
+
+KEY MECHANICS
+  - is_admin() appears 10 times in the schema: RLS policies on the content
+    tables call it, so every read/write of posts and CMS tables is enforced in
+    the database, not by the React guard.
+  - RPCs used by the app: record_site_page_view, record_site_event (first-party
+    analytics), plus existing CMS plan/access helpers used by the platform
+    client.
+  - Admin roles are rows: profiles.is_admin (content) and platform_admins
+    (operations) — deliberately separate so a content editor cannot touch
+    subscriptions or access rights.
+  - tests/schema.test.ts loads the schema into PGlite (an in-process Postgres)
+    and asserts the definitions, so the SQL is covered by the test suite.
+  - docs/SUPABASE_OPERATIONS.md describes setup, permissions and migrations.
+
+
+================================================================================
+ PART 10 — BUILD, DEPLOY, CONFIGURATION, TESTS
+================================================================================
+SCRIPTS (package.json)
+  dev        vite (dev server on 0.0.0.0:5173, host allowlist .e2b.app)
+  build      vite build (client) + vite build --ssr src/entry-server.tsx +
+             node scripts/prerender.mjs
+  preview    vite preview (serves dist/, same host settings)
+  typecheck  tsc --noEmit
+  test       vitest run        (46 suites + setup.ts in tests/)
+  format     oxfmt             ci  bash scripts/ci.sh
+  deploy     vite build && wrangler pages deploy dist --project-name=fatooralaw
+
+WHAT THE BUILD PRODUCES (verified)
+  dist/         client bundle + assets + per-route HTML + _headers + _redirects
+                + sitemap.xml + llms.txt + ai.txt + robots.txt + 404.html
+  dist-ssr/     the server bundle used only for prerendering
+  dist/build-report.json   build stamp: time, mode, whether Supabase was
+                configured and which project ref was baked in
+  Prerender log: "[prerender] Prerendered 36/36 public route(s)" and
+                "0/0 published localized article(s)" on a database-free build.
+  If the CMS is unreachable at build time the prerenderer logs
+  "CMS site data unavailable ... built-in copy remains enabled" and still emits
+  every document from the built-in copy — the build never fails for that.
+
+CONFIGURATION (.env.example, .env.production, src/lib/supabaseConfig.ts)
+  VITE_SUPABASE_URL        https://<project-ref>.supabase.co
+  VITE_SUPABASE_ANON_KEY   the public anon/publishable key of the SAME project
+  VITE_TURNSTILE_SITE_KEY  optional CAPTCHA on the CMS login
+  Build controls: ALLOW_UNCONFIGURED_SUPABASE=1 (preview builds),
+  REQUIRE_SUPABASE_ENV=1 (fail a CI build that has no usable pair).
+  The build inlines VITE_* values into the browser bundle, so a deployed site
+  must be built with them; the app refuses to sign with a service-role key and
+  reports which variable is missing. .env.production is committed with the
+  project's public pair so Cloudflare Pages builds work with no dashboard
+  variables set.
+
+SECURITY HEADERS (public/_headers) — CSP (self + Supabase + Google Analytics +
+  Cloudflare insights; frame-ancestors 'none'), X-Frame-Options DENY,
+  nosniff, HSTS, Referrer-Policy, a long Permissions-Policy allowlist,
+  COOP/CORP, X-Robots-Tag noindex on /admin/*, Cache-Control immutable for
+  /assets/*, per-language Content-Language.
+  public/anti-reverse-engineering.js adds right-click / devtools shortcut
+  blocking and a console warning — a deterrent, explicitly not a security
+  control (client code is always readable by the user).
+
+TESTS (tests/, 46 suites + setup.ts) cover, among others: routing and URL contract,
+i18n dictionaries and formatting, the landing page and its style contract,
+each business module, the dashboard data maths, legal data, plan/subscription
+logic, permissions, the local store and localStorage partitioning, the
+Supabase config guard, cookie consent, the admin auth hook, the usage of
+onboarding, and the SQL schema itself.
+
+
+================================================================================
+ PART 11 — HONESTY LIST: REAL vs DEMO vs STUB (read before trusting anything)
+================================================================================
+The repository is deliberately explicit about this. Summarised from the code,
+the on-screen notices, README.md, SECURITY.md and docs/CODE_REVIEW.md:
+
+ NOT A PRODUCTION ERP
+   Business records (projects, contacts, expenses, stock, contracts, team,
+   subscriptions, audit) live in THIS BROWSER's localStorage, partitioned per
+   account. They are not synced to the server, not encrypted at rest, and are
+   lost if the browser profile is cleared. The Supabase tables for those
+   entities exist in the schema but are not what the app writes to today.
+
+ DEMO / ILLUSTRATIVE SCREENS (contain fixed examples, no user data)
+   * /calendar — a fixed September 2026 month with 7 sample entries; the page
+     says so.
+   * /risk — seven fixed risk rows; the page renders a demo notice.
+   * /admin/monitor — counters derived from local logs; the cards explain what
+     would need a server (IP logging, full analytics).
+   * /admin/content-improvement — a scoring tool, not stored content.
+   * /admin/contact-inbox — local messages only; "Send Draft" saves locally and
+     sends nothing.
+   * Marketing widgets (calendar, risk, subscription table, trend chart) are
+     illustrations, and the copy labels the numbers as examples.
+
+ CLIENT-SIDE GATES, NOT SECURITY
+   * Plan gating (PlanGate / getUserPlan) is decided in the browser from
+     localStorage — a product gate, not enforcement.
+   * allowedModules() hides modules in the UI; with local storage as the data
+     layer there is no server-side check behind it yet.
+   * ProtectedRoute / PlatformAdminRoute / ContentAdminRoute exist for UX;
+     their own comments say the real boundary is Postgres RLS.
+
+ INCONSISTENCY TO KNOW ABOUT
+   * /admin/site/pages writes to localStorage ("cms_pages") while every sibling
+     panel in /admin/site/* uses Supabase through src/admin/site/client.ts
+     (which already provides listManagedPages/saveManagedPage/deleteManagedPage
+     for the cms_pages table). It is a stub that looks like the others.
+   * /admin/subscription-editor edits the local "subscriptions" list — the same
+     data getUserPlan() falls back to.
+
+ NOT IMPLEMENTED / DELIBERATELY ABSENT
+   * No invoicing module (the sidebar's invoice item is behind
+     INVOICE_ROUTE_ENABLED = false and the button redirects to existing
+     modules instead of being dead).
+   * No payment provider, no webhooks: subscription status, "paid" requests and
+     one-time products are all manual / click-out flows.
+   * No e-mail sending from the app (support requests are stored rows; the
+     contact inbox does not send).
+   * No server-side IP logging or bot blocking beyond client-side rate limits.
+   * No dynamic risk-scoring model — /admin/algorithms says so explicitly and
+     refuses to expose invented weights.
+
+ MEASUREMENTS ARE CLICKS, NOT CONFIRMED EVENTS
+   "download_click" and "purchase_click" are recorded as clicks on a link.
+   The admin dashboard and traffic screens say this in their captions; do not
+   read them as completed downloads or payments.
+
+
+================================================================================
+ PART 12 — QUICK REFERENCE: ROUTE -> FILE -> WHAT IT DOES
+================================================================================
+ PUBLIC
+  / and all public pages .... src/marketing/Landing.tsx (+ landing.css)
+  blog article .............. Landing.tsx :: BlogArticlePage + src/lib/blog.ts
+  page/FAQ/pricing copy ..... src/lib/seo.ts (PAGE_SEO, PAGE_COPY),
+                              src/marketing/references.tsx, src/i18n/legal.ts
+  CMS-driven public content . src/lib/siteCms.ts (+ siteCmsPrerender.ts)
+  head tags / JSON-LD ....... src/lib/seo.ts, Landing.tsx :: buildJsonLd
+  prerendering .............. scripts/prerender.mjs + src/entry-server.tsx
+
+ AUTH
+  /login /signup /forgot-password /reset-password
+      ....................... src/components/Auth.tsx + src/modules/auth/**
+  session ................... src/hooks/useSupabaseAuth.ts
+  idle logout ............... src/lib/useIdleLogout.ts
+  onboarding ................ src/components/OnboardingModal.tsx + useOnboarding
+
+ DASHBOARD
+  shell/routing ............. src/App.tsx
+  navigation ................ src/components/Sidebar.tsx, Topbar.tsx, nav.tsx
+  /dashboard ................ src/modules/Dashboard.tsx + lib/dashboardData.ts
+  /projects ................. src/modules/Projects.tsx
+  /contacts ................. src/modules/Contacts.tsx
+  /procurement .............. src/modules/Procurement.tsx
+  /inventory ................ src/modules/Inventory.tsx
+  /calendar ................. src/modules/Calendar.tsx
+  /risk ..................... src/modules/Risk.tsx + src/i18n/risk.ts
+  /tools .................... src/modules/Tools.tsx + lib/subscriptions.ts
+  /legal ................... src/modules/LegalVault.tsx + lib/legalData.ts
+  /reports .................. src/modules/Reports.tsx
+  /team ..................... src/modules/Team.tsx + lib/permissions.ts
+  /audit .................... src/modules/AuditLog.tsx
+  /settings ................. src/modules/Settings.tsx
+  state/storage ............. src/store/useMizan.ts, types.ts, seed.ts, defaults.ts
+  validation ................ src/lib/businessValidation.ts, calendarDates.ts
+  exports ................... src/lib/mizan.ts
+  i18n ...................... src/i18n/*, src/lib/language/*
+  plan gates ................ src/lib/planLimits.ts, components/PlanGate.tsx
+
+ ADMIN
+  routes .................... src/admin/AdminApp.tsx
+  layout / nav .............. src/admin/AdminLayout.tsx
+  access check .............. src/admin/lib/adminAuth.ts + ProtectedRoute.tsx
+  platform API .............. src/admin/platform/client.ts
+  content API ............... src/admin/site/client.ts
+  blog ...................... src/admin/blogs/* (editor, list, viralStandards)
+  security panel ............ src/admin/security/CmsSecurityControl.tsx +
+                              src/lib/security/*
+  other panels .............. src/admin/{platform,site,monitor,content,contact}/*
+
+ SERVER / BUILD
+  schema .................... supabase/schema.sql, supabase/migrations/
+  headers/robots ............ public/_headers, robots.txt, ai.txt, security.txt
+  build & prerender ......... vite.config.ts, scripts/prerender.mjs, scripts/*.sh
+  config .................... .env.example, src/lib/supabaseConfig.ts, .figma/make/site.json
+  tests ..................... tests/*
+
+
+================================================================================
+ PART 13 — WHERE TO CHANGE WHAT (maintenance map)
+================================================================================
+  Add a public page ................ src/lib/routes.ts (LANDING_PAGES) + the
+                                    section in Landing.tsx + a title/description
+                                    in src/lib/seo.ts. The sitemap, the
+                                    prerendered documents and _redirects follow
+                                    automatically at the next build.
+  Add a language ................... src/lib/locales.ts (one entry) + its copy in
+                                    src/lib/seo.ts + its dictionary in
+                                    Landing.tsx; everything else is derived.
+  Add a signed-in module ........... src/store/types.ts (ModuleKey) + a path in
+                                    src/lib/routes.ts + a file in src/modules/ +
+                                    the lazy import and switch case in App.tsx +
+                                    i18n/shared.ts (compile error until named in
+                                    all three languages) + nav.tsx.
+  Change module names / roles ...... src/i18n/shared.ts
+  Change prices / plans ............ the pricing copy in Landing.tsx (EXTRA) and
+                                    the plancatalog in Supabase (plus
+                                    src/lib/planLimits.ts if the feature tiers
+                                    change).
+  Change landing design ............ src/marketing/landing.css (all rules are
+                                    scoped to .landing-atlas)
+  Change contact details ........... .figma/make/site.json (organization);
+                                    src/lib/contact.ts publishes them
+  Change analytics consent ......... src/lib/cookieConsent.ts, src/lib/siteAnalytics.ts
+  Change security headers .......... public/_headers (remember: connect-src must
+                                    keep https://*.supabase.co or every
+                                    Supabase call is blocked by the browser)
+  Change the dashboard's data rules  src/lib/dashboardData.ts
+  Change stored-data rules ........  src/store/useMizan.ts + lib/businessValidation.ts
+  Change the CMS API surface ....... src/admin/{platform,site}/client.ts (and the
+                                    matching RLS policies in supabase/schema.sql)
+
+
+================================================================================
+ END OF SCAN
+================================================================================
+ Every statement above is traceable to the file named next to it. Where the
+ product is a prototype, a demo or a stub, PART 11 says so explicitly — that is
+ the single most important section for anyone about to put real business or
+ client data into this application.
+================================================================================
+ src/admin/{platform,site}/client.ts (and the
+                                    matching RLS policies in supabase/schema.sql)
+
+
+================================================================================
+ END OF SCAN
+================================================================================
+ Every statement above is traceable to the file named next to it. Where the
+ product is a prototype, a demo or a stub, PART 11 says so explicitly — that is
+ the single most important section for anyone about to put real business or
+ client data into this application.
+================================================================================
