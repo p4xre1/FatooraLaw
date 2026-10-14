@@ -148,3 +148,25 @@ it("renders Arabic legal records and the metadata-only preview in RTL", () => {
   expect(document.documentElement.lang).toBe("ar")
   expect(document.documentElement.dir).toBe("rtl")
 })
+
+
+it("translates the fiscal caveats, monthly range and export controls into English", () => {
+  act(() => useLanguageStore.getState().setLanguage("en"))
+  render(<Reports />)
+  expect(screen.getByText("Reports & Tax")).toBeDefined()
+  expect(screen.getByText("No financial data recorded")).toBeDefined()
+  expect(screen.getByText("VAT not calculated")).toBeDefined()
+  expect(screen.getByLabelText("Expense period")).toBeDefined()
+  expect(screen.getByRole("button", { name: "Export expenses" }).getAttribute("disabled")).not.toBeNull()
+})
+
+it("translates the fiscal caveats into Arabic and sets RTL", () => {
+  act(() => useLanguageStore.getState().setLanguage("ar"))
+  render(<Reports />)
+  expect(screen.getByText("التقارير والضرائب")).toBeDefined()
+  expect(screen.getByText("لا توجد بيانات مالية مسجلة")).toBeDefined()
+  expect(screen.getByText("لم يتم احتساب الضريبة على القيمة المضافة")).toBeDefined()
+  expect(screen.getByLabelText("فترة المصاريف")).toBeDefined()
+  expect(document.documentElement.lang).toBe("ar")
+  expect(document.documentElement.dir).toBe("rtl")
+})

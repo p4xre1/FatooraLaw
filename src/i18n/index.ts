@@ -14,6 +14,9 @@ import { inventory } from "./inventory.ts"
 import { legal } from "./legal.ts"
 import { projects } from "./projects.ts"
 import { procurement } from "./procurement.ts"
+import { reports } from "./reports.ts"
+import { settings } from "./settings.ts"
+import { topbar } from "./topbar.ts"
 
 /**
  * The application dictionary: every string the signed-in product shows, in the
@@ -45,6 +48,9 @@ const en = {
   legal: legal.en,
   projects: projects.en,
   procurement: procurement.en,
+  reports: reports.en,
+  settings: settings.en,
+  topbar: topbar.en,
 }
 
 const fr: typeof en = {
@@ -63,6 +69,9 @@ const fr: typeof en = {
   legal: legal.fr,
   projects: projects.fr,
   procurement: procurement.fr,
+  reports: reports.fr,
+  settings: settings.fr,
+  topbar: topbar.fr,
 }
 
 const ar: typeof en = {
@@ -81,6 +90,9 @@ const ar: typeof en = {
   legal: legal.ar,
   projects: projects.ar,
   procurement: procurement.ar,
+  reports: reports.ar,
+  settings: settings.ar,
+  topbar: topbar.ar,
 }
 
 export type Translation = typeof en

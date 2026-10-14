@@ -79,6 +79,8 @@ const LANGUAGE_NEUTRAL = new Set([
   "contacts.whatsapp",
   "contacts.phonePlaceholder",
   "procurement.export",
+  "reports.pdf",
+  "settings.identity.ice",
 ])
 /** Scripts that have no business in any of the three languages we publish. */
 const FOREIGN =
