@@ -1,0 +1,13 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "FatooraLaw AI Assistant",
+  "name_for_model": "fatooralaw_admin_assistant",
+  "description_for_human": "Admin dashboard assistant for FatooraLaw — audit, CMS security, blog viral scoring, subscription management, and AI SEO guidance.",
+  "description_for_model": "Provides access to /admin/security audit logs, encrypted exports, CSRF status, rate limits, and CMS blog/content management with viral SEO scoring. Does not expose database credentials.",
+  "auth": { "type": "none", "verification_url": "https://fatorati.tech/admin/security" },
+  "api": { "url": "https://fatorati.tech/admin/security", "type": "same-origin-cms" },
+  "logo_url": "https://fatorati.tech/assets/logo.svg",
+  "contact_email": "security@fatorati.tech",
+  "legal_info_url": "https://fatorati.tech/terms",
+  "capabilities": { "conversation": true, "actions": ["audit_review", "cm_export", "password_check_status"] }
+}

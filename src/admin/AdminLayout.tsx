@@ -1,8 +1,8 @@
 import { useEffect } from "react"
 import { NavLink, Outlet, useNavigate, useOutletContext } from "react-router"
 import {
-  Activity, Bell, BookOpenText, CreditCard, DatabaseBackup, Globe2, Headset, LayoutDashboard,
-  LogOut, ShieldCheck, SlidersHorizontal,
+  Activity, BarChart3, Bell, BookOpenText, CreditCard, DatabaseBackup, FileEdit, FileText, Globe2, Headset, LayoutDashboard,
+  LogOut, Mail, MessageSquareWarning, ShieldCheck, SlidersHorizontal,
 } from "lucide-react"
 import { supabase } from "../lib/supabase"
 import { IconBtn } from "../components/kit"
@@ -32,11 +32,16 @@ export default function AdminLayout() {
     ...(access.isPlatformAdmin ? [
       { to: "/admin/dashboard", label: "نظرة عامة", icon: LayoutDashboard },
       { to: "/admin/subscriptions", label: "الاشتراكات", icon: CreditCard },
+      { to: "/admin/subscription-editor", label: "محرر الاشتراكات", icon: FileEdit },
       { to: "/admin/traffic", label: "الزيارات", icon: Activity },
     ] : []),
     ...(canEditContent ? [
       { to: "/admin/website", label: "محتوى الموقع", icon: Globe2 },
+      { to: "/admin/site/pages", label: "الصفحات", icon: FileText },
       { to: "/admin/blogs", label: "المدونة", icon: BookOpenText },
+      { to: "/admin/monitor", label: "المراقبة", icon: BarChart3 },
+      { to: "/admin/content-improvement", label: "تحسين المحتوى", icon: MessageSquareWarning },
+      { to: "/admin/contact-inbox", label: "البريد الوارد", icon: Mail },
     ] : []),
     ...(access.isPlatformAdmin ? [
       { to: "/admin/support", label: "طلبات الدعم", icon: Headset },
