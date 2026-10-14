@@ -450,20 +450,6 @@ export function InlineCitation({ lang, className = "" }: { lang: RefLang; classN
   )
 }
 
-/** Official quotation in the first screen, so a crawler that only reads the top still finds a citation. */
-export function HeroQuote({ lang, className = "" }: { lang: RefLang; className?: string }) {
-  const section = REFERENCE[lang].sections[0]
-  if (!section?.quote) return null
-  return (
-    <blockquote cite={section.quoteCite} className={`landing-quote mx-auto max-w-xl text-start ${className}`}>
-      <p><q>{section.quote}</q></p>
-      <footer>
-        — <cite><ExternalLink href={section.quoteUrl ?? section.quoteCite ?? SOURCES.dgi.url}>{section.quoteSource}</ExternalLink></cite>
-      </footer>
-    </blockquote>
-  )
-}
-
 export function PageIntro({ lang, page }: { lang: RefLang; page: string }) {
   const to = useLocaleHref()
   const copy = REFERENCE[lang]

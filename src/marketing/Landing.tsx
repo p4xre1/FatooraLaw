@@ -3,20 +3,23 @@ import {
   ArrowRight, Sparkles, ShieldCheck, CalendarDays, ShieldAlert, Wrench, FileText,
   Check, TrendingUp, Zap, Plus, Bell, ScrollText, LayoutDashboard, ChevronRight,
   Globe, ChevronDown, Sun, Moon, Mail, Phone, MapPin, BookOpen, CheckCircle2,
-  Menu, X,
+  Menu, X, Download, ShoppingBag, Megaphone, Monitor, Smartphone, Send,
 } from "lucide-react"
 import { Logo } from "../components/nav"
 import { SITE_URL } from "../lib/site"
+import { listPublishedPosts, getPublishedPostBySlug, type PublicBlogPost } from "../lib/blog"
 import { CONTACT_CITY, CONTACT_COUNTRY, CONTACT_EMAIL, CONTACT_PHONE, telHref } from "../lib/contact"
 import { readCookieConsent, writeCookieConsent, useMarketingAnalytics } from "../lib/cookieConsent"
-import { applyDocumentHead } from "../lib/seo"
-import { LANDING_PAGES, landingPath, landingPageFromPath, localeRoute, localizedLandingPath, type LandingPage } from "../lib/routes"
+import { recordSiteEvent, useSiteVisitTracking } from "../lib/siteAnalytics"
+import { applyDocumentHead, applyCustomDocumentHead, applyNoIndexHead, seoForPath, type CustomDocumentHeadInput, type HreflangAlternate } from "../lib/seo"
+import { getPublishedSiteCmsData, submitCmsSupportRequest, type PublicCmsAnnouncement, type PublicCmsDownload, type PublicCmsFeature, type PublicCmsProduct, type PublicCmsRelease, type PublicSiteCmsData } from "../lib/siteCms"
+import { LANDING_PAGES, landingPath, landingPageFromPath, localeRoute, localizedBlogArticlePath, localizedLandingPath, normalizePath, type LandingPage } from "../lib/routes"
 import { LOCALES, isRTL, localeInfo, type LocaleId } from "../lib/locales"
 import { LocaleProvider, useLocaleHref } from "../lib/localeContext"
 import { currentHistoryState, navigate, onInternalLinkClick, useRoutePath } from "../lib/router"
 import useLandingMotion from "./useLandingMotion"
-import { CONTENT_PUBLISHED, CONTENT_UPDATED, GITHUB_URL } from "./contentMeta"
-import { HeroQuote, InlineCitation, PageIntro, ReferenceSection, referenceFaq, referenceHowTo } from "./references"
+import { CONTENT_PUBLISHED, CONTENT_UPDATED } from "./contentMeta"
+import { PageIntro, ReferenceSection, referenceFaq, referenceHowTo } from "./references"
 import "./landing.css"
 
 const GRAD = "linear-gradient(135deg, var(--l-primary), var(--l-primary-hover))"
@@ -176,21 +179,6 @@ export function buildJsonLd(page: LandingPage, lang: Lang, t: Dict, extra: Extra
       offers: offersFromPlans(extra.pricing.plans, lang),
     })
   }
-  if (page === "home" || page === "blog") {
-    for (const post of extra.blog.posts) {
-      nodes.push({
-        "@type": ["Article", "BlogPosting"],
-        headline: post.title,
-        description: post.desc,
-        datePublished: post.iso,
-        dateModified: CONTENT_UPDATED,
-        inLanguage: localeInfo(lang).tag,
-        author: ORG_REF,
-        publisher: ORG_REF,
-        mainEntityOfPage: url,
-      })
-    }
-  }
   if (page !== "home") {
     nodes.push({
       "@type": "BreadcrumbList",
@@ -203,6 +191,39 @@ export function buildJsonLd(page: LandingPage, lang: Lang, t: Dict, extra: Extra
   }
 
   return { "@context": "https://schema.org", "@graph": nodes }
+}
+
+export function buildManagedSiteHead(data: PublicSiteCmsData | undefined, page: LandingPage, locale: LocaleId, siteUrl = SITE_URL): CustomDocumentHeadInput | null {
+  const seo = data?.seo
+  const managedPage = data?.page
+  if (!seo && !managedPage) return null
+  const normalizedPath = page === "home" ? "/" : `/${page}`
+  const defaults = seoForPath(normalizedPath, locale)
+  const origin = siteUrl.replace(/\/+$/, "")
+  const title = seo?.title.trim() || managedPage?.seo_title.trim() || managedPage?.title.trim() || defaults.title
+  const description = seo?.description.trim() || managedPage?.seo_description.trim() || managedPage?.excerpt.trim() || defaults.description
+  const canonical = seo?.canonical_url.trim() || managedPage?.canonical_url.trim() || `${origin}${localizedLandingPath(page, locale)}`
+  const alternates: HreflangAlternate[] = LOCALES.map((item) => ({ hreflang: item.tag, href: `${origin}${localizedLandingPath(page, item.id)}` }))
+  alternates.push({ hreflang: "x-default", href: `${origin}${localizedLandingPath(page, "fr")}` })
+  const jsonLd = managedPage ? {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name: title,
+    description,
+    url: canonical.startsWith("http") ? canonical : `${origin}${canonical}`,
+    inLanguage: localeInfo(locale).tag,
+    dateModified: managedPage.updated_at,
+  } : buildJsonLd(page, locale, T[locale], EXTRA[locale])
+  return {
+    title,
+    description,
+    canonical,
+    locale,
+    alternates,
+    siteUrl: origin,
+    jsonLd,
+    noindex: Boolean(managedPage?.noindex || seo?.indexable === false),
+  }
 }
 
 /**
@@ -240,7 +261,7 @@ export type ExtraCopy = {
 const LANGS: { code: LocaleId; label: string }[] = LOCALES.map((locale) => ({ code: locale.id, label: locale.label }))
 
 export const T: Record<Lang, {
-  nav: { features: string; assistant: string; benefits: string; pricing: string; faq: string; about: string; contact: string }
+  nav: { features: string; assistant: string; benefits: string; pricing: string; blog: string; faq: string; about: string; contact: string }
   signup: string; explore: string
   hero: { headline: Seg[]; sub: string; note: string }
   feat: { eyebrow: string; title: string; sub: string }
@@ -253,7 +274,7 @@ export const T: Record<Lang, {
   footer: { title: string; compliance: string; copy: string }
 }> = {
   fr: {
-    nav: { features: "Fonctionnalités", assistant: "Assistant", benefits: "Avantages", pricing: "Tarifs", faq: "FAQ", about: "À propos", contact: "Contact" },
+    nav: { features: "Fonctionnalités", assistant: "Assistant", benefits: "Avantages", pricing: "Tarifs", blog: "Blog", faq: "FAQ", about: "À propos", contact: "Contact" },
     signup: "S'inscrire", explore: "Explorer",
     hero: {
       headline: [{ t: "Le logiciel simple qui pilote vos " }, { t: "finances", hi: true }, { t: ", vos " }, { t: "abonnements", hi: true }, { t: " et vos " }, { t: "risques", hi: true }, { t: "." }],
@@ -270,7 +291,7 @@ export const T: Record<Lang, {
     footer: { title: "Prêt à équilibrer votre gestion ?", compliance: "Conforme Loi 09-08 (CNDP)", copy: `© 2026 Fatorati · ${CONTACT_CITY}, Maroc` },
   },
   en: {
-    nav: { features: "Features", assistant: "Assistant", benefits: "Benefits", pricing: "Pricing", faq: "FAQ", about: "About", contact: "Contact" },
+    nav: { features: "Features", assistant: "Assistant", benefits: "Benefits", pricing: "Pricing", blog: "Blog", faq: "FAQ", about: "About", contact: "Contact" },
     signup: "Sign up", explore: "Explore",
     hero: {
       headline: [{ t: "The simple software that runs your " }, { t: "finances", hi: true }, { t: ", your " }, { t: "subscriptions", hi: true }, { t: " and your " }, { t: "risks", hi: true }, { t: "." }],
@@ -287,7 +308,7 @@ export const T: Record<Lang, {
     footer: { title: "Ready to balance your management?", compliance: "Law 09-08 compliant (CNDP)", copy: `© 2026 Fatorati · ${CONTACT_CITY}, Morocco` },
   },
   ar: {
-    nav: { features: "الميزات", assistant: "المساعد", benefits: "المزايا", pricing: "الأسعار", faq: "الأسئلة", about: "عن فاتورتي", contact: "تواصل معنا" },
+    nav: { features: "الميزات", assistant: "المساعد", benefits: "المزايا", pricing: "الأسعار", blog: "المدونة", faq: "الأسئلة", about: "عن فاتورتي", contact: "تواصل معنا" },
     signup: "إنشاء حساب", explore: "استكشاف",
     hero: {
       headline: [{ t: "البرنامج البسيط الذي يدير " }, { t: "أموالك", hi: true }, { t: " و" }, { t: "اشتراكاتك", hi: true }, { t: " و" }, { t: "مخاطرك", hi: true }, { t: "." }],
@@ -325,11 +346,11 @@ export const EXTRA: Record<Lang, ExtraCopy> = {
     contact: { eyebrow: "Contact", title: "Parlons de votre activité.", sub: "Une question sur Fatorati, les tarifs ou votre déploiement ? Notre équipe vous répond.", email: CONTACT_EMAIL, phone: CONTACT_PHONE, city: `${CONTACT_CITY}, Maroc`, cta: "Écrire à l'équipe" },
     legal: {
       privacy: "Politique de confidentialité",
-      privacyText: "Fatorati traite vos données personnelles avec un objectif simple : vous fournir un espace de gestion sécurisé — jamais les revendre, ni les utiliser à des fins publicitaires.\n\nDonnées collectées — Lorsque vous créez un compte, nous recueillons votre nom, votre adresse e-mail et les données professionnelles que vous saisissez (clients, projets, dépenses, contrats, etc.). Ces données sont stockées de façon sécurisée et protégées par des règles d'accès strictes (Row Level Security) : elles ne sont accessibles qu'à vous et aux membres de votre équipe que vous autorisez.\n\nAucune publicité — Fatorati ne diffuse aucune publicité et ne partage, ne loue ni ne vend vos données à des annonceurs ou des courtiers en données, sous quelque forme que ce soit.\n\nGoogle Analytics — Le seul outil tiers que nous utilisons est Google Analytics, uniquement pour comprendre comment notre site est utilisé (pages consultées, durée de visite, provenance du trafic) et faire grandir Fatorati. Ces statistiques sont exploitées de façon agrégée pour améliorer le site — jamais pour vous cibler publicitairement. Cet outil ne s'active que si vous acceptez les cookies de mesure d'audience via notre bandeau de consentement ; vous pouvez le refuser à tout moment (voir notre politique de cookies).\n\nDurée de conservation — Vos données sont conservées tant que votre compte est actif. En cas de suppression de compte, elles sont supprimées ou anonymisées dans un délai raisonnable, sauf obligation légale de conservation plus longue (comptabilité, fiscalité).\n\nSécurité — L'accès à vos données est protégé par une authentification sécurisée, un chiffrement en transit (HTTPS) et des contrôles d'accès au niveau de la base de données. Voir notre politique de sécurité pour plus de détails.\n\nMise à jour — Cette politique peut évoluer ; la date de dernière mise à jour est indiquée en bas de cette page.",
+      privacyText: "Fatorati traite vos données personnelles avec un objectif simple : vous fournir un espace de gestion sécurisé — jamais les revendre, ni les utiliser à des fins publicitaires.\n\nDonnées collectées — Lorsque vous créez un compte, nous recueillons votre nom, votre adresse e-mail et les données professionnelles que vous saisissez (clients, projets, dépenses, contrats, etc.). Ces données sont stockées de façon sécurisée et protégées par des règles d'accès strictes (Row Level Security) : elles ne sont accessibles qu'à vous et aux membres de votre équipe que vous autorisez.\n\nAucune publicité — Fatorati ne diffuse aucune publicité et ne partage, ne loue ni ne vend vos données à des annonceurs ou des courtiers en données, sous quelque forme que ce soit.\n\nGoogle Analytics — Le seul outil tiers que nous utilisons est Google Analytics, uniquement pour comprendre comment notre site est utilisé (pages consultées, durée de visite, provenance du trafic) et faire grandir Fatorati. Ces statistiques sont exploitées de façon agrégée pour améliorer le site — jamais pour vous cibler publicitairement. Cet outil ne s'active que si vous acceptez les cookies de mesure d'audience via notre bandeau de consentement ; vous pouvez le refuser à tout moment (voir notre politique de cookies). Fatorati enregistre aussi des vues de page de première partie après cette même acceptation : chemin de page, langue et domaine référent uniquement, sans adresse IP, compte, identifiant de cookie/session ni URL référente complète. Ce suivi interne peut être désactivé par le contrôle de la plateforme.\n\nDurée de conservation — Vos données sont conservées tant que votre compte est actif. En cas de suppression de compte, elles sont supprimées ou anonymisées dans un délai raisonnable, sauf obligation légale de conservation plus longue (comptabilité, fiscalité).\n\nSécurité — L'accès à vos données est protégé par une authentification sécurisée, un chiffrement en transit (HTTPS) et des contrôles d'accès au niveau de la base de données. Voir notre politique de sécurité pour plus de détails.\n\nMise à jour — Cette politique peut évoluer ; la date de dernière mise à jour est indiquée en bas de cette page.",
       terms: "Conditions d'utilisation",
       termsText: "Fatorati est un espace de gestion pour les artisans, freelances et petites entreprises au Maroc. En créant un compte, vous acceptez ces conditions.\n\nÀ quoi sert le service — Fatorati aide à suivre échéances, contrats, dépenses, abonnements et documents. Il ne remplace ni un expert-comptable, ni un avocat, ni une déclaration déposée auprès de la Direction Générale des Impôts. Les montants affichés dans les aperçus du site (1 720 MAD, +12 %) sont des exemples, pas vos chiffres.\n\nCompte — Vous fournissez des informations exactes et gardez vos identifiants confidentiels. Vous êtes responsable des données professionnelles que vous saisissez.\n\nPrix — Les formules en vigueur sont celles publiées sur la page Tarifs, en dirhams : 0 MAD pour commencer, 199 MAD par mois en Pro, 499 MAD par mois en Équipe. L'offre de départ ne demande pas de carte bancaire. Vous pouvez changer de formule ou cesser d'utiliser le service. Les obligations légales de conservation comptable ou fiscale restent les vôtres.\n\nDonnées — Le traitement des données personnelles est décrit dans la politique de confidentialité et s'inscrit dans la loi 09-08. Fatorati ne vend pas vos données.\n\nUsage licite — Vous n'utilisez pas le service pour enfreindre la loi, usurper une identité ou accéder au compte d'une autre personne.\n\nÉvolution et droit applicable — Les fonctionnalités peuvent évoluer. Ces conditions sont régies par le droit marocain. Question : bonjour@fatorati.tech, Tanger.",
       cookies: "Politique des cookies",
-      cookiesText: "Un cookie est un petit fichier déposé sur votre appareil lors de votre visite. Voici les cookies utilisés sur fatorati.tech, et à quoi ils servent.\n\nCookies strictement nécessaires — Utilisés pour faire fonctionner le site (mémoriser votre choix de langue, votre thème et votre consentement aux cookies). Ils ne peuvent pas être désactivés et ne nécessitent pas votre consentement.\n\nCookies de mesure d'audience (Google Analytics) — Le seul outil tiers que nous utilisons est Google Analytics, uniquement pour comprendre la fréquentation du site (pages visitées, durée de visite, appareil, provenance approximative) et l'aider à grandir. Ces cookies ne sont déposés que si vous cliquez sur « Accepter » dans notre bandeau ; vous pouvez refuser à tout moment sans perdre l'accès au site.\n\nAucun cookie publicitaire — Fatorati ne dépose aucun cookie publicitaire, ne fait aucun reciblage (retargeting) et ne partage aucune donnée de navigation avec des régies publicitaires ou des réseaux sociaux.\n\nGérer vos préférences — Vous pouvez accepter ou refuser les cookies de mesure d'audience via le bandeau affiché lors de votre première visite. Votre choix est conservé sur votre appareil ; vous pouvez le modifier en effaçant les données de ce site dans votre navigateur.\n\nPour toute question sur cette politique, contactez-nous à bonjour@fatorati.tech.",
+      cookiesText: "Un cookie est un petit fichier déposé sur votre appareil lors de votre visite. Voici les cookies utilisés sur fatorati.tech, et à quoi ils servent.\n\nCookies strictement nécessaires — Utilisés pour faire fonctionner le site (mémoriser votre choix de langue, votre thème et votre consentement aux cookies). Ils ne peuvent pas être désactivés et ne nécessitent pas votre consentement.\n\nCookies de mesure d'audience (Google Analytics) — Le seul outil tiers que nous utilisons est Google Analytics, uniquement pour comprendre la fréquentation du site (pages visitées, durée de visite, appareil, provenance approximative) et l'aider à grandir. Ces cookies ne sont déposés que si vous cliquez sur « Accepter » dans notre bandeau ; vous pouvez refuser à tout moment sans perdre l'accès au site. Fatorati enregistre séparément des vues de page internes après la même acceptation, sans cookie ni identifiant de visiteur : chemin, langue et domaine référent uniquement. Le suivi interne peut être désactivé par la plateforme.\n\nAucun cookie publicitaire — Fatorati ne dépose aucun cookie publicitaire, ne fait aucun reciblage (retargeting) et ne partage aucune donnée de navigation avec des régies publicitaires ou des réseaux sociaux.\n\nGérer vos préférences — Vous pouvez accepter ou refuser les cookies de mesure d'audience via le bandeau affiché lors de votre première visite. Votre choix est conservé sur votre appareil ; vous pouvez le modifier en effaçant les données de ce site dans votre navigateur.\n\nPour toute question sur cette politique, contactez-nous à bonjour@fatorati.tech.",
     },
   },
   en: {
@@ -351,11 +372,11 @@ export const EXTRA: Record<Lang, ExtraCopy> = {
     contact: { eyebrow: "Contact", title: "Let us talk about your business.", sub: "Questions about Fatorati, pricing or rollout? Our team will get back to you.", email: CONTACT_EMAIL, phone: CONTACT_PHONE, city: `${CONTACT_CITY}, Morocco`, cta: "Email the team" },
     legal: {
       privacy: "Privacy policy",
-      privacyText: "Fatorati handles your personal data with one goal: to give you a secure workspace — never to resell it or use it for advertising.\n\nData we collect — When you create an account, we collect your name, email address, and the business data you enter (clients, projects, expenses, contracts, and so on). This data is stored securely and protected by strict access rules (Row Level Security): only you and the team members you authorize can access it.\n\nNo advertising — Fatorati shows no ads and never shares, rents, or sells your data to advertisers or data brokers, in any form.\n\nGoogle Analytics — The only third-party tool we use is Google Analytics, solely to understand how our site is used (pages viewed, time on page, traffic sources) and help Fatorati grow. This data is used in aggregate to guide the product — never to target you with ads. This tool only runs if you accept audience-measurement cookies through our consent banner; you can decline it at any time (see our cookie policy).\n\nRetention — Your data is kept for as long as your account is active. If you delete your account, your data is deleted or anonymized within a reasonable timeframe, except where longer retention is legally required (accounting, tax).\n\nSecurity — Access to your data is protected by secure authentication, encryption in transit (HTTPS), and database-level access controls. See our security policy for details.\n\nUpdates — This policy may change over time; the last-updated date is shown at the bottom of this page.",
+      privacyText: "Fatorati handles your personal data with one goal: to give you a secure workspace — never to resell it or use it for advertising.\n\nData we collect — When you create an account, we collect your name, email address, and the business data you enter (clients, projects, expenses, contracts, and so on). This data is stored securely and protected by strict access rules (Row Level Security): only you and the team members you authorize can access it.\n\nNo advertising — Fatorati shows no ads and never shares, rents, or sells your data to advertisers or data brokers, in any form.\n\nGoogle Analytics — The only third-party tool we use is Google Analytics, solely to understand how our site is used (pages viewed, time on page, traffic sources) and help Fatorati grow. This data is used in aggregate to guide the product — never to target you with ads. This tool only runs if you accept audience-measurement cookies through our consent banner; you can decline it at any time (see our cookie policy). Fatorati also records limited first-party page views after the same acceptance: page path, locale and referring hostname only, with no IP address, account, cookie/session ID or full referrer URL. Platform controls can disable this internal tracking.\n\nRetention — Your data is kept for as long as your account is active. If you delete your account, your data is deleted or anonymized within a reasonable timeframe, except where longer retention is legally required (accounting, tax).\n\nSecurity — Access to your data is protected by secure authentication, encryption in transit (HTTPS), and database-level access controls. See our security policy for details.\n\nUpdates — This policy may change over time; the last-updated date is shown at the bottom of this page.",
       terms: "Terms of use",
       termsText: "Fatorati is a management workspace for artisans, freelancers and small businesses in Morocco. Creating an account means you accept these terms.\n\nWhat the service is for — Fatorati helps you track deadlines, contracts, spending, subscriptions and documents. It does not replace an accountant, a lawyer, or a filing made with the tax authority. Figures in the site previews (MAD 1,720, +12%) are examples, not your numbers.\n\nAccount — You provide accurate information and keep your credentials confidential. You are responsible for the business data you enter.\n\nPrice — Current plans are those published on the pricing page, in dirhams: MAD 0 to start, MAD 199 per month for Pro, MAD 499 per month for Team. The starting plan does not ask for a card. You can change plan or stop. Legal retention duties for accounting or tax remain yours.\n\nData — Personal-data processing is described in the privacy policy and sits under Law 09-08. Fatorati does not sell your data.\n\nLawful use — You do not use the service to break the law, impersonate someone, or access another person's account.\n\nChanges and governing law — Features may change. Moroccan law applies. Questions: bonjour@fatorati.tech, Tangier.",
       cookies: "Cookie policy",
-      cookiesText: "A cookie is a small file placed on your device when you visit a site. Here's what we use on fatorati.tech, and why.\n\nStrictly necessary cookies — Used to run the site itself (remembering your language, theme, and cookie choice). These can't be turned off and don't require consent.\n\nAudience-measurement cookies (Google Analytics) — The only third-party tool we use is Google Analytics, solely to understand site traffic (pages visited, time on page, device, approximate origin) and help the site grow. These cookies are only set if you click \"Accept\" in our banner; you can decline at any time without losing access to the site.\n\nNo advertising cookies — Fatorati sets no advertising cookies, does no retargeting, and shares no browsing data with ad networks or social platforms.\n\nManaging your preferences — You can accept or decline audience-measurement cookies via the banner shown on your first visit. Your choice is stored on your device; you can change it by clearing this site's data in your browser.\n\nQuestions about this policy? Email us at bonjour@fatorati.tech.",
+      cookiesText: "A cookie is a small file placed on your device when you visit a site. Here's what we use on fatorati.tech, and why.\n\nStrictly necessary cookies — Used to run the site itself (remembering your language, theme, and cookie choice). These can't be turned off and don't require consent.\n\nAudience-measurement cookies (Google Analytics) — The only third-party tool we use is Google Analytics, solely to understand site traffic (pages visited, time on page, device, approximate origin) and help the site grow. These cookies are only set if you click \"Accept\" in our banner; you can decline at any time without losing access to the site. Separately, Fatorati records first-party page views only after that same acceptance, without a cookie or visitor ID: path, locale and referring hostname only. Platform operators can disable this internal tracking.\n\nNo advertising cookies — Fatorati sets no advertising cookies, does no retargeting, and shares no browsing data with ad networks or social platforms.\n\nManaging your preferences — You can accept or decline audience-measurement cookies via the banner shown on your first visit. Your choice is stored on your device; you can change it by clearing this site's data in your browser.\n\nQuestions about this policy? Email us at bonjour@fatorati.tech.",
     },
   },
   ar: {
@@ -377,18 +398,28 @@ export const EXTRA: Record<Lang, ExtraCopy> = {
     contact: { eyebrow: "تواصل معنا", title: "لنتحدث عن نشاطك.", sub: "لديك سؤال حول فاتورتي أو الأسعار أو طريقة الانطلاق؟ فريقنا يجيبك.", email: CONTACT_EMAIL, phone: CONTACT_PHONE, city: `${CONTACT_CITY}، المغرب`, cta: "راسل الفريق" },
     legal: {
       privacy: "سياسة الخصوصية",
-      privacyText: "تتعامل فاتورتي مع بياناتك الشخصية بهدف واحد: منحك مساحة عمل آمنة، دون بيعها أو استخدامها لأغراض إعلانية أبداً.\n\nالبيانات التي نجمعها — عند إنشاء حساب، نجمع اسمك وبريدك الإلكتروني والبيانات المهنية التي تُدخلها (العملاء، المشاريع، المصاريف، العقود، إلخ). تُخزَّن هذه البيانات بشكل آمن وتحميها قواعد وصول صارمة (Row Level Security)، بحيث لا يصل إليها سواك وأعضاء فريقك الذين تُصرّح لهم بذلك.\n\nبدون إعلانات — لا تعرض فاتورتي أي إعلانات، ولا تشارك أو تؤجر أو تبيع بياناتك لأي معلنين أو وسطاء بيانات، تحت أي شكل.\n\nGoogle Analytics — نستخدم فقط أداة Google Analytics، وذلك حصراً لفهم كيفية استخدام موقعنا (الصفحات المُزارة، مدة الزيارة، مصدر الزيارات) من أجل تحسين فاتورتي. تُستخدم هذه الإحصاءات بشكل مُجمّع لتطوير الموقع، وليس لاستهدافك إعلانياً أبداً. لا تُفعَّل هذه الأداة إلا إذا وافقت على ملفات قياس الجمهور عبر شريط الموافقة، ويمكنك رفضها في أي وقت (راجع سياسة ملفات الارتباط).\n\nمدة الاحتفاظ — تُحفظ بياناتك طالما حسابك نشط. عند حذف حسابك، تُحذف بياناتك أو يُعمَّم إخفاء هويتها خلال مدة معقولة، إلا إذا فرض القانون مدة احتفاظ أطول (المحاسبة، الضرائب).\n\nالأمان — الوصول إلى بياناتك محمي بمصادقة آمنة وتشفير أثناء النقل (HTTPS) وضوابط وصول على مستوى قاعدة البيانات. راجع سياسة الأمان لدينا لمزيد من التفاصيل.\n\nالتحديثات — قد تتطور هذه السياسة مع الوقت؛ يظهر تاريخ آخر تحديث أسفل هذه الصفحة.",
+      privacyText: "تتعامل فاتورتي مع بياناتك الشخصية بهدف واحد: منحك مساحة عمل آمنة، دون بيعها أو استخدامها لأغراض إعلانية أبداً.\n\nالبيانات التي نجمعها — عند إنشاء حساب، نجمع اسمك وبريدك الإلكتروني والبيانات المهنية التي تُدخلها (العملاء، المشاريع، المصاريف، العقود، إلخ). تُخزَّن هذه البيانات بشكل آمن وتحميها قواعد وصول صارمة (Row Level Security)، بحيث لا يصل إليها سواك وأعضاء فريقك الذين تُصرّح لهم بذلك.\n\nبدون إعلانات — لا تعرض فاتورتي أي إعلانات، ولا تشارك أو تؤجر أو تبيع بياناتك لأي معلنين أو وسطاء بيانات، تحت أي شكل.\n\nGoogle Analytics — نستخدم فقط أداة Google Analytics، وذلك حصراً لفهم كيفية استخدام موقعنا (الصفحات المُزارة، مدة الزيارة، مصدر الزيارات) من أجل تحسين فاتورتي. تُستخدم هذه الإحصاءات بشكل مُجمّع لتطوير الموقع، وليس لاستهدافك إعلانياً أبداً. لا تُفعَّل هذه الأداة إلا إذا وافقت على ملفات قياس الجمهور عبر شريط الموافقة، ويمكنك رفضها في أي وقت (راجع سياسة ملفات الارتباط). وتسجل فاتورتي أيضاً مشاهدات صفحات داخلية بعد الموافقة نفسها، مقتصرة على مسار الصفحة واللغة ونطاق الإحالة، دون عنوان IP أو حساب أو معرّف ملف ارتباط/جلسة أو رابط إحالة كامل. ويمكن لمشغل المنصة تعطيل هذا القياس الداخلي.\n\nمدة الاحتفاظ — تُحفظ بياناتك طالما حسابك نشط. عند حذف حسابك، تُحذف بياناتك أو يُعمَّم إخفاء هويتها خلال مدة معقولة، إلا إذا فرض القانون مدة احتفاظ أطول (المحاسبة، الضرائب).\n\nالأمان — الوصول إلى بياناتك محمي بمصادقة آمنة وتشفير أثناء النقل (HTTPS) وضوابط وصول على مستوى قاعدة البيانات. راجع سياسة الأمان لدينا لمزيد من التفاصيل.\n\nالتحديثات — قد تتطور هذه السياسة مع الوقت؛ يظهر تاريخ آخر تحديث أسفل هذه الصفحة.",
       terms: "شروط الاستخدام",
       termsText: "فاتورتي مساحة إدارة للحرفيين والمستقلين والشركات الصغيرة في المغرب. إنشاء حساب يعني قبول هذه الشروط.\n\nغاية الخدمة — تساعد فاتورتي على متابعة المواعيد والعقود والمصاريف والاشتراكات والوثائق. لا تحل محل محاسب ولا محامٍ ولا إقرار يُودع لدى المديرية العامة للضرائب. الأرقام في عروض الموقع (1 720 درهماً، +12٪) أمثلة وليست أرقامك.\n\nالحساب — تقدّم معلومات صحيحة وتحافظ على سرية بيانات الدخول. أنت مسؤول عن البيانات المهنية التي تُدخلها.\n\nالسعر — الخطط السارية هي المنشورة في صفحة الأسعار بالدرهم: 0 درهم للبدء، و199 درهماً شهرياً لبرو، و499 درهماً شهرياً للفريق. خطة البدء لا تطلب بطاقة بنكية. يمكنك تغيير الخطة أو التوقف. تبقى التزامات الحفظ المحاسبية أو الجبائية على عاتقك.\n\nالبيانات — معالجة البيانات الشخصية موصوفة في سياسة الخصوصية وتندرج في القانون 09-08. فاتورتي لا تبيع بياناتك.\n\nالاستخدام المشروع — لا تستخدم الخدمة لخرق القانون أو انتحال هوية أو الدخول إلى حساب شخص آخر.\n\nالتطور والقانون الواجب التطبيق — قد تتطور الوظائف. يسري القانون المغربي. للأسئلة: bonjour@fatorati.tech، طنجة.",
       cookies: "سياسة ملفات الارتباط",
-      cookiesText: "ملف تعريف الارتباط (cookie) هو ملف صغير يُوضع على جهازك عند زيارتك للموقع. إليك الملفات التي نستخدمها على fatorati.tech، والغرض منها.\n\nملفات ضرورية بشكل صارم — تُستخدم لتشغيل الموقع نفسه (حفظ اختيارك للغة والمظهر وموافقتك على ملفات الارتباط). لا يمكن تعطيلها ولا تتطلب موافقتك.\n\nملفات قياس الجمهور (Google Analytics) — الأداة الخارجية الوحيدة التي نستخدمها هي Google Analytics، وذلك حصراً لفهم حركة الزوار على الموقع (الصفحات المُزارة، مدة الزيارة، نوع الجهاز، المصدر التقريبي) والمساعدة على نمو الموقع. لا تُوضع هذه الملفات إلا إذا ضغطت على «موافقة» في الشريط، ويمكنك الرفض في أي وقت دون أن يؤثر ذلك على وصولك للموقع.\n\nبدون ملفات إعلانية — لا تضع فاتورتي أي ملفات إعلانية، ولا تقوم بإعادة الاستهداف، ولا تشارك أي بيانات تصفح مع شبكات إعلانية أو منصات التواصل الاجتماعي.\n\nإدارة تفضيلاتك — يمكنك قبول أو رفض ملفات قياس الجمهور عبر الشريط الذي يظهر عند أول زيارة لك. يُحفظ اختيارك على جهازك، ويمكنك تغييره بمسح بيانات هذا الموقع من متصفحك.\n\nلأي سؤال حول هذه السياسة، راسلنا على bonjour@fatorati.tech.",
+      cookiesText: "ملف تعريف الارتباط (cookie) هو ملف صغير يُوضع على جهازك عند زيارتك للموقع. إليك الملفات التي نستخدمها على fatorati.tech، والغرض منها.\n\nملفات ضرورية بشكل صارم — تُستخدم لتشغيل الموقع نفسه (حفظ اختيارك للغة والمظهر وموافقتك على ملفات الارتباط). لا يمكن تعطيلها ولا تتطلب موافقتك.\n\nملفات قياس الجمهور (Google Analytics) — الأداة الخارجية الوحيدة التي نستخدمها هي Google Analytics، وذلك حصراً لفهم حركة الزوار على الموقع (الصفحات المُزارة، مدة الزيارة، نوع الجهاز، المصدر التقريبي) والمساعدة على نمو الموقع. لا تُوضع هذه الملفات إلا إذا ضغطت على «موافقة» في الشريط، ويمكنك الرفض في أي وقت دون أن يؤثر ذلك على وصولك للموقع. وبشكل منفصل، تسجل فاتورتي مشاهدات الصفحة داخلياً بعد الموافقة نفسها، دون ملف ارتباط أو معرّف زائر: المسار واللغة ونطاق الإحالة فقط. ويمكن لمشغل المنصة تعطيل هذا القياس الداخلي.\n\nبدون ملفات إعلانية — لا تضع فاتورتي أي ملفات إعلانية، ولا تقوم بإعادة الاستهداف، ولا تشارك أي بيانات تصفح مع شبكات إعلانية أو منصات التواصل الاجتماعي.\n\nإدارة تفضيلاتك — يمكنك قبول أو رفض ملفات قياس الجمهور عبر الشريط الذي يظهر عند أول زيارة لك. يُحفظ اختيارك على جهازك، ويمكنك تغييره بمسح بيانات هذا الموقع من متصفحك.\n\nلأي سؤال حول هذه السياسة، راسلنا على bonjour@fatorati.tech.",
     },
   },
 }
 
-export default function Landing({ onEnter = () => {}, initialPage }: { onEnter?: () => void; initialPage?: LandingPage } = {}) {
+export default function Landing({ onEnter = () => {}, initialPage, initialBlogPosts, initialSiteCmsData }: { onEnter?: () => void; initialPage?: LandingPage; initialBlogPosts?: PublicBlogPost[]; initialSiteCmsData?: PublicSiteCmsData } = {}) {
   const [theme, setTheme] = useState<Theme>("light")
+  const [siteCmsData, setSiteCmsData] = useState<PublicSiteCmsData | undefined>(initialSiteCmsData)
   const path = useRoutePath()
+  const previousPath = useRef(path)
+  // SPA navigation keeps the document mounted, so restore the usual page-load
+  // behavior and start each newly selected route at the top of the page.
+  useEffect(() => {
+    if (previousPath.current === path) return
+    previousPath.current = path
+    window.scrollTo({ top: 0 })
+  }, [path])
+
   // The URL decides *both* the language and the page: `/ar/pricing` is the
   // Arabic pricing page, `/pricing` the French one. Language used to be
   // component state, which meant one URL served three languages and no
@@ -405,6 +436,19 @@ export default function Landing({ onEnter = () => {}, initialPage }: { onEnter?:
   const t = T[lang]
   const extra = EXTRA[lang]
   const rtl = isRTL(lang)
+  const currentSiteCmsData = siteCmsData && normalizePath(siteCmsData.path) === normalizePath(path) && siteCmsData.locale === lang ? siteCmsData : undefined
+
+  useEffect(() => {
+    let active = true
+    const matches = initialSiteCmsData && normalizePath(initialSiteCmsData.path) === normalizePath(path) && initialSiteCmsData.locale === lang
+    setSiteCmsData(matches ? initialSiteCmsData : undefined)
+    void getPublishedSiteCmsData(path, lang).then((data) => {
+      if (active) setSiteCmsData(data)
+    }).catch(() => {
+      if (active && !matches) setSiteCmsData(undefined)
+    })
+    return () => { active = false }
+  }, [path, lang, initialSiteCmsData])
 
   /** The language switcher is a navigation, not a re-render. */
   function changeLocale(next: LocaleId) {
@@ -413,7 +457,12 @@ export default function Landing({ onEnter = () => {}, initialPage }: { onEnter?:
   }
 
   usePageHead(page, lang, t, extra)
+  useEffect(() => {
+    const head = buildManagedSiteHead(currentSiteCmsData, page, lang)
+    if (head) applyCustomDocumentHead(head)
+  }, [currentSiteCmsData, page, lang])
   useMarketingAnalytics()
+  useSiteVisitTracking(path, lang)
 
   useEffect(() => {
     // The document language must follow the URL: `<html lang="fr">` on the
@@ -474,20 +523,26 @@ export default function Landing({ onEnter = () => {}, initialPage }: { onEnter?:
     <div ref={landingRef} className="landing-root landing-atlas min-h-screen antialiased" data-theme={theme} dir={rtl ? "rtl" : "ltr"}>
       <Header t={t} lang={lang} onLocaleChange={changeLocale} theme={theme} setTheme={setTheme} onEnter={onEnter} />
       <main id="main-content">
+        <AnnouncementStrip announcements={currentSiteCmsData?.announcements ?? []} locale={lang} />
         {home && <div className="landing-hero-backdrop relative">
           <div className="grid-veil pointer-events-none absolute inset-0 h-[720px]" />
-          <Hero t={t} lang={lang} onEnter={onEnter} />
+          <Hero t={t} lang={lang} onEnter={onEnter} cmsHomepage={currentSiteCmsData?.homepage ?? null} />
         </div>}
-        {!home && <PageIntro lang={lang} page={page} />}
-        {(home || page === "features") && <Features t={t} />}
-        {(home || page === "assistant") && <Assistant t={t} onEnter={onEnter} />}
-        {(home || page === "about") && <AboutSection copy={extra.about} />}
-        {(home || page === "benefits") && <BenefitsSection copy={extra.benefits} />}
-        {(home || page === "pricing") && <PricingSection copy={extra.pricing} onEnter={onEnter} />}
-        {(home || page === "blog") && <BlogSection copy={extra.blog} />}
-        {(home || page === "faq") && <FaqSection copy={extra.faq} />}
-        {(home || page === "contact") && <ContactSection copy={extra.contact} />}
-        {(page === "home" || page === "privacy" || page === "terms" || page === "cookies") && <LegalSection copy={extra.legal} active={page === "home" ? undefined : page} />}
+        {currentSiteCmsData?.page?.slug === page ? <ManagedPage page={currentSiteCmsData.page} locale={lang} /> : <>
+          {!home && <PageIntro lang={lang} page={page} />}
+          {(home || page === "features") && <Features t={t} managedFeatures={currentSiteCmsData?.features ?? []} />}
+          {(home || page === "assistant") && <Assistant t={t} onEnter={onEnter} />}
+          {(home || page === "about") && <AboutSection copy={extra.about} />}
+          {(home || page === "benefits") && <BenefitsSection copy={extra.benefits} />}
+          {(home || page === "pricing") && <PricingSection copy={extra.pricing} onEnter={onEnter} locale={lang} path={path} />}
+          {(home || page === "pricing") && <OneTimeProductsSection products={currentSiteCmsData?.products ?? []} locale={lang} path={path} />}
+          {(home || page === "pricing") && <DownloadReleaseSection releases={currentSiteCmsData?.releases ?? []} downloads={currentSiteCmsData?.downloads ?? []} locale={lang} path={path} />}
+          {(home || page === "blog") && <BlogSection copy={extra.blog} locale={lang} showAll={page === "blog"} initialPosts={initialBlogPosts} />}
+          {(home || page === "faq") && <FaqSection copy={extra.faq} />}
+          {(home || page === "contact") && <ContactSection copy={extra.contact} />}
+          {page === "contact" && <SupportRequestForm locale={lang} />}
+          {(page === "home" || page === "privacy" || page === "terms" || page === "cookies") && <LegalSection copy={extra.legal} active={page === "home" ? undefined : page} />}
+        </>}
         <ReferenceSection lang={lang} />
       </main>
       <Footer t={t} extra={extra} onEnter={onEnter} />
@@ -495,6 +550,143 @@ export default function Landing({ onEnter = () => {}, initialPage }: { onEnter?:
     </div>
     </LocaleProvider>
   )
+}
+
+export function BlogArticlePage({ locale, slug, initialPost, onEnter = () => {} }: { locale: LocaleId; slug: string; initialPost?: PublicBlogPost | null; onEnter?: () => void }) {
+  return <LocaleProvider locale={locale}><BlogArticleView locale={locale} slug={slug} initialPost={initialPost} onEnter={onEnter} /></LocaleProvider>
+}
+
+export function buildBlogArticleHead(post: PublicBlogPost, locale: LocaleId, siteUrl = SITE_URL): CustomDocumentHeadInput {
+  const origin = siteUrl.replace(/\/+$/, "")
+  const title = post.seo_title.trim() || post.title
+  const description = post.seo_description.trim() || post.excerpt
+  const canonical = `${origin}${localizedBlogArticlePath(locale, post.slug)}`
+  const publishedDate = validDate(post.published_at) ? new Date(post.published_at).toISOString() : undefined
+  const modifiedDate = validDate(post.updated_at) ? new Date(post.updated_at).toISOString() : undefined
+  const alternates: HreflangAlternate[] = LOCALES.flatMap((entry) => {
+    const translation = post.translations[entry.id]
+    return translation ? [{ hreflang: entry.tag, href: `${origin}${localizedBlogArticlePath(entry.id, translation.slug)}` }] : []
+  })
+  const french = post.translations.fr
+  if (french) alternates.push({ hreflang: "x-default", href: `${origin}${localizedBlogArticlePath("fr", french.slug)}` })
+  return {
+    title,
+    description,
+    canonical,
+    locale,
+    alternates,
+    siteUrl: origin,
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "BlogPosting",
+      headline: post.title,
+      description,
+      articleBody: post.content,
+      ...(publishedDate ? { datePublished: publishedDate } : {}),
+      ...(modifiedDate ? { dateModified: modifiedDate } : {}),
+      inLanguage: localeInfo(locale).tag,
+      keywords: post.keywords,
+      author: { "@type": "Person", name: post.author_name },
+      publisher: { "@id": `${origin}/#organization` },
+      mainEntityOfPage: { "@type": "WebPage", "@id": canonical },
+    },
+  }
+}
+
+type BlogArticleState = { status: "loading" | "missing" | "error" } | { status: "ready"; post: PublicBlogPost }
+
+function BlogArticleView({ locale, slug, initialPost, onEnter }: { locale: LocaleId; slug: string; initialPost?: PublicBlogPost | null; onEnter: () => void }) {
+  const [theme, setTheme] = useState<Theme>("light")
+  const [state, setState] = useState<BlogArticleState>(() => initialPost ? { status: "ready", post: initialPost } : { status: "loading" })
+  const path = useRoutePath()
+  const t = T[locale]
+  const extra = EXTRA[locale]
+  const ui = {
+    fr: { back: "Tous les articles", loading: "Chargement de l’article…", missing: "Cet article n’existe pas ou n’est plus publié.", error: "Impossible de charger cet article pour le moment.", by: "Par", reading: "Article" },
+    en: { back: "All articles", loading: "Loading article…", missing: "This article does not exist or is no longer published.", error: "This article could not be loaded right now.", by: "By", reading: "Article" },
+    ar: { back: "كل المقالات", loading: "جارٍ تحميل المقال…", missing: "هذا المقال غير موجود أو لم يعد منشوراً.", error: "تعذّر تحميل المقال حالياً.", by: "بقلم", reading: "مقال" },
+  }[locale]
+
+  useEffect(() => { window.scrollTo({ top: 0 }) }, [path])
+  useEffect(() => {
+    let active = true
+    if (initialPost && initialPost.slug === slug && initialPost.locale === locale) {
+      setState({ status: "ready", post: initialPost })
+      return () => { active = false }
+    }
+    setState({ status: "loading" })
+    void getPublishedPostBySlug(locale, slug).then((post) => {
+      if (active) setState(post ? { status: "ready", post } : { status: "missing" })
+    }).catch(() => {
+      if (active) setState({ status: "error" })
+    })
+    return () => { active = false }
+  }, [initialPost, locale, slug])
+
+  const post = state.status === "ready" ? state.post : null
+  useEffect(() => {
+    if (!post) {
+      applyNoIndexHead(state.status === "loading" ? `${ui.loading} | Fatorati` : `${ui.missing} | Fatorati`)
+      return
+    }
+    applyCustomDocumentHead(buildBlogArticleHead(post, locale))
+  }, [post, locale, state.status, ui.loading, ui.missing])
+  useSiteVisitTracking(path, locale)
+
+  function changeLocale(next: LocaleId) {
+    const translatedSlug = post?.translations[next]?.slug
+    navigate(translatedSlug ? localizedBlogArticlePath(next, translatedSlug) : localizedLandingPath("blog", next))
+  }
+
+  return (
+    <div className="landing-root landing-atlas min-h-screen antialiased" data-theme={theme} dir={isRTL(locale) ? "rtl" : "ltr"}>
+      <Header t={t} lang={locale} onLocaleChange={changeLocale} theme={theme} setTheme={setTheme} onEnter={onEnter} />
+      <main id="main-content" className="mx-auto min-h-[55vh] max-w-4xl px-5 py-12 sm:px-8 sm:py-16">
+        <a href={localizedLandingPath("blog", locale)} onClick={onInternalLinkClick} className="mb-8 inline-flex items-center gap-2 text-[13px] font-semibold text-blue-400">
+          <ArrowRight className="h-4 w-4 rtl:rotate-180" /> {ui.back}
+        </a>
+        {post ? <article itemScope itemType="https://schema.org/BlogPosting" className="mx-auto max-w-3xl">
+          <header className="border-b border-[var(--l-border)] pb-8">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-blue-400">{ui.reading}</p>
+            <h1 itemProp="headline" className="font-display mt-3 text-[32px] font-extrabold leading-tight text-[var(--l-heading)] sm:text-[44px]">{post.title}</h1>
+            {post.excerpt && <p itemProp="description" className="mt-5 text-[16px] leading-relaxed text-[var(--l-muted)]">{post.excerpt}</p>}
+            <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] text-[var(--l-faint)]">
+              <span>{ui.by} <span itemProp="author">{post.author_name}</span></span>
+              {validDate(post.published_at) && <time itemProp="datePublished" dateTime={new Date(post.published_at).toISOString()}>{new Intl.DateTimeFormat(localeInfo(locale).tag, { dateStyle: "long" }).format(new Date(post.published_at))}</time>}
+            </div>
+          </header>
+          <div itemProp="articleBody" className="prose prose-slate mt-9 max-w-none text-[15px] leading-8 text-[var(--l-text)] dark:prose-invert">
+            {renderBlogBody(post.content)}
+          </div>
+        </article> : <div role={state.status === "error" || state.status === "missing" ? "alert" : "status"} className="mx-auto max-w-3xl rounded-2xl border border-[var(--l-border)] bg-[var(--l-surface)] px-6 py-10 text-center text-[14px] text-[var(--l-muted)]">
+          {state.status === "loading" ? ui.loading : state.status === "error" ? ui.error : ui.missing}
+        </div>}
+      </main>
+      <Footer t={t} extra={extra} onEnter={onEnter} />
+      <CookieBanner lang={locale} />
+    </div>
+  )
+}
+
+function renderBlogBody(content: string): React.ReactNode[] {
+  const blocks = content.replace(/\r/g, "").trim().split(/\n\s*\n/).filter(Boolean)
+  return blocks.map((block, index) => {
+    const heading = /^(#{1,3})\s+(.+)$/.exec(block.trim())
+    if (heading) {
+      const level = Math.min(heading[1].length + 1, 4)
+      if (level === 2) return <h2 key={index} className="font-display mt-8 text-[24px] font-bold text-[var(--l-heading)]">{heading[2]}</h2>
+      if (level === 3) return <h3 key={index} className="font-display mt-7 text-[20px] font-bold text-[var(--l-heading)]">{heading[2]}</h3>
+      return <h4 key={index} className="font-display mt-6 text-[18px] font-bold text-[var(--l-heading)]">{heading[2]}</h4>
+    }
+    const lines = block.split("\n")
+    if (lines.every((line) => /^\s*[-*]\s+/.test(line))) {
+      return <ul key={index} className="my-5 list-disc space-y-2 ps-6">{lines.map((line, itemIndex) => <li key={itemIndex}>{line.replace(/^\s*[-*]\s+/, "")}</li>)}</ul>
+    }
+    if (lines.every((line) => /^\s*\d+\.\s+/.test(line))) {
+      return <ol key={index} className="my-5 list-decimal space-y-2 ps-6">{lines.map((line, itemIndex) => <li key={itemIndex}>{line.replace(/^\s*\d+\.\s+/, "")}</li>)}</ol>
+    }
+    return <p key={index} className="my-5 whitespace-pre-line">{block}</p>
+  })
 }
 
 export type Dict = (typeof T)["fr"]
@@ -591,6 +783,7 @@ const MOBILE_NAV_LINKS: { section: Exclude<LandingPage, "home">; key: keyof Dict
   { section: "assistant", key: "assistant" },
   { section: "benefits", key: "benefits" },
   { section: "pricing", key: "pricing" },
+  { section: "blog", key: "blog" },
   { section: "faq", key: "faq" },
   { section: "about", key: "about" },
   { section: "contact", key: "contact" },
@@ -725,22 +918,20 @@ function Header({ t, lang, onLocaleChange, theme, setTheme, onEnter }: { t: Dict
 
 /* --------------------------------- Hero --------------------------- */
 
-function Hero({ t, lang, onEnter }: { t: Dict; lang: Lang; onEnter: () => void }) {
+function Hero({ t, lang, onEnter, cmsHomepage }: { t: Dict; lang: Lang; onEnter: () => void; cmsHomepage: PublicSiteCmsData["homepage"] }) {
   const to = useLocaleHref()
   return (
     <section id="hero" className="landing-hero relative mx-auto max-w-6xl px-5 pb-8 pt-16 sm:px-8 sm:pt-24">
       <div className="landing-hero-copy mx-auto max-w-3xl text-center">
         <h1 className="mz-rise font-display text-[34px] font-extrabold leading-[1.12] tracking-tight text-[var(--l-heading)] sm:text-[52px]" style={{ animationDelay: "0.05s" }}>
-          {t.hero.headline.map((s, i) => s.hi
+          {cmsHomepage?.headline.trim() || t.hero.headline.map((s, i) => s.hi
             ? <span key={i} className="landing-hero-highlight">{s.t}</span>
             : <span key={i}>{s.t}</span>)}
         </h1>
-        <p className="mz-rise mx-auto mt-5 max-w-xl text-[15.5px] leading-relaxed text-[var(--l-muted)] sm:text-[17px]" style={{ animationDelay: "0.1s" }}>{t.hero.sub}</p>
-        <InlineCitation lang={lang} className="mz-rise mx-auto mt-4 max-w-xl text-[13.5px] leading-relaxed text-[var(--l-muted)]" />
-        <HeroQuote lang={lang} className="mz-rise mt-4" />
+        <p className="mz-rise mx-auto mt-5 max-w-xl text-[15.5px] leading-relaxed text-[var(--l-muted)] sm:text-[17px]" style={{ animationDelay: "0.1s" }}>{cmsHomepage?.subheadline.trim() || t.hero.sub}</p>
         <div className="mz-rise mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row" style={{ animationDelay: "0.15s" }}>
           <GlowButton onClick={onEnter} className="w-full sm:w-auto">
-            {t.signup} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 rtl:rotate-180" />
+            {cmsHomepage?.primary_cta.trim() || t.signup} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 rtl:rotate-180" />
           </GlowButton>
           <GhostLink href={to("features")} className="w-full sm:w-auto">{t.explore}</GhostLink>
         </div>
@@ -749,7 +940,15 @@ function Hero({ t, lang, onEnter }: { t: Dict; lang: Lang; onEnter: () => void }
         </p>
       </div>
 
-      <DashboardPreview t={t} />
+      {cmsHomepage?.feature_cards?.length ? <div className="mx-auto mt-10 grid max-w-4xl gap-3 sm:grid-cols-3">
+        {cmsHomepage.feature_cards.slice(0, 3).map((value, index) => {
+          const item = value && typeof value === "object" ? value as Record<string, unknown> : {}
+          const title = typeof item.title === "string" ? item.title : ""
+          const description = typeof item.description === "string" ? item.description : ""
+          return title ? <article key={`${title}:${index}`} className="rounded-xl border border-[var(--l-border)] bg-[var(--l-surface)] p-4 text-start"><h2 className="text-[13px] font-bold text-[var(--l-heading)]">{title}</h2>{description && <p className="mt-1 text-[11px] leading-relaxed text-[var(--l-muted)]">{description}</p>}</article> : null
+        })}
+      </div> : null}
+      {cmsHomepage?.hero_image_url ? <img src={cmsHomepage.hero_image_url} alt={cmsHomepage.headline || t.hero.sub} className="mx-auto mt-14 max-h-[540px] w-full max-w-5xl rounded-2xl border border-[var(--l-border-strong)] object-cover shadow-2xl" /> : <DashboardPreview t={t} />}
     </section>
   )
 }
@@ -887,7 +1086,7 @@ function TrendChart({ height = 120 }: { height?: number }) {
 
 /* --------------------------- Features ----------------------------- */
 
-function Features({ t, showHeading = true }: { t: Dict; showHeading?: boolean }) {
+function Features({ t, showHeading = true, managedFeatures = [] }: { t: Dict; showHeading?: boolean; managedFeatures?: PublicCmsFeature[] }) {
   return (
     <section id="features" className="relative mx-auto max-w-6xl px-5 py-24 sm:px-8">
       {showHeading && <div className="mx-auto max-w-2xl text-center">
@@ -896,24 +1095,36 @@ function Features({ t, showHeading = true }: { t: Dict; showHeading?: boolean })
         <p className="mt-3 text-[15px] text-[var(--l-muted)]">{t.feat.sub}</p>
       </div>}
 
-      <div className="mt-14 flex w-full flex-col gap-5">
-        <FeatureCard id="calendar-preview" icon={CalendarDays} title={t.f1.title} tag={t.f1.tag}>
-          <p className="text-[13.5px] leading-relaxed text-[var(--l-muted)]">{t.f1.desc}</p>
-          <CalendarWidget t={t} />
-        </FeatureCard>
-
-        <FeatureCard id="risk-preview" icon={ShieldAlert} title={t.f2.title} tag={t.f2.tag}>
-          <p className="text-[13.5px] leading-relaxed text-[var(--l-muted)]">{t.f2.desc}</p>
-          <RiskWidget t={t} />
-        </FeatureCard>
-
-        <FeatureCard id="tools-preview" icon={Wrench} title={t.f3.title} tag={t.f3.tag}>
-          <p className="text-[13.5px] leading-relaxed text-[var(--l-muted)]">{t.f3.desc}</p>
-          <SubscriptionWidget t={t} />
-        </FeatureCard>
+      <div className={managedFeatures.length ? "mt-14 grid gap-4 md:grid-cols-2 xl:grid-cols-3" : "mt-14 flex w-full flex-col gap-5"}>
+        {managedFeatures.length ? managedFeatures.map((feature) => <CmsFeatureCard key={feature.feature_key} feature={feature} />) : <>
+          <FeatureCard id="calendar-preview" icon={CalendarDays} title={t.f1.title} tag={t.f1.tag}>
+            <p className="text-[13.5px] leading-relaxed text-[var(--l-muted)]">{t.f1.desc}</p>
+            <CalendarWidget t={t} />
+          </FeatureCard>
+          <FeatureCard id="risk-preview" icon={ShieldAlert} title={t.f2.title} tag={t.f2.tag}>
+            <p className="text-[13.5px] leading-relaxed text-[var(--l-muted)]">{t.f2.desc}</p>
+            <RiskWidget t={t} />
+          </FeatureCard>
+          <FeatureCard id="tools-preview" icon={Wrench} title={t.f3.title} tag={t.f3.tag}>
+            <p className="text-[13.5px] leading-relaxed text-[var(--l-muted)]">{t.f3.desc}</p>
+            <SubscriptionWidget t={t} />
+          </FeatureCard>
+        </>}
       </div>
     </section>
   )
+}
+
+function CmsFeatureCard({ feature }: { feature: PublicCmsFeature }) {
+  const iconMap: Record<string, typeof Wrench> = { calendar: CalendarDays, shield: ShieldAlert, tools: Wrench, dashboard: LayoutDashboard, legal: FileText, speed: Zap }
+  const Icon = iconMap[feature.icon] ?? Sparkles
+  return <article className="flex flex-col overflow-hidden rounded-2xl border border-[var(--l-border)] bg-[var(--l-surface)] p-5">
+    <span className="grid h-10 w-10 place-items-center rounded-xl bg-blue-500/10 text-blue-400"><Icon className="h-5 w-5" /></span>
+    {feature.image_url && <img src={feature.image_url} alt="" loading="lazy" className="mt-4 max-h-48 w-full rounded-lg object-cover" />}
+    <h3 className="font-display mt-4 text-[16px] font-bold text-[var(--l-heading)]">{feature.title}</h3>
+    {feature.description && <p className="mt-2 text-[13px] leading-relaxed text-[var(--l-muted)]">{feature.description}</p>}
+    {feature.details && <p className="mt-3 whitespace-pre-line text-[12px] leading-relaxed text-[var(--l-faint)]">{feature.details}</p>}
+  </article>
 }
 
 function FeatureCard({ id, icon: Icon, title, tag, children }: { id: string; icon: typeof Wrench; title: string; tag: string; children: React.ReactNode }) {
@@ -1146,7 +1357,7 @@ function BenefitsSection({ copy, showHeading = true }: { copy: ExtraCopy["benefi
   )
 }
 
-function PricingSection({ copy, onEnter, showHeading = true }: { copy: ExtraCopy["pricing"]; onEnter: () => void; showHeading?: boolean }) {
+function PricingSection({ copy, onEnter, locale, path, showHeading = true }: { copy: ExtraCopy["pricing"]; onEnter: () => void; locale: LocaleId; path: string; showHeading?: boolean }) {
   return (
     <section id="pricing" className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
       {showHeading && <div className="mx-auto max-w-2xl text-center">
@@ -1163,7 +1374,7 @@ function PricingSection({ copy, onEnter, showHeading = true }: { copy: ExtraCopy
           </div>
           <div className="mt-6 flex flex-col gap-4 border-t border-[var(--l-border)] pt-5 sm:flex-row sm:items-center sm:justify-between">
             <ul className="space-y-2">{plan.items.map((item) => <li key={item} className="flex items-center gap-2 text-[13px] text-[var(--l-text)]"><Check className="h-3.5 w-3.5 text-emerald-400" />{item}</li>)}</ul>
-            <GlowButton onClick={onEnter} className="shrink-0 px-4 py-2.5 text-[12.5px]">{plan.cta} <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" /></GlowButton>
+            <GlowButton onClick={() => { recordSiteEvent("purchase_click", path, `subscription:${plan.name}`, locale); onEnter() }} className="shrink-0 px-4 py-2.5 text-[12.5px]">{plan.cta} <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" /></GlowButton>
           </div>
         </article>)}
       </div>
@@ -1171,21 +1382,55 @@ function PricingSection({ copy, onEnter, showHeading = true }: { copy: ExtraCopy
   )
 }
 
-function BlogSection({ copy, showHeading = true }: { copy: ExtraCopy["blog"]; showHeading?: boolean }) {
+function BlogSection({ copy, locale, initialPosts, showAll = false, showHeading = true }: { copy: ExtraCopy["blog"]; locale: LocaleId; initialPosts?: PublicBlogPost[]; showAll?: boolean; showHeading?: boolean }) {
+  const [posts, setPosts] = useState<PublicBlogPost[]>(() => initialPosts ?? [])
+  const [loading, setLoading] = useState(initialPosts === undefined)
+  const [loadError, setLoadError] = useState(false)
   const to = useLocaleHref()
+  const copyByLocale = {
+    fr: { read: "Lire l’article", empty: "Aucun article publié pour le moment.", error: "Les articles ne sont pas disponibles pour le moment." },
+    en: { read: "Read article", empty: "No articles have been published yet.", error: "Articles are temporarily unavailable." },
+    ar: { read: "اقرأ المقال", empty: "لا توجد مقالات منشورة حالياً.", error: "المقالات غير متاحة مؤقتاً." },
+  }[locale]
+
+  useEffect(() => {
+    let active = true
+    if (initialPosts !== undefined) {
+      setPosts(initialPosts)
+      setLoading(false)
+      setLoadError(false)
+      return () => { active = false }
+    }
+    setLoading(true)
+    setLoadError(false)
+    void listPublishedPosts(locale).then((items) => {
+      if (active) setPosts(items)
+    }).catch(() => {
+      if (active) { setPosts([]); setLoadError(true) }
+    }).finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [locale, initialPosts])
+
+  const visiblePosts = showAll ? posts : posts.slice(0, 3)
   return (
-    <section id="blog" className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
+    <section id="blog" aria-busy={loading} className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
       {showHeading && <div className="mx-auto max-w-2xl text-center">
         <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-blue-400">{copy.eyebrow}</p>
         <h2 className="font-display mt-3 text-[30px] font-bold text-[var(--l-heading)] sm:text-[38px]">{copy.title}</h2>
       </div>}
       <div className="mx-auto mt-12 max-w-3xl space-y-4">
-        {copy.posts.map((post) => <article key={post.title} className="landing-resource-card rounded-2xl border border-[var(--l-border)] bg-[var(--l-surface)] p-6 sm:p-7">
-          <div className="flex flex-wrap items-center justify-between gap-2"><span className="rounded-full bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold text-blue-400">{post.tag}</span><time dateTime={post.iso} className="text-[11px] text-[var(--l-faint)]">{post.date}</time></div>
-          <h3 className="font-display mt-4 text-[19px] font-bold text-[var(--l-heading)]">{post.title}</h3><p className="mt-2 max-w-2xl text-[13.5px] leading-relaxed text-[var(--l-muted)]">{post.desc}</p>
-          <a href={to("contact")} onClick={onInternalLinkClick} className="mt-4 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-blue-400">Lire l'article <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" /></a>
-        </article>)}
+        {visiblePosts.map((post) => {
+          const date = validDate(post.published_at) ? new Intl.DateTimeFormat(localeInfo(locale).tag, { year: "numeric", month: "short", day: "numeric" }).format(new Date(post.published_at)) : ""
+          return <article key={post.id} className="landing-resource-card rounded-2xl border border-[var(--l-border)] bg-[var(--l-surface)] p-6 sm:p-7">
+            <div className="flex flex-wrap items-center justify-between gap-2"><span className="rounded-full bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold text-blue-400">{post.keywords[0] ?? copy.eyebrow}</span>{date && <time dateTime={new Date(post.published_at).toISOString()} className="text-[11px] text-[var(--l-faint)]">{date}</time>}</div>
+            <h3 className="font-display mt-4 text-[19px] font-bold text-[var(--l-heading)]">{post.title}</h3><p className="mt-2 max-w-2xl text-[13.5px] leading-relaxed text-[var(--l-muted)]">{post.excerpt}</p>
+            <a href={localizedBlogArticlePath(locale, post.slug)} onClick={onInternalLinkClick} className="mt-4 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-blue-400">{copyByLocale.read} <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" /></a>
+          </article>
+        })}
+        {!loading && !visiblePosts.length && <p role="status" className="rounded-2xl border border-[var(--l-border)] bg-[var(--l-surface)] px-6 py-8 text-center text-[13px] text-[var(--l-muted)]">{loadError ? copyByLocale.error : copyByLocale.empty}</p>}
+        {loading && <p role="status" className="py-8 text-center text-[13px] text-[var(--l-faint)]">{locale === "ar" ? "جارٍ تحميل المقالات…" : locale === "en" ? "Loading articles…" : "Chargement des articles…"}</p>}
       </div>
+      {!showAll && posts.length > 3 && <div className="mt-7 text-center"><a href={to("blog")} onClick={onInternalLinkClick} className="inline-flex items-center gap-2 rounded-lg border border-[var(--l-border-strong)] px-4 py-2.5 text-[13px] font-semibold text-[var(--l-heading)] hover:border-blue-400/50">{locale === "ar" ? "كل المقالات" : locale === "en" ? "All articles" : "Tous les articles"} <ArrowRight className="h-4 w-4 rtl:rotate-180" /></a></div>}
     </section>
   )
 }
@@ -1215,6 +1460,94 @@ function FaqSection({ copy, showHeading = true }: { copy: ExtraCopy["faq"]; show
     </section>
   )
 }
+
+function AnnouncementStrip({ announcements, locale }: { announcements: PublicCmsAnnouncement[]; locale: LocaleId }) {
+  const [dismissed, setDismissed] = useState<string | null>(null)
+  const item = announcements.find((announcement) => announcement.id !== dismissed && (!announcement.ends_at || new Date(announcement.ends_at).getTime() > Date.now()))
+  if (!item) return null
+  const title = item.title_by_locale[locale] || item.title_by_locale.fr || item.title_by_locale.en || item.title_by_locale.ar || ""
+  const body = item.body_by_locale[locale] || item.body_by_locale.fr || item.body_by_locale.en || item.body_by_locale.ar || ""
+  return <aside aria-live="polite" className={`mx-auto mt-5 flex max-w-6xl items-start gap-3 rounded-xl border px-4 py-3 ${item.severity === "critical" ? "border-rose-400/30 bg-rose-500/10" : item.severity === "warning" ? "border-amber-400/30 bg-amber-500/10" : "border-blue-400/25 bg-blue-500/10"}`}>
+    <Megaphone className="mt-0.5 h-4 w-4 shrink-0 text-blue-400" /><div className="min-w-0 flex-1"><p className="text-[13px] font-bold text-[var(--l-heading)]">{title}</p>{body && <p className="mt-0.5 whitespace-pre-line text-[12px] leading-relaxed text-[var(--l-muted)]">{body}</p>}</div>
+    <button type="button" onClick={() => setDismissed(item.id)} aria-label={locale === "ar" ? "إغلاق الإعلان" : locale === "en" ? "Dismiss announcement" : "Fermer l’annonce"} className="rounded p-1 text-[var(--l-faint)] hover:bg-black/5"><X className="h-4 w-4" /></button>
+  </aside>
+}
+
+function ManagedPage({ page, locale }: { page: NonNullable<PublicSiteCmsData["page"]>; locale: LocaleId }) {
+  return <article className="mx-auto min-h-[55vh] max-w-4xl px-5 py-12 sm:px-8 sm:py-16">
+    <header className="border-b border-[var(--l-border)] pb-7"><p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-blue-400">{page.slug === "faq" ? "FAQ" : page.slug}</p><h1 className="font-display mt-3 text-[32px] font-extrabold leading-tight text-[var(--l-heading)] sm:text-[42px]">{page.title}</h1>{page.excerpt && <p className="mt-4 text-[16px] leading-relaxed text-[var(--l-muted)]">{page.excerpt}</p>}</header>
+    <div className="prose prose-slate mt-8 max-w-none text-[15px] leading-8 text-[var(--l-text)] dark:prose-invert">{renderBlogBody(page.body)}</div>
+    {page.slug === "contact" && <div className="mt-12"><SupportRequestForm locale={locale} /></div>}
+  </article>
+}
+
+function OneTimeProductsSection({ products, locale, path }: { products: PublicCmsProduct[]; locale: LocaleId; path: string }) {
+  if (!products.length) return null
+  const copy = locale === "ar" ? { title: "منتجات وأسعار لمرة واحدة", note: "تتم عملية الشراء عبر رابط خارجي. لا تتحقق فاتورتي من الدفع أو الطلبات." } : locale === "en" ? { title: "One-time products", note: "Purchases continue on an external provider. Fatorati does not verify payments or orders." } : { title: "Produits à l’achat unique", note: "L’achat se poursuit chez un prestataire externe. Fatorati ne confirme pas les paiements ni les commandes." }
+  return <section className="mx-auto max-w-6xl px-5 py-16 sm:px-8"><div className="mx-auto max-w-2xl text-center"><p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-blue-400">{copy.title}</p><p className="mt-2 text-[11px] leading-relaxed text-[var(--l-faint)]">{copy.note}</p></div><div className="mx-auto mt-8 grid max-w-4xl gap-4 md:grid-cols-2">
+    {products.map((product) => <article key={product.product_key} className="rounded-2xl border border-[var(--l-border)] bg-[var(--l-surface)] p-6"><h3 className="font-display text-[18px] font-bold text-[var(--l-heading)]">{product.name}</h3><p className="mt-2 min-h-10 text-[13px] leading-relaxed text-[var(--l-muted)]">{product.description}</p><p className="mt-5 font-display text-[25px] font-bold text-[var(--l-heading)]">{formatMoney(product.price_amount, product.currency, locale)}</p>{product.purchase_url ? <a href={product.purchase_url} target="_blank" rel="noopener noreferrer" onClick={() => recordSiteEvent("purchase_click", path, product.product_key, locale)} className="mt-5 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-[12px] font-semibold text-white hover:bg-blue-700"><ShoppingBag className="h-4 w-4" />{locale === "ar" ? "شراء خارجي" : locale === "en" ? "Continue to purchase" : "Acheter"}<ArrowRight className="h-3.5 w-3.5" /></a> : <span className="mt-5 inline-flex rounded-lg border border-[var(--l-border)] px-4 py-2.5 text-[12px] text-[var(--l-faint)]">{locale === "ar" ? "رابط الشراء غير متاح" : locale === "en" ? "Purchase link not available" : "Lien d’achat indisponible"}</span>}</article>)}
+  </div></section>
+}
+
+function DownloadReleaseSection({ releases, downloads, locale, path }: { releases: PublicCmsRelease[]; downloads: PublicCmsDownload[]; locale: LocaleId; path: string }) {
+  if (!releases.length && !downloads.length) return null
+  const title = locale === "ar" ? "التنزيلات والإصدارات" : locale === "en" ? "Downloads and releases" : "Téléchargements et versions"
+  const labels: Record<LocaleId, { download: string; notes: string; compatible: string }> = {
+    fr: { download: "Télécharger", notes: "Nouveautés et correctifs", compatible: "Compatibilité" },
+    en: { download: "Download", notes: "Release notes and fixes", compatible: "Compatibility" },
+    ar: { download: "تنزيل", notes: "المستجدات والإصلاحات", compatible: "التوافق" },
+  }
+  return <section className="mx-auto max-w-6xl px-5 py-16 sm:px-8"><div className="mx-auto max-w-2xl text-center"><p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-blue-400">{title}</p></div>
+    {downloads.length > 0 && <div className="mx-auto mt-8 grid max-w-4xl gap-3 sm:grid-cols-2">{downloads.map((download, index) => <article key={`${download.platform}:${download.version}:${index}`} className="flex items-start gap-3 rounded-xl border border-[var(--l-border)] bg-[var(--l-surface)] p-4"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-blue-500/10 text-blue-400"><Download className="h-4 w-4" /></span><div className="min-w-0 flex-1"><h3 className="text-[13px] font-bold text-[var(--l-heading)]">{download.label_by_locale[locale] || download.platform} <span className="text-[var(--l-faint)]">{download.version}</span></h3>{download.instructions_by_locale[locale] && <p className="mt-1 whitespace-pre-line text-[11px] leading-relaxed text-[var(--l-muted)]">{download.instructions_by_locale[locale]}</p>}</div><a href={download.url} target="_blank" rel="noopener noreferrer" onClick={() => recordSiteEvent("download_click", path, `${download.platform}:${download.version}`, locale)} className="shrink-0 rounded-lg border border-[var(--l-border-strong)] px-3 py-2 text-[11px] font-semibold text-blue-400 hover:border-blue-400/50">{labels[locale].download}</a></article>)}</div>}
+    {releases.length > 0 && <div className="mx-auto mt-8 max-w-4xl space-y-3">{releases.slice(0, 5).map((release) => {
+      const date = validDate(release.release_date) ? new Intl.DateTimeFormat(localeInfo(locale).tag, { dateStyle: "medium" }).format(new Date(release.release_date)) : ""
+      const notes = release.notes_by_locale[locale] || release.notes_by_locale.fr || release.notes_by_locale.en || release.notes_by_locale.ar || ""
+      const titleText = release.title_by_locale[locale] || `v${release.version}`
+      return <article key={`${release.version}:${release.channel}`} className="rounded-xl border border-[var(--l-border)] bg-[var(--l-surface)] p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-[13px] font-bold text-[var(--l-heading)]">{titleText} <span className="font-mono text-[11px] text-[var(--l-faint)]">v{release.version}</span></h3><time className="text-[11px] text-[var(--l-faint)]">{date}</time></div>{notes && <p className="mt-2 whitespace-pre-line text-[12px] leading-relaxed text-[var(--l-muted)]">{notes}</p>}{release.fixes?.length > 0 && <p className="mt-2 text-[11px] text-[var(--l-faint)]">{labels[locale].notes}: {release.fixes.join(" · ")}</p>}{release.compatibility && <p className="mt-2 text-[11px] text-[var(--l-faint)]">{labels[locale].compatible}: {release.compatibility}</p>}</article>
+    })}</div>}
+  </section>
+}
+
+function SupportRequestForm({ locale }: { locale: LocaleId }) {
+  const [busy, setBusy] = useState(false)
+  const [notice, setNotice] = useState("")
+  const [error, setError] = useState("")
+  const copy = {
+    fr: { title: "Écrire à l’équipe", name: "Nom", email: "E-mail", category: "Type de demande", subject: "Sujet", message: "Votre message (10 caractères minimum)", send: "Envoyer la demande", sent: "Merci, votre demande a bien été transmise.", failed: "Impossible d’envoyer la demande pour le moment.", categories: [["contact", "Question générale"], ["bug", "Signaler un bug"], ["feedback", "Retour d’expérience"], ["feature_request", "Suggestion de fonctionnalité"]] },
+    en: { title: "Contact the team", name: "Name", email: "Email", category: "Request type", subject: "Subject", message: "Your message (at least 10 characters)", send: "Send request", sent: "Thank you. Your request has been sent.", failed: "The request could not be sent right now.", categories: [["contact", "General question"], ["bug", "Report a bug"], ["feedback", "Feedback"], ["feature_request", "Feature suggestion"]] },
+    ar: { title: "راسل فريق الدعم", name: "الاسم", email: "البريد الإلكتروني", category: "نوع الطلب", subject: "الموضوع", message: "رسالتك (10 أحرف على الأقل)", send: "إرسال الطلب", sent: "شكراً، تم إرسال طلبك.", failed: "تعذر إرسال الطلب حالياً.", categories: [["contact", "استفسار عام"], ["bug", "الإبلاغ عن خلل"], ["feedback", "ملاحظات"], ["feature_request", "اقتراح ميزة"]] },
+  }[locale]
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const form = event.currentTarget
+    const values = new FormData(form)
+    setBusy(true); setError(""); setNotice("")
+    try {
+      const category = String(values.get("category")) as "contact" | "bug" | "feedback" | "feature_request"
+      await submitCmsSupportRequest({ category, name: String(values.get("name")), email: String(values.get("email")), subject: String(values.get("subject")), message: String(values.get("message")) })
+      form.reset(); setNotice(copy.sent)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : copy.failed)
+    } finally { setBusy(false) }
+  }
+  return <section className="mx-auto max-w-3xl px-5 py-10 sm:px-8"><div className="rounded-2xl border border-[var(--l-border)] bg-[var(--l-surface)] p-5 sm:p-7"><h2 className="font-display text-[20px] font-bold text-[var(--l-heading)]">{copy.title}</h2>
+    {notice && <p role="status" className="mt-4 rounded-lg border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-[12px] text-emerald-500">{notice}</p>}{error && <p role="alert" className="mt-4 rounded-lg border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-[12px] text-rose-400">{error}</p>}
+    <form onSubmit={submit} className="mt-5 grid gap-4 sm:grid-cols-2">
+      <label className="text-[12px] text-[var(--l-muted)]"><span className="mb-1 block">{copy.name}</span><input name="name" required maxLength={120} autoComplete="name" className="w-full rounded-lg border border-[var(--l-border-strong)] bg-[var(--l-panel)] px-3 py-2 text-[13px] text-[var(--l-text)]" /></label>
+      <label className="text-[12px] text-[var(--l-muted)]"><span className="mb-1 block">{copy.email}</span><input name="email" type="email" required maxLength={254} autoComplete="email" className="w-full rounded-lg border border-[var(--l-border-strong)] bg-[var(--l-panel)] px-3 py-2 text-[13px] text-[var(--l-text)]" /></label>
+      <label className="text-[12px] text-[var(--l-muted)]"><span className="mb-1 block">{copy.category}</span><select name="category" className="w-full rounded-lg border border-[var(--l-border-strong)] bg-[var(--l-panel)] px-3 py-2 text-[13px] text-[var(--l-text)]">{copy.categories.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+      <label className="text-[12px] text-[var(--l-muted)]"><span className="mb-1 block">{copy.subject}</span><input name="subject" required maxLength={180} className="w-full rounded-lg border border-[var(--l-border-strong)] bg-[var(--l-panel)] px-3 py-2 text-[13px] text-[var(--l-text)]" /></label>
+      <label className="text-[12px] text-[var(--l-muted)] sm:col-span-2"><span className="mb-1 block">{copy.message}</span><textarea name="message" required minLength={10} maxLength={10000} rows={5} className="w-full resize-y rounded-lg border border-[var(--l-border-strong)] bg-[var(--l-panel)] px-3 py-2 text-[13px] leading-relaxed text-[var(--l-text)]" /></label>
+      <div className="sm:col-span-2"><button type="submit" disabled={busy} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-[12px] font-semibold text-white disabled:opacity-50"><Send className="h-4 w-4" />{busy ? "…" : copy.send}</button></div>
+    </form>
+  </div></section>
+}
+
+function formatMoney(amount: number, currency: string, locale: LocaleId): string {
+  try { return new Intl.NumberFormat(localeInfo(locale).tag, { style: "currency", currency }).format(Number(amount)) }
+  catch { return `${amount} ${currency}` }
+}
+function validDate(value: string): boolean { return Number.isFinite(new Date(value).getTime()) }
 
 function ContactSection({ copy, showHeading = true }: { copy: ExtraCopy["contact"]; showHeading?: boolean }) {
   return (
@@ -1272,7 +1605,7 @@ function Footer({ t, extra, onEnter }: { t: Dict; extra: ExtraCopy; onEnter: () 
               <a href={to("features")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{t.nav.features}</a>
               <a href={to("benefits")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{t.nav.benefits}</a>
               <a href={to("pricing")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{t.nav.pricing}</a>
-              <a href={to("blog")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{extra.blog.eyebrow}</a>
+              <a href={to("blog")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{t.nav.blog}</a>
             </div>
           </div>
           <div>
@@ -1280,7 +1613,6 @@ function Footer({ t, extra, onEnter }: { t: Dict; extra: ExtraCopy; onEnter: () 
             <div className="mt-4 flex flex-col items-start gap-3 text-[12.5px] text-[var(--l-muted)]">
               <a href={to("contact")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{t.nav.contact}</a>
               <a href={`mailto:${extra.contact.email}`} className="hover:text-[var(--l-heading)]">{extra.contact.email}</a>
-              <a href={GITHUB_URL} className="hover:text-[var(--l-heading)]" rel="noopener noreferrer">GitHub</a>
               <a href={to("faq")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{t.nav.faq}</a>
               <a href={to("privacy")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{extra.legal.privacy}</a>
               <a href={to("terms")} onClick={onInternalLinkClick} className="hover:text-[var(--l-heading)]">{extra.legal.terms}</a>
@@ -1303,9 +1635,9 @@ function CookieBanner({ lang }: { lang: Lang }) {
   const [visible, setVisible] = useState(false)
   const to = useLocaleHref()
   const copy = {
-    fr: { text: "Nous utilisons des cookies nécessaires au fonctionnement du site et Google Analytics pour mesurer l'audience et améliorer Fatorati. Aucune publicité, aucune revente de données.", accept: "Accepter", reject: "Refuser", link: "En savoir plus" },
-    en: { text: "We use necessary cookies and Google Analytics to measure traffic and improve Fatorati. No ads, no data resale.", accept: "Accept", reject: "Decline", link: "Learn more" },
-    ar: { text: "نستخدم ملفات ضرورية لتشغيل الموقع وGoogle Analytics لقياس الزوار وتحسين فاتورتي. بدون إعلانات وبدون بيع البيانات.", accept: "موافقة", reject: "رفض", link: "معرفة المزيد" },
+    fr: { text: "Cookies nécessaires, Google Analytics et mesure interne limitée des pages après votre accord. Pas de publicité ni de revente de données.", accept: "Accepter", reject: "Refuser", link: "En savoir plus" },
+    en: { text: "Necessary cookies, Google Analytics and limited first-party page measurement run only after your consent. No ads or data resale.", accept: "Accept", reject: "Decline", link: "Learn more" },
+    ar: { text: "ملفات ضرورية وGoogle Analytics وقياس داخلي محدود للصفحات، بعد موافقتك فقط. بدون إعلانات أو بيع للبيانات.", accept: "موافقة", reject: "رفض", link: "معرفة المزيد" },
   }[lang]
 
   useEffect(() => {

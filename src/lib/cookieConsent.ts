@@ -3,7 +3,7 @@ import { GOOGLE_ANALYTICS_ID } from "./site"
 
 export type CookieConsent = "accepted" | "declined" | null
 export const COOKIE_CONSENT_KEY = "fatorati-cookie-consent"
-const CONSENT_EVENT = "fatorati:cookie-consent"
+export const COOKIE_CONSENT_EVENT = "fatorati:cookie-consent"
 const ANALYTICS_SCRIPT_ID = "fatorati-google-analytics"
 
 export function readCookieConsent(): CookieConsent {
@@ -15,7 +15,7 @@ export function readCookieConsent(): CookieConsent {
 
 export function writeCookieConsent(value: Exclude<CookieConsent, null>) {
   try { localStorage.setItem(COOKIE_CONSENT_KEY, value) } catch { /* Keep the choice for this page even if storage is disabled. */ }
-  window.dispatchEvent(new CustomEvent(CONSENT_EVENT, { detail: value }))
+  window.dispatchEvent(new CustomEvent(COOKIE_CONSENT_EVENT, { detail: value }))
 }
 
 declare global {
@@ -57,10 +57,10 @@ export function useMarketingAnalytics() {
     function onStorage(event: StorageEvent) {
       if (event.key === COOKIE_CONSENT_KEY || event.key === null) applyAnalyticsConsent(readCookieConsent())
     }
-    window.addEventListener(CONSENT_EVENT, onChoice)
+    window.addEventListener(COOKIE_CONSENT_EVENT, onChoice)
     window.addEventListener("storage", onStorage)
     return () => {
-      window.removeEventListener(CONSENT_EVENT, onChoice)
+      window.removeEventListener(COOKIE_CONSENT_EVENT, onChoice)
       window.removeEventListener("storage", onStorage)
     }
   }, [])

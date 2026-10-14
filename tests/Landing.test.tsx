@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react"
-import { beforeEach, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, expect, it, vi } from "vitest"
 import Landing from "../src/marketing/Landing"
+import type { PublicSiteCmsData } from "../src/lib/siteCms"
 
 beforeEach(() => {
   window.history.replaceState({}, "", "/")
@@ -11,7 +12,10 @@ beforeEach(() => {
   document.getElementById("fatorati-google-analytics")?.remove()
   delete window.gtag
   delete window.dataLayer
+  vi.spyOn(window, "scrollTo").mockImplementation(() => {})
 })
+
+afterEach(() => vi.restoreAllMocks())
 
 it("shows every existing content section on the homepage without the removed tagline", () => {
   const view = render(<Landing onEnter={() => {}} />)
@@ -20,6 +24,18 @@ it("shows every existing content section on the homepage without the removed tag
   }
   expect(screen.queryByText("Pensé pour les artisans, freelances & TPE marocaines")).toBeNull()
   expect(view.container.querySelector("footer")).not.toBeNull()
+})
+
+it.each(["Français", "English", "العربية"])("omits the official VAT citations from the homepage hero in %s", (language) => {
+  const view = render(<Landing onEnter={() => {}} />)
+  if (language !== "Français") {
+    fireEvent.click(screen.getByRole("button", { name: "Français" }))
+    fireEvent.click(screen.getByRole("option", { name: language }))
+  }
+
+  const hero = view.container.querySelector("#hero")!
+  expect(hero.querySelector("blockquote, cite, q")).toBeNull()
+  expect(hero.querySelector('a[href*="tax.gov.ma"]')).toBeNull()
 })
 
 it.each(["Français", "English", "العربية"])("removes the hero badge in %s without removing the headline or content", (language) => {
@@ -53,6 +69,17 @@ it("gives every public section its own URL on desktop and mobile, and keeps the 
   expect(view.container.querySelector("#features")).not.toBeNull()
 })
 
+it("renders one support form on a CMS-managed contact page", () => {
+  window.history.replaceState({}, "", "/contact")
+  const siteCms: PublicSiteCmsData = {
+    path: "/contact", locale: "fr", homepage: null,
+    page: { id: "cms-contact", slug: "contact", locale: "fr", title: "Contactez-nous", excerpt: "", body: "Contenu de la page de contact", seo_title: "", seo_description: "", canonical_url: "", noindex: false, published_at: null, updated_at: "2026-10-14T00:00:00Z" },
+    seo: null, features: [], announcements: [], releases: [], downloads: [], products: [],
+  }
+  render(<Landing onEnter={() => {}} initialSiteCmsData={siteCms} />)
+  expect(screen.getAllByRole("button", { name: "Envoyer la demande" })).toHaveLength(1)
+})
+
 it("keeps standalone pages working and links back to the other public pages", () => {
   window.history.replaceState({}, "", "/pricing")
   const view = render(<Landing onEnter={() => {}} />)
@@ -60,6 +87,23 @@ it("keeps standalone pages working and links back to the other public pages", ()
   expect(view.container.querySelector("#hero")).toBeNull()
   const header = view.container.querySelector("header")!
   expect(within(header).getByRole("link", { name: "Fonctionnalités" }).getAttribute("href")).toBe("/features")
+})
+
+it("does not render the GitHub link in the footer", () => {
+  const view = render(<Landing onEnter={() => {}} />)
+  const footer = view.container.querySelector<HTMLElement>(".landing-footer")!
+
+  expect(within(footer).queryByRole("link", { name: "GitHub" })).toBeNull()
+})
+
+it("scrolls to the top when a footer link navigates to another page", () => {
+  const view = render(<Landing onEnter={() => {}} />)
+  const footer = view.container.querySelector<HTMLElement>(".landing-footer")!
+
+  fireEvent.click(within(footer).getByRole("link", { name: "Tarifs" }))
+
+  expect(window.location.pathname).toBe("/pricing")
+  expect(window.scrollTo).toHaveBeenCalledWith({ top: 0 })
 })
 
 it("lets visitors explore the features without opening login, while sign-up still opens login", () => {

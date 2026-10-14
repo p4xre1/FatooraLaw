@@ -130,14 +130,22 @@ see [docs/SEO_GEO_AIO_SXO.md](docs/SEO_GEO_AIO_SXO.md) §6.
 ## Database and admin setup
 
 Follow [SUPABASE_OPERATIONS.md](SUPABASE_OPERATIONS.md). New installations
-use `supabase/schema.sql`; existing CMS installations must apply
-`supabase/migrations/20261012_harden_profile_permissions.sql` to close the
-profile-based admin privilege escalation. Updating frontend code alone is
-not sufficient.
+use `supabase/schema.sql`. Existing installations must apply the migrations in
+order: profile hardening, the posts CMS migration if blog tables are absent,
+`20261013_cms_control_center.sql`, then
+`20261014_cms_site_operations.sql`. Updating frontend code alone is not
+sufficient; the policies, RPCs, roles and Storage rules live in Postgres.
 
-The CMS is at `/admin/login`. `profiles.is_admin` grants content-editing
-rights; `platform_admins` controls billing/platform operations. These are
-separate permissions.
+The CMS is at `/admin/login`. `profiles.is_admin` grants content-editor
+access. `platform_admins` grants platform operations and also permits site/blog
+editing; platform-only operators are intentionally supported by the database
+RLS policies. The application-level `public.subscriptions` table for a user's
+own recurring tools is distinct from the platform's `account_subscriptions`;
+these CMS changes do not rename or rewrite the former.
+
+No payment provider or webhook credentials were supplied. Admin subscription
+statuses are operator-maintained records; marketing CTA analytics measure
+clicks only, not verified payments or completed sales.
 
 ## Dashboard data (no automatic business demos)
 
@@ -194,9 +202,10 @@ The old shared `mizan.store.v1` key is **preserved**, not automatically assigned
 to whichever person logs in next. Settings shows a notice and an **Exporter
 la sauvegarde ancienne** button when it exists. That JSON backup contains
 business records, not the old auth profile. Keep it private; review ownership
-before a manual migration. A full JSON restore workflow is not yet implemented.
-Clearing browser storage still deletes local records; there is no cloud backup
-for dashboard data yet.
+before a manual migration. A JSON restore workflow for the local dashboard
+business-data backup is not yet implemented. (The separate website CMS has its
+own platform-admin-only backup/restore screen.) Clearing browser storage still
+deletes local records; there is no cloud backup for dashboard data yet.
 
 Subscriptions now use the same per-account business store, so adding/removing an
 item survives page navigation and relogin. Expiry uses the current calendar date;

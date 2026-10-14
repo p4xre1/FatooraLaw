@@ -1,90 +1,100 @@
-import type { PostgrestError } from "@supabase/supabase-js"
+import type { BlogContent, BlogPost, BlogTranslationLocale } from "../../lib/blog"
+import type { LocaleId } from "../../lib/locales"
 import { supabase } from "../../lib/supabase"
+import { getCmsPost, listCmsPosts } from "../../lib/blog"
 
 /**
- * Data layer for `public.posts`.
- *
- * SECURITY NOTE — read this before adding a new function here: every call
- * below runs in the browser against the Supabase `anon` key (the same
- * client used everywhere else in this app, see src/lib/supabase.ts) and
- * is therefore fully subject to the RLS policies defined in
- * supabase/schema.sql. This file is a convenience wrapper for shaping
- * requests/responses — it is NOT the access-control layer, and it must
- * never import or reference a `service_role` key. If a mutation here ever
- * "succeeds" against a non-admin session, that's a bug in the RLS policy,
- * not a missing check in this file.
+ * Admin conveniences for the public `posts` and `post_translations` tables.
+ * Authorization remains in Postgres RLS; this client never uses a service key.
  */
-
-const TABLE = "posts"
-
-export type Post = {
-  id: string
-  title: string
-  slug: string
-  content: string
-  published: boolean
-  created_at: string
-  updated_at: string
-  user_id: string
-}
-
+export type Post = BlogPost
 export type PostInput = {
-  title: string
-  slug: string
-  content: string
+  locales: Record<LocaleId, BlogContent>
+  author_name: string
   published: boolean
 }
 
-function unwrap<T>(result: { data: T | null; error: PostgrestError | null }): T {
-  if (result.error) throw new Error(result.error.message)
-  if (result.data === null) throw new Error("Supabase returned no data for this request.")
-  return result.data
+const BASE_WRITE_COLUMNS = (content: BlogContent) => ({
+  title: content.title,
+  slug: content.slug,
+  content: content.content,
+  excerpt: content.excerpt,
+  seo_title: content.seo_title,
+  seo_description: content.seo_description,
+  keywords: content.keywords,
+})
+
+async function translationsPayload(postId: string, input: PostInput) {
+  const locales: BlogTranslationLocale[] = ["ar", "en"]
+  return locales.map((locale) => ({
+    post_id: postId,
+    locale,
+    ...BASE_WRITE_COLUMNS(input.locales[locale]),
+  }))
 }
 
-/**
- * All posts, newest first. Deliberately doesn't filter by `published` —
- * RLS already scopes the result set correctly for whoever is asking:
- * admins see drafts and published posts, everyone else sees published
- * only (`posts_admin_read_all` / `posts_public_read_published`). The
- * query itself never needs to know which case it's in.
- */
+async function saveTranslations(postId: string, input: PostInput): Promise<void> {
+  const { error } = await supabase.from("post_translations")
+    .upsert(await translationsPayload(postId, input), { onConflict: "post_id,locale" })
+  if (error) throw new Error(error.message)
+}
+
 export async function listPosts(): Promise<Post[]> {
-  const result = await supabase.from(TABLE).select("*").order("created_at", { ascending: false })
-  return unwrap({ data: result.data as Post[] | null, error: result.error })
+  return listCmsPosts()
 }
 
 export async function getPost(id: string): Promise<Post> {
-  const result = await supabase.from(TABLE).select("*").eq("id", id).single()
-  return unwrap({ data: result.data as Post | null, error: result.error })
-}
-
-export async function getPostBySlug(slug: string): Promise<Post> {
-  const result = await supabase.from(TABLE).select("*").eq("slug", slug).single()
-  return unwrap({ data: result.data as Post | null, error: result.error })
+  return getCmsPost(id)
 }
 
 export async function createPost(input: PostInput): Promise<Post> {
-  const { data: auth } = await supabase.auth.getUser()
-  if (!auth.user) throw new Error("You must be signed in to create a post.")
+  const { data: auth, error: authError } = await supabase.auth.getUser()
+  if (authError || !auth.user) throw new Error("يجب تسجيل الدخول قبل إنشاء مقال.")
 
-  const result = await supabase
-    .from(TABLE)
-    .insert({ ...input, user_id: auth.user.id })
-    .select()
+  // Save as a draft first so the database publication guard can verify all
+  // translations and SEO fields atomically before the final publish update.
+  const { data, error } = await supabase.from("posts")
+    .insert({ ...BASE_WRITE_COLUMNS(input.locales.fr), author_name: input.author_name, published: false, user_id: auth.user.id })
+    .select("id")
     .single()
-  return unwrap({ data: result.data as Post | null, error: result.error })
+  if (error) throw new Error(error.message)
+
+  const id = String((data as { id: string }).id)
+  await saveTranslations(id, input)
+  if (input.published) {
+    const { error: publishError } = await supabase.from("posts").update({ published: true }).eq("id", id)
+    if (publishError) throw new Error(publishError.message)
+  }
+  return getPost(id)
 }
 
-export async function updatePost(id: string, input: Partial<PostInput>): Promise<Post> {
-  const result = await supabase.from(TABLE).update(input).eq("id", id).select().single()
-  return unwrap({ data: result.data as Post | null, error: result.error })
+export async function updatePost(id: string, input: PostInput): Promise<Post> {
+  // A published post is briefly made a draft while its language versions are
+  // saved separately through PostgREST; the final update re-runs DB checks.
+  const { error: unpublishError } = await supabase.from("posts").update({ published: false }).eq("id", id)
+  if (unpublishError) throw new Error(unpublishError.message)
+
+  const { error } = await supabase.from("posts").update({
+    ...BASE_WRITE_COLUMNS(input.locales.fr),
+    author_name: input.author_name,
+  }).eq("id", id)
+  if (error) throw new Error(error.message)
+
+  await saveTranslations(id, input)
+  if (input.published) {
+    const { error: publishError } = await supabase.from("posts").update({ published: true }).eq("id", id)
+    if (publishError) throw new Error(publishError.message)
+  }
+  return getPost(id)
 }
 
 export async function setPublished(id: string, published: boolean): Promise<Post> {
-  return updatePost(id, { published })
+  const { error } = await supabase.from("posts").update({ published }).eq("id", id)
+  if (error) throw new Error(error.message)
+  return getPost(id)
 }
 
 export async function deletePost(id: string): Promise<void> {
-  const { error } = await supabase.from(TABLE).delete().eq("id", id)
+  const { error } = await supabase.from("posts").delete().eq("id", id)
   if (error) throw new Error(error.message)
 }

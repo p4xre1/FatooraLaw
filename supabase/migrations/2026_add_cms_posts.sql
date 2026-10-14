@@ -6,31 +6,26 @@
 -- database that already has the rest of schema.sql applied, without
 -- re-running the whole thing.
 
+-- Keep this incremental script usable against the core application schema,
+-- which may not yet have the helper trigger function from schema.sql.
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
 -- ---------------------------------------------------------------------------
 -- CMS: public content module (blog / legal-article posts)
---
--- Note on `platform_admins`: this schema already has a `platform_admins`
--- table + `is_platform_admin()` function, and SUPABASE_OPERATIONS.md
--- documents it as being for "protected CMS operators" — i.e. this may be
--- what was originally intended for exactly this feature. The brief for
--- this module asked specifically for admin privileges to be verified
--- against the `profiles` table, so that's what's implemented below
--- (`profiles.is_admin`, not `platform_admins`), to follow that literally
--- rather than assume. If you'd rather consolidate on the pre-existing
--- mechanism instead, it's a two-line swap: drop the `is_admin` column
--- below and make `public.is_admin()` call `public.is_platform_admin()`
--- (or just reference `is_platform_admin()` directly in the policies and
--- in src/admin/lib/adminAuth.ts) — nothing else here depends on which one
--- you pick.
---
--- A boolean flag on `profiles`, rather than adding a value to the
--- existing `app_role` enum (owner/accountant/supervisor/assistant): that
--- enum models per-tenant business roles inside a single company's
--- Fatorati account and has nothing to do with who may publish site
--- content, so overloading it would conflate two unrelated permission
--- systems. `posts` also isn't scoped by user_id the way the tenant
--- tables above are — this is one shared site's content, edited
--- collaboratively by any admin, not per-tenant data.
+-- `profiles.is_admin` is the content-editor role. The later site-operations
+-- migration also lets a platform operator edit shared site/blog content, while
+-- keeping platform-only controls (billing, analytics, support and backups)
+-- out of the content-admin role. Tenant `app_role` values remain unrelated.
 
 -- Restrict profile writes before exposing the admin-flag check.
 alter table public.profiles
