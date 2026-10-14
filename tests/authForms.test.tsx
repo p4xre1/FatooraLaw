@@ -12,7 +12,7 @@ import Auth from "../src/components/Auth"
 import { SignInForm } from "../src/modules/auth/SignIn/SignInForm"
 import { SignUpForm } from "../src/modules/auth/SignUp/SignUpForm"
 import { ForgotPasswordForm } from "../src/modules/auth/ForgotPassword/ForgotPasswordForm"
-import { useLanguageStore } from "../src/modules/auth/language/useLanguage"
+import { useLanguageStore } from "../src/lib/language/store"
 
 beforeEach(() => {
   useLanguageStore.getState().setLanguage("en")

@@ -1,5 +1,3 @@
-import type { Language } from "./useLanguage"
-
 const en = {
   brand: {
     signIn: {
@@ -213,6 +211,12 @@ const fr: typeof en = {
   },
 }
 
-export type Translation = typeof en
+/**
+ * The sign-in / sign-up / password-reset copy. Shaped like every other section
+ * in `src/i18n/`: `en` is written first and the other two are declared
+ * `typeof en`, so a key added to one language and forgotten in another is a
+ * compile error rather than a blank string in production.
+ */
+export type AuthTranslation = typeof en
 
-export const translations: Record<Language, Translation> = { ar, en, fr }
+export const auth = { ar, en, fr }

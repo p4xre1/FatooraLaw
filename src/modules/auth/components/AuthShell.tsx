@@ -1,7 +1,7 @@
 import type { ReactNode } from "react"
 import { ShieldCheck } from "lucide-react"
-import { useTranslation } from "../language/useLanguage"
-import { LanguageSwitcher } from "../language/LanguageSwitcher"
+import { useAuthTranslation } from "../language/useAuthTranslation"
+import { LanguageSwitcher } from "../../../lib/language/LanguageSwitcher"
 
 export function AuthShell({
   title,
@@ -14,7 +14,7 @@ export function AuthShell({
   children: ReactNode
   footer?: ReactNode
 }) {
-  const { dir, language } = useTranslation()
+  const { dir, language } = useAuthTranslation()
   // Tajawal (already loaded in index.css) reads far better for Arabic than the Latin sans stack.
   const fontClass = language === "ar" ? "font-arabic" : "font-sans"
 

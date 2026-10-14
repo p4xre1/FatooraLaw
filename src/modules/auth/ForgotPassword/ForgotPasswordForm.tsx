@@ -3,7 +3,7 @@ import type { FormEvent } from "react"
 import { ArrowRight, ArrowLeft, Loader2, Mail } from "lucide-react"
 import { supabase, isSupabaseConfigured } from "../../../lib/supabase"
 import { Btn, Field, Input } from "../../../components/kit"
-import { useTranslation } from "../language/useLanguage"
+import { useAuthTranslation } from "../language/useAuthTranslation"
 import { FormAlert } from "../components/FormAlert"
 import { isValidEmail, sanitizeInput } from "../lib/validation"
 import { mapAuthError, notConfiguredMessage } from "../lib/authErrors"
@@ -20,7 +20,7 @@ export type ForgotPasswordFormProps = {
 }
 
 export function ForgotPasswordForm({ onBack, redirectTo }: ForgotPasswordFormProps) {
-  const { t, dir } = useTranslation()
+  const { t, dir } = useAuthTranslation()
   const [email, setEmail] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)

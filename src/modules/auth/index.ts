@@ -11,6 +11,7 @@ export type { ForgotPasswordFormProps } from "./ForgotPassword"
 
 export { AuthShell } from "./components/AuthShell"
 
-export { useLanguageStore, useTranslation, isRTL, SUPPORTED_LANGUAGES } from "./language/useLanguage"
-export type { Language } from "./language/useLanguage"
-export { LanguageSwitcher } from "./language/LanguageSwitcher"
+export { useLanguageStore, useTranslation, isRTL, SUPPORTED_LANGUAGES, DEFAULT_LANGUAGE } from "../../lib/language/store"
+export type { Language } from "../../lib/language/store"
+export { LanguageSwitcher } from "../../lib/language/LanguageSwitcher"
+export { useAuthTranslation } from "./language/useAuthTranslation"

@@ -3,7 +3,7 @@ import type { FormEvent } from "react"
 import { UserPlus, Loader2 } from "lucide-react"
 import { supabase, isSupabaseConfigured } from "../../../lib/supabase"
 import { Btn, Checkbox, Field, Input } from "../../../components/kit"
-import { useTranslation } from "../language/useLanguage"
+import { useAuthTranslation } from "../language/useAuthTranslation"
 import { PasswordField } from "../components/PasswordField"
 import { FormAlert } from "../components/FormAlert"
 import { checkPassword, isNonEmpty, isValidEmail, sanitizeInput, MAX_NAME_LENGTH } from "../lib/validation"
@@ -23,7 +23,7 @@ export type SignUpFormProps = {
 }
 
 export function SignUpForm({ onSignIn, onViewPrivacyPolicy, onSuccess }: SignUpFormProps) {
-  const { t } = useTranslation()
+  const { t } = useAuthTranslation()
   const [fullName, setFullName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
