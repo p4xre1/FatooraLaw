@@ -3,7 +3,7 @@ import { AuthShell } from "./components/AuthShell"
 import { SignInForm } from "./SignIn"
 import { SignUpForm } from "./SignUp"
 import { ForgotPasswordForm } from "./ForgotPassword"
-import { useTranslation } from "./language/useLanguage"
+import { useAuthTranslation } from "./language/useAuthTranslation"
 
 type View = "signIn" | "signUp" | "forgotPassword"
 
@@ -17,7 +17,7 @@ export function AuthPage({
   onViewPrivacyPolicy?: () => void
 }) {
   const [view, setView] = useState<View>("signIn")
-  const { t } = useTranslation()
+  const { t } = useAuthTranslation()
 
   const brand = {
     signIn: t.brand.signIn,

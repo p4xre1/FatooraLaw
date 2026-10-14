@@ -11,8 +11,10 @@ using real financial or client data.
 
 | Document | What it covers |
 | --- | --- |
+| [docs/FEATURES_AND_TOOLS.md](docs/FEATURES_AND_TOOLS.md) | functional reference for every tool: the 13 signed-in modules, auth, plan gating, the admin CMS, the public site, the storage engine, exports and known limitations |
 | [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md) | every source of `VITE_SUPABASE_*`, why a deployed site can still be unconfigured, and how to verify a live bundle |
 | [docs/SEO_GEO_AIO_SXO.md](docs/SEO_GEO_AIO_SXO.md) | crawlability, per-page metadata, structured data, AI-answer-engine readiness and conversion/site-experience recommendations and backlog |
+| [docs/COMPETITOR_INEO.md](docs/COMPETITOR_INEO.md) | full scan of ineo.ma (72 URLs, 28 features, published pricing) and a gap analysis against this repository |
 | [docs/CODE_REVIEW.md](docs/CODE_REVIEW.md) | this release's code scan: fixed defects, verified-correct areas, open findings |
 | [CODE_AUDIT.md](CODE_AUDIT.md) | the earlier security/data audit (RLS, local storage partitioning, exports) |
 | [SECURITY.md](SECURITY.md) | key handling, CSP, Turnstile, reporting a vulnerability |

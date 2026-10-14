@@ -5,6 +5,7 @@ import Reports from "../src/modules/Reports"
 import { accountStorageKey, useMizan } from "../src/store/useMizan"
 import { seedAudit, seedContacts, seedContracts, seedExpenses, seedProjects, seedSettings } from "../src/store/seed"
 import { addCalendarDays } from "../src/lib/calendarDates"
+import { useLanguageStore } from "../src/lib/language/store"
 
 const exports = vi.hoisted(() => ({ csv: vi.fn() }))
 vi.mock("../src/lib/mizan", async (actual) => ({ ...await actual<typeof import("../src/lib/mizan")>(), toCSV: exports.csv, runAsync: async (task: () => unknown) => task() }))
@@ -116,4 +117,56 @@ it("reports an actual export failure instead of claiming a report was generated"
   await act(async () => fireEvent.click(screen.getByRole("button", { name: "Exporter les dépenses" })))
   expect(screen.getByRole("alert").textContent).toContain("Échec de l'export")
   expect((screen.getByRole("button", { name: "Exporter les dépenses" }) as HTMLButtonElement).disabled).toBe(false)
+})
+
+
+it("renders legal-draft warnings, templates and fields in English", () => {
+  act(() => useLanguageStore.getState().setLanguage("en"))
+  render(<LegalVault />)
+  expect(screen.getByText("Legal Vault")).toBeDefined()
+  expect(screen.getByText("The structures below are not certified contracts. No complete legal text, email delivery or electronic signature is provided.")).toBeDefined()
+  expect(screen.getByText("No saved documents.")).toBeDefined()
+  fireEvent.click(screen.getByRole("button", { name: /Service agreement/ }))
+  expect(screen.getByText("Enter your information. No certified contract text is generated.")).toBeDefined()
+  expect(screen.getByLabelText("Contract title")).toBeDefined()
+  expect(screen.getByText("Value (MAD)")).toBeDefined()
+  expect(screen.getByRole("button", { name: "Save draft" })).toBeDefined()
+})
+
+it("renders Arabic legal records and the metadata-only preview in RTL", () => {
+  act(() => useLanguageStore.getState().setLanguage("ar"))
+  const contract = { ...seedContracts[0], id: "arabic-contract", title: "عقد تجريبي", clientId: "arabic-client", date: "2026-10-13", value: 123.45 }
+  useMizan.setState({ contracts: [contract], contacts: [{ ...seedContacts[0], id: "arabic-client", name: "عميل تجريبي" }] })
+  render(<LegalVault />)
+
+  expect(screen.getByText("الخزنة القانونية")).toBeDefined()
+  expect(screen.getByText("النماذج أدناه ليست عقوداً معتمدة.", { exact: false })).toBeDefined()
+  fireEvent.click(screen.getByRole("button", { name: "عرض عقد تجريبي" }))
+  expect(screen.getByText("سجل المستند المحفوظ")).toBeDefined()
+  expect(screen.getByText("محتوى العقد غير محفوظ")).toBeDefined()
+  expect(screen.getByText(/لم يحدد ما إذا كان قبل الضريبة/)).toBeDefined()
+  expect(document.documentElement.lang).toBe("ar")
+  expect(document.documentElement.dir).toBe("rtl")
+})
+
+
+it("translates the fiscal caveats, monthly range and export controls into English", () => {
+  act(() => useLanguageStore.getState().setLanguage("en"))
+  render(<Reports />)
+  expect(screen.getByText("Reports & Tax")).toBeDefined()
+  expect(screen.getByText("No financial data recorded")).toBeDefined()
+  expect(screen.getByText("VAT not calculated")).toBeDefined()
+  expect(screen.getByLabelText("Expense period")).toBeDefined()
+  expect(screen.getByRole("button", { name: "Export expenses" }).getAttribute("disabled")).not.toBeNull()
+})
+
+it("translates the fiscal caveats into Arabic and sets RTL", () => {
+  act(() => useLanguageStore.getState().setLanguage("ar"))
+  render(<Reports />)
+  expect(screen.getByText("التقارير والضرائب")).toBeDefined()
+  expect(screen.getByText("لا توجد بيانات مالية مسجلة")).toBeDefined()
+  expect(screen.getByText("لم يتم احتساب الضريبة على القيمة المضافة")).toBeDefined()
+  expect(screen.getByLabelText("فترة المصاريف")).toBeDefined()
+  expect(document.documentElement.lang).toBe("ar")
+  expect(document.documentElement.dir).toBe("rtl")
 })

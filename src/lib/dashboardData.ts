@@ -157,7 +157,6 @@ export function dashboardData(input: Records, count = 8, today = todayISO(), mon
 /** Dashboard amounts retain currency minor units; the legacy app-wide formatter
  * rounds to whole units and must not disguise newly entered dashboard values.
  */
-export function dashboardMoney(value: number, currency: Settings["currency"] = "MAD", compact = false): string {
-  const locale = { MAD: "fr-MA", EUR: "fr-FR", USD: "en-US" }[currency]
+export function dashboardMoney(value: number, currency: Settings["currency"] = "MAD", compact = false, locale = { MAD: "fr-MA", EUR: "fr-FR", USD: "en-US" }[currency]): string {
   return `${new Intl.NumberFormat(locale, { notation: compact ? "compact" : "standard", maximumFractionDigits: 2 }).format(value)} ${currency}`
 }

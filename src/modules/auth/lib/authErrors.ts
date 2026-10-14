@@ -1,4 +1,4 @@
-import type { Translation } from "../language/translations"
+import type { AuthTranslation } from "../../../i18n/auth"
 import { supabaseConfigProblem } from "../../../lib/supabase"
 
 /**
@@ -18,7 +18,7 @@ export function notConfiguredMessage(translated: string): string {
  * message and otherwise falls back to a generic "unexpected" message —
  * we deliberately avoid surfacing raw provider errors to end users.
  */
-export function mapAuthError(message: string, t: Translation): string {
+export function mapAuthError(message: string, t: AuthTranslation): string {
   const m = message.toLowerCase()
 
   if (m.includes("invalid login credentials")) return t.errors.invalidCredentials

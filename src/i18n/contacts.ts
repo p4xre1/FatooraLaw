@@ -1,0 +1,167 @@
+import type { Language } from "../lib/language/store.ts"
+
+/**
+ * Contacts, suppliers and their local ledger view.
+ *
+ * The CSV header labels follow the UI language. The importer reads the seven
+ * columns by position and deliberately skips the first header row, so
+ * translating the header does not change the file's stable column order or its
+ * import behaviour. Type values (`client` / `supplier`) remain stable IDs in the
+ * export; the UI labels are translated separately.
+ */
+const en = {
+  subtitle: "Contacts & third-party ledger",
+  fileInput: "CSV file",
+  import: "Import CSV",
+  importing: "Importing…",
+  export: "Export",
+  add: "Add",
+  searchLabel: "Search contacts",
+  searchPlaceholder: "Search name, ICE, city…",
+  filters: {
+    all: "All",
+    client: "Clients",
+    supplier: "Suppliers",
+  },
+  empty: "No contacts.",
+  table: {
+    name: "Name",
+    type: "Type",
+    ice: "ICE",
+    contact: "Contact",
+    city: "City",
+    balance: "Balance",
+  },
+  type: {
+    client: "Client",
+    supplier: "Supplier",
+  },
+  whatsapp: "WhatsApp",
+  emailAction: "Email",
+  deleteAria: "Delete",
+  exportError: "Could not export contacts. Please try again.",
+  fileTooLarge: "The CSV file must not exceed 2 MB.",
+  tooManyRows: (limit: number) => `Import is limited to ${limit.toLocaleString("en")} contacts per file.`,
+  columnError: (columns: string) => `The CSV must contain 7 columns: ${columns}.`,
+  invalidBalance: "The CSV contains an invalid balance.",
+  readFailure: "Could not read the CSV file.",
+  csvColumns: "Name, Type, ICE, Phone, Email, City, Balance",
+  history: "Financial history",
+  noTransactions: "No transactions.",
+  historyKind: {
+    project: "Project",
+    contract: "Contract",
+  },
+  newContact: "New contact",
+  nameOrCompany: "Name / Company",
+  phone: "Phone",
+  phonePlaceholder: "+212 6…",
+  email: "Email",
+  save: "Save",
+}
+
+type ContactsCopy = typeof en
+
+const fr: ContactsCopy = {
+  subtitle: "CRM et grand livre des tiers",
+  fileInput: "Fichier CSV",
+  import: "Importer CSV",
+  importing: "Import en cours…",
+  export: "Exporter",
+  add: "Ajouter",
+  searchLabel: "Rechercher des contacts",
+  searchPlaceholder: "Rechercher nom, ICE, ville…",
+  filters: {
+    all: "Tous",
+    client: "Clients",
+    supplier: "Fournisseurs",
+  },
+  empty: "Aucun contact.",
+  table: {
+    name: "Nom",
+    type: "Type",
+    ice: "ICE",
+    contact: "Contact",
+    city: "Ville",
+    balance: "Solde",
+  },
+  type: {
+    client: "Client",
+    supplier: "Fournisseur",
+  },
+  whatsapp: "WhatsApp",
+  emailAction: "E-mail",
+  deleteAria: "Supprimer",
+  exportError: "Impossible d'exporter les contacts. Réessayez.",
+  fileTooLarge: "Le fichier CSV ne doit pas dépasser 2 Mo.",
+  tooManyRows: (limit: number) => `Import limité à ${limit.toLocaleString("fr-MA")} contacts par fichier.`,
+  columnError: (columns: string) => `Le CSV doit contenir 7 colonnes : ${columns}.`,
+  invalidBalance: "Le CSV contient un solde invalide.",
+  readFailure: "Impossible de lire le fichier CSV.",
+  csvColumns: "Nom, Type, ICE, Téléphone, E-mail, Ville, Solde",
+  history: "Historique financier",
+  noTransactions: "Aucune transaction.",
+  historyKind: {
+    project: "Projet",
+    contract: "Contrat",
+  },
+  newContact: "Nouveau contact",
+  nameOrCompany: "Nom / Raison sociale",
+  phone: "Téléphone",
+  phonePlaceholder: "+212 6…",
+  email: "E-mail",
+  save: "Enregistrer",
+}
+
+const ar: ContactsCopy = {
+  subtitle: "إدارة جهات الاتصال وحسابات الأطراف",
+  fileInput: "ملف CSV",
+  import: "استيراد CSV",
+  importing: "جارٍ الاستيراد…",
+  export: "تصدير",
+  add: "إضافة",
+  searchLabel: "البحث في جهات الاتصال",
+  searchPlaceholder: "ابحث بالاسم أو ICE أو المدينة…",
+  filters: {
+    all: "الكل",
+    client: "العملاء",
+    supplier: "الموردون",
+  },
+  empty: "لا توجد جهات اتصال.",
+  table: {
+    name: "الاسم",
+    type: "النوع",
+    ice: "ICE",
+    contact: "التواصل",
+    city: "المدينة",
+    balance: "الرصيد",
+  },
+  type: {
+    client: "عميل",
+    supplier: "مورد",
+  },
+  whatsapp: "WhatsApp",
+  emailAction: "البريد الإلكتروني",
+  deleteAria: "حذف",
+  exportError: "تعذر تصدير جهات الاتصال. يرجى المحاولة مجدداً.",
+  fileTooLarge: "يجب ألا يتجاوز حجم ملف CSV ميغابايتين.",
+  tooManyRows: (limit: number) => `الاستيراد محدود بـ ${limit.toLocaleString("ar-MA")} جهة اتصال لكل ملف.`,
+  columnError: (columns: string) => `يجب أن يحتوي ملف CSV على 7 أعمدة: ${columns}.`,
+  invalidBalance: "يتضمن ملف CSV رصيداً غير صالح.",
+  readFailure: "تعذرت قراءة ملف CSV.",
+  csvColumns: "الاسم، النوع، ICE، الهاتف، البريد الإلكتروني، المدينة، الرصيد",
+  history: "السجل المالي",
+  noTransactions: "لا توجد معاملات.",
+  historyKind: {
+    project: "مشروع",
+    contract: "عقد",
+  },
+  newContact: "جهة اتصال جديدة",
+  nameOrCompany: "الاسم / اسم الشركة",
+  phone: "الهاتف",
+  phonePlaceholder: "+212 6…",
+  email: "البريد الإلكتروني",
+  save: "حفظ",
+}
+
+export const contacts: Record<Language, ContactsCopy> = { ar, en, fr }

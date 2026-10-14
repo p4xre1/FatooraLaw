@@ -3,7 +3,7 @@ import type { FormEvent } from "react"
 import { LogIn, Loader2 } from "lucide-react"
 import { supabase, isSupabaseConfigured } from "../../../lib/supabase"
 import { Btn, Field, Input } from "../../../components/kit"
-import { useTranslation } from "../language/useLanguage"
+import { useAuthTranslation } from "../language/useAuthTranslation"
 import { PasswordField } from "../components/PasswordField"
 import { FormAlert } from "../components/FormAlert"
 import { isValidEmail, sanitizeInput } from "../lib/validation"
@@ -48,7 +48,7 @@ export type SignInFormProps = {
 }
 
 export function SignInForm({ onForgotPassword, onSignUp, onSuccess, captchaToken, honeypot = false }: SignInFormProps) {
-  const { t } = useTranslation()
+  const { t } = useAuthTranslation()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [website, setWebsite] = useState("") // honeypot value — real users never see this field

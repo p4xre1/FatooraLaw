@@ -3,6 +3,7 @@ import { Loader2, ShieldAlert } from "lucide-react"
 import type { ModuleKey } from "./store/types"
 import { useMizan } from "./store/useMizan"
 import { NAV } from "./components/nav"
+import { useAppLanguage } from "./lib/language/store"
 import Auth from "./components/Auth"
 import NotFound from "./components/NotFound"
 import OnboardingModal from "./components/OnboardingModal"
@@ -92,6 +93,11 @@ export default function App() {
   const { auth, team } = useMizan()
   const path = useRoutePath()
   const { ready, recovery, clearRecovery, logout } = useSupabaseAuth()
+  // The page title and <title> follow the app language. This is the side-effect
+  // free hook on purpose: App also renders the marketing routes, where
+  // Landing.tsx owns lang/dir on <html> from the URL, and a preference-driven
+  // write here would fight it.
+  const { t: copy } = useAppLanguage()
   const { needsOnboarding, submitting: onboardingSubmitting, error: onboardingError, submit: submitOnboarding } = useOnboarding(auth?.id ?? null)
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -120,6 +126,17 @@ export default function App() {
   function signOut() {
     forgetLocalDevSession()
     return logout()
+  }
+
+  /**
+   * The single sign-out path for every "se déconnecter" control in the shell —
+   * the top bar, the sidebar's account menu and the no-access screen. Clearing
+   * the dev-session marker first matters: without it the next reload would sign
+   * the same tab straight back in (see lib/localDevMode).
+   */
+  function signOutAndGoHome() {
+    void signOut()
+    navigate("/")
   }
 
   // Development-only: restore the opt-in local session in this tab (no-op in
@@ -219,9 +236,9 @@ export default function App() {
 
   const current = routeModule && allowed[routeModule] ? routeModule : firstAllowedModule(auth, team)
   if (!current) {
-    return <NoAccess onSignOut={() => { void signOut(); navigate("/") }} />
+    return <NoAccess onSignOut={signOutAndGoHome} />
   }
-  const title = NAV.find((n) => n.key === current)?.label ?? "Fatorati"
+  const title = copy.shared.modules[current]
 
   function go(m: ModuleKey) {
     navigate(modulePath(m))
@@ -238,9 +255,10 @@ export default function App() {
         allowed={allowed}
         mobileOpen={mobileOpen}
         setMobileOpen={setMobileOpen}
+        onLogout={signOutAndGoHome}
       />
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar title={title} onMenu={() => setMobileOpen(true)} onNavigate={go} onLogout={() => { void signOut(); navigate("/") }} />
+        <Topbar title={title} onMenu={() => setMobileOpen(true)} onNavigate={go} onLogout={signOutAndGoHome} />
         <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:px-8">
           <NoIndexTitle title={`${title} | Fatorati`} />
           <LocalSaveNotice />
@@ -283,16 +301,18 @@ function NoIndexTitle({ title }: { title: string }) {
 }
 
 function NoAccess({ onSignOut }: { onSignOut: () => void }) {
+  const { t: copy } = useAppLanguage()
+  const t = copy.app.noAccess
   useEffect(() => {
-    applyNoIndexHead("Aucun accès | Fatorati")
-  }, [])
+    applyNoIndexHead(t.pageTitle)
+  }, [t.pageTitle])
   return (
     <div className="grid min-h-screen place-items-center bg-canvas p-6">
       <div className="max-w-md space-y-4 text-center">
         <ShieldAlert className="mx-auto h-8 w-8 text-warn" />
-        <h1 className="text-xl font-bold">Aucun accès disponible</h1>
-        <p className="text-sm text-muted">Ce compte est désactivé ou aucun module ne lui est attribué. Contactez le propriétaire de votre espace.</p>
-        <Btn onClick={onSignOut}>Se déconnecter</Btn>
+        <h1 className="text-xl font-bold">{t.title}</h1>
+        <p className="text-sm text-muted">{t.body}</p>
+        <Btn onClick={onSignOut}>{copy.topbar.signOut}</Btn>
       </div>
     </div>
   )

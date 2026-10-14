@@ -1,7 +1,7 @@
 import { useId, useState } from "react"
 import { Eye, EyeOff } from "lucide-react"
 import { Field, Input } from "../../../components/kit"
-import { useTranslation } from "../language/useLanguage"
+import { useAuthTranslation } from "../language/useAuthTranslation"
 import { MAX_PASSWORD_LENGTH } from "../lib/validation"
 
 export function PasswordField({
@@ -17,7 +17,7 @@ export function PasswordField({
   autoComplete: "current-password" | "new-password"
   placeholder?: string
 }) {
-  const { t } = useTranslation()
+  const { t } = useAuthTranslation()
   const [show, setShow] = useState(false)
   const inputId = useId()
 

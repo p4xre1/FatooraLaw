@@ -1,0 +1,190 @@
+import type { Contract } from "../store/types.ts"
+import type { Language } from "../lib/language/store.ts"
+
+/**
+ * Legal Vault and the local contract-card workflow.
+ *
+ * This screen deliberately says what it stores: metadata only, not a certified
+ * contract. It does not e-mail or electronically sign anything. Those caveats
+ * are functional copy, not boilerplate to shorten away during translation.
+ */
+const en = {
+  subtitle: "Saved document records · drafts to complete",
+  warning: "The structures below are not certified contracts. No complete legal text, email delivery or electronic signature is provided.",
+  draftSection: "Create a draft · drafts are not saved documents",
+  templates: {
+    construction: { title: "Construction works contract", description: "Create a construction contract record" },
+    service: { title: "Service agreement", description: "Create a service agreement record" },
+    rental: { title: "Equipment rental", description: "Create an equipment rental record" },
+  } satisfies Record<Contract["type"], { title: string; description: string }>,
+  hiddenSamples: (count: number) => `${count} preloaded example${count === 1 ? "" : "s"} excluded from this view. Saved data remains in your backups.`,
+  invalidRecords: (count: number) => `${count} invalid record${count === 1 ? "" : "s"} not shown. Check the dates, amounts and document types.`,
+  documents: (count: number) => `Documents (${count})`,
+  emptyTitle: "No saved documents.",
+  emptyBody: "Create a record using your own information. No sample contract is added automatically.",
+  clientUnknown: "Client not specified",
+  type: {
+    construction: "Construction works contract",
+    service: "Service agreement",
+    rental: "Rental agreement",
+  } satisfies Record<Contract["type"], string>,
+  status: {
+    draft: "Draft",
+    sent: "Sent (manual tracking)",
+    signed: "Signed (manual tracking)",
+  } satisfies Record<Contract["status"], string>,
+  markSigned: (title: string) => `Mark ${title} as signed`,
+  markSent: (title: string) => `Mark ${title} as sent`,
+  view: (title: string) => `View ${title}`,
+  markSignedButton: "Mark as signed",
+  trackingTitle: "Confirm a tracking status",
+  trackingNotice: "This action only changes the saved status. It does not create an electronic signature or send an email. Confirm only if you completed that step outside the app.",
+  confirmStatus: "Confirm status",
+  preview: {
+    recordedTitle: "Saved document record",
+    companySettings: "Company (settings)",
+    companyUnknown: "Company not specified",
+    client: "Client",
+    type: "Type",
+    date: "Date recorded",
+    amount: "Amount entered (HT/VAT basis not specified)",
+    status: "Status declared manually",
+    contentTitle: "Contract content not saved",
+    contentBody: "Only the fields in this record are stored. The contract text, negotiated clauses, jurisdiction and signature evidence are not saved here. This record does not replace your document or legal review.",
+    print: "Print record / PDF",
+  },
+  create: {
+    draftNote: "Enter your information. No certified contract text is generated.",
+    title: "Contract title",
+    client: "Client",
+    value: (currency: string) => `Value (${currency})`,
+    unknownClientOption: "Client not specified",
+    zeroValueHint: "Enter 0 for a document without an amount",
+    invalidValue: "Enter a non-negative value within the allowed limit.",
+    save: "Save draft",
+    error: "Could not save the draft.",
+  },
+  missingDate: "Date not provided",
+}
+
+type LegalCopy = typeof en
+
+const fr: LegalCopy = {
+  subtitle: "Fiches de documents enregistrées · brouillons à compléter",
+  warning: "Les structures ci-dessous ne sont pas des contrats certifiés. Aucun contenu juridique complet, envoi par e-mail ou signature électronique n'est fourni.",
+  draftSection: "Créer un brouillon · ce ne sont pas des documents enregistrés",
+  templates: {
+    construction: { title: "Marché de travaux (BTP)", description: "Créer une fiche de contrat de travaux" },
+    service: { title: "Contrat de prestation", description: "Créer une fiche de prestation de services" },
+    rental: { title: "Location de matériel", description: "Créer une fiche de location" },
+  },
+  hiddenSamples: (count: number) => `La vue exclut ${count} exemple${count === 1 ? "" : "s"} préchargé${count === 1 ? "" : "s"}. Les données enregistrées restent dans vos sauvegardes.`,
+  invalidRecords: (count: number) => `${count} fiche${count === 1 ? "" : "s"} invalide${count === 1 ? "" : "s"} non affichée${count === 1 ? "" : "s"}. Vérifiez les dates, montants et types de documents.`,
+  documents: (count: number) => `Documents (${count})`,
+  emptyTitle: "Aucun document enregistré.",
+  emptyBody: "Créez une fiche avec vos propres informations. Aucun contrat d'exemple n'est ajouté automatiquement.",
+  clientUnknown: "Client non renseigné",
+  type: {
+    construction: "Marché de travaux",
+    service: "Contrat de service",
+    rental: "Contrat de location",
+  },
+  status: {
+    draft: "Brouillon",
+    sent: "Envoyé (suivi manuel)",
+    signed: "Signé (suivi manuel)",
+  },
+  markSigned: (title: string) => `Marquer ${title} comme signé`,
+  markSent: (title: string) => `Marquer ${title} comme envoyé`,
+  view: (title: string) => `Voir ${title}`,
+  markSignedButton: "Marquer comme signé",
+  trackingTitle: "Confirmer un statut de suivi",
+  trackingNotice: "Cette action change uniquement le statut enregistré. Elle ne crée aucune signature électronique et n'envoie aucun e-mail. Confirmez seulement si vous avez effectué cette démarche en dehors de l'application.",
+  confirmStatus: "Confirmer le statut",
+  preview: {
+    recordedTitle: "Fiche du document enregistré",
+    companySettings: "Entreprise (paramètres)",
+    companyUnknown: "Entreprise non renseignée",
+    client: "Client",
+    type: "Type",
+    date: "Date enregistrée",
+    amount: "Montant saisi (base HT/TTC non précisée)",
+    status: "Statut déclaré manuellement",
+    contentTitle: "Contenu du contrat non enregistré",
+    contentBody: "Seuls les champs de cette fiche sont stockés. Le texte du contrat, les clauses négociées, la juridiction et les preuves de signature ne sont pas enregistrés ici. Cette fiche ne remplace pas votre document ni une validation juridique.",
+    print: "Imprimer la fiche / PDF",
+  },
+  create: {
+    draftNote: "Enregistrez vos informations. Aucun texte de contrat certifié n'est généré.",
+    title: "Intitulé du contrat",
+    client: "Client",
+    value: (currency: string) => `Valeur (${currency})`,
+    unknownClientOption: "Client non renseigné",
+    zeroValueHint: "Indiquez 0 pour un document sans montant",
+    invalidValue: "Indiquez une valeur positive ou nulle dans la limite autorisée.",
+    save: "Enregistrer le brouillon",
+    error: "Impossible d'enregistrer le brouillon.",
+  },
+  missingDate: "Date non renseignée",
+}
+
+const ar: LegalCopy = {
+  subtitle: "سجلات المستندات المحفوظة · مسودات تحتاج إلى استكمال",
+  warning: "النماذج أدناه ليست عقوداً معتمدة. لا يتوفر نص قانوني كامل أو إرسال بالبريد الإلكتروني أو توقيع إلكتروني.",
+  draftSection: "إنشاء مسودة · المسودات ليست مستندات محفوظة",
+  templates: {
+    construction: { title: "عقد أشغال بناء", description: "إنشاء سجل لعقد أشغال بناء" },
+    service: { title: "عقد تقديم خدمات", description: "إنشاء سجل لعقد خدمات" },
+    rental: { title: "كراء المعدات", description: "إنشاء سجل لكراء المعدات" },
+  },
+  hiddenSamples: (count: number) => `تم استبعاد ${count} أمثلة محمّلة مسبقاً من هذه الواجهة. تبقى البيانات المحفوظة في نسخك الاحتياطية.`,
+  invalidRecords: (count: number) => `لم يتم عرض ${count} سجلات غير صالحة. تحقق من التواريخ والمبالغ وأنواع المستندات.`,
+  documents: (count: number) => `المستندات (${count})`,
+  emptyTitle: "لا توجد مستندات محفوظة.",
+  emptyBody: "أنشئ سجلاً بمعلوماتك الخاصة. لا تتم إضافة أي عقد تجريبي تلقائياً.",
+  clientUnknown: "لم يتم تحديد العميل",
+  type: {
+    construction: "عقد أشغال بناء",
+    service: "عقد خدمات",
+    rental: "عقد كراء",
+  },
+  status: {
+    draft: "مسودة",
+    sent: "مرسل (متابعة يدوية)",
+    signed: "موقّع (متابعة يدوية)",
+  },
+  markSigned: (title: string) => `تحديد ${title} كموقّع`,
+  markSent: (title: string) => `تحديد ${title} كمرسل`,
+  view: (title: string) => `عرض ${title}`,
+  markSignedButton: "تحديد كموقّع",
+  trackingTitle: "تأكيد حالة المتابعة",
+  trackingNotice: "يغيّر هذا الإجراء الحالة المحفوظة فقط. ولا ينشئ توقيعاً إلكترونياً أو يرسل بريداً إلكترونياً. أكّد فقط إذا أتممت هذه الخطوة خارج التطبيق.",
+  confirmStatus: "تأكيد الحالة",
+  preview: {
+    recordedTitle: "سجل المستند المحفوظ",
+    companySettings: "الشركة (الإعدادات)",
+    companyUnknown: "لم يتم تحديد الشركة",
+    client: "العميل",
+    type: "النوع",
+    date: "تاريخ التسجيل",
+    amount: "المبلغ المدخل (لم يحدد ما إذا كان قبل الضريبة أو شاملاً لها)",
+    status: "الحالة المصرّح بها يدوياً",
+    contentTitle: "محتوى العقد غير محفوظ",
+    contentBody: "يتم حفظ الحقول الواردة في هذا السجل فقط. لا يُحفظ هنا نص العقد أو البنود المتفاوض عليها أو الاختصاص القضائي أو إثبات التوقيع. ولا يحل هذا السجل محل مستندك أو المراجعة القانونية.",
+    print: "طباعة السجل / PDF",
+  },
+  create: {
+    draftNote: "أدخل معلوماتك. لا يتم إنشاء نص عقد معتمد.",
+    title: "عنوان العقد",
+    client: "العميل",
+    value: (currency: string) => `القيمة (${currency})`,
+    unknownClientOption: "لم يتم تحديد العميل",
+    zeroValueHint: "أدخل 0 لمستند بلا مبلغ",
+    invalidValue: "أدخل قيمة غير سالبة ضمن الحد المسموح.",
+    save: "حفظ المسودة",
+    error: "تعذر حفظ المسودة.",
+  },
+  missingDate: "لم يتم تحديد التاريخ",
+}
+
+export const legal: Record<Language, LegalCopy> = { ar, en, fr }

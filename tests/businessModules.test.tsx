@@ -8,7 +8,8 @@ import LegalVault from "../src/modules/LegalVault"
 import { MAX_QUANTITY } from "../src/lib/businessValidation"
 import Procurement from "../src/modules/Procurement"
 import { useMizan } from "../src/store/useMizan"
-import { seedContacts, seedExpenses, seedTools } from "../src/store/seed"
+import { seedContacts, seedExpenses, seedProjects, seedStock, seedTools } from "../src/store/seed"
+import { useLanguageStore } from "../src/lib/language/store"
 
 beforeEach(() => {
   vi.useFakeTimers()
@@ -129,4 +130,91 @@ it("refreshes subscription expiry after local midnight without needing a page re
   expect(within(row).getByText("Expire dans 0 j")).toBeDefined()
   act(() => vi.advanceTimersByTime(31_000))
   expect(within(row).getByText("Expiré")).toBeDefined()
+})
+
+
+it("renders Tools in English and Arabic from the same app-wide preference as the shell", () => {
+  act(() => useLanguageStore.getState().setLanguage("en"))
+  const view = render(<Tools />)
+  expect(screen.getByText("Subscriptions & Tools")).toBeDefined()
+  expect(screen.getByText("Tracking recurring costs and expiry dates")).toBeDefined()
+  expect(screen.getByText("Theoretical amounts of the subscriptions covering each month, without pro-rating. This chart is not a payment history.")).toBeDefined()
+  expect(document.documentElement.lang).toBe("en")
+  expect(document.documentElement.dir).toBe("ltr")
+
+  view.unmount()
+  act(() => useLanguageStore.getState().setLanguage("ar"))
+  render(<Tools />)
+  expect(screen.getByText("الاشتراكات والأدوات")).toBeDefined()
+  expect(screen.getByText("متابعة التكاليف الدورية وتواريخ الانتهاء")).toBeDefined()
+  expect(screen.getByText("هذا الرسم ليس سجلاً للمدفوعات.", { exact: false })).toBeDefined()
+  expect(document.documentElement.lang).toBe("ar")
+  expect(document.documentElement.dir).toBe("rtl")
+})
+
+it("uses translated labels and grammatical field hints in the tool form", () => {
+  act(() => useLanguageStore.getState().setLanguage("ar"))
+  render(<Tools />)
+  fireEvent.click(screen.getByRole("button", { name: "إضافة أداة" }))
+  expect(screen.getByLabelText("اسم الأداة")).toBeDefined()
+  expect(screen.getByLabelText("التكلفة الشهرية (MAD)")).toBeDefined()
+  expect(screen.getAllByText("اختيارية")).toHaveLength(2)
+  expect(screen.getByRole("button", { name: "إلغاء" })).toBeDefined()
+  expect(screen.getByRole("button", { name: "إضافة" })).toBeDefined()
+})
+
+
+it("renders project tables and milestones in English from the app-wide language", () => {
+  act(() => useLanguageStore.getState().setLanguage("en"))
+  useMizan.setState({ projects: structuredClone(seedProjects), contacts: structuredClone(seedContacts), stock: structuredClone(seedStock) })
+  render(<Projects />)
+  expect(screen.getByText("Projects")).toBeDefined()
+  expect(screen.getByText("Collected")).toBeDefined()
+  expect(screen.getAllByText("In progress").length).toBeGreaterThan(0)
+  fireEvent.click(screen.getAllByRole("button", { name: "Milestones" })[0])
+  expect(screen.getByText("Milestones — phase progress")).toBeDefined()
+  expect(screen.getByText("Actual cost")).toBeDefined()
+})
+
+it("renders project creation and assignment in Arabic RTL", () => {
+  act(() => useLanguageStore.getState().setLanguage("ar"))
+  useMizan.setState({ projects: structuredClone(seedProjects), contacts: structuredClone(seedContacts), stock: structuredClone(seedStock) })
+  render(<Projects />)
+  expect(screen.getByText("المشاريع")).toBeDefined()
+  expect(screen.getAllByText("قيد التنفيذ").length).toBeGreaterThan(0)
+  fireEvent.click(screen.getByRole("button", { name: "مشروع جديد" }))
+  expect(screen.getByLabelText("اسم المشروع")).toBeDefined()
+  expect(screen.getByText("الميزانية (MAD)")).toBeDefined()
+  expect(screen.getByRole("button", { name: "إنشاء المشروع" })).toBeDefined()
+  expect(document.documentElement.lang).toBe("ar")
+  expect(document.documentElement.dir).toBe("rtl")
+})
+
+it("translates expense filters, categories, approval and the honest receipt notice into English", () => {
+  act(() => useLanguageStore.getState().setLanguage("en"))
+  useMizan.setState({ contacts: structuredClone(seedContacts), expenses: [{ ...seedExpenses[0], id: "expense-i18n", method: "transfer", status: "pending", receipt: true, amount: 123.5 }] })
+  render(<Procurement />)
+  expect(screen.getByText("Purchases & Expenses")).toBeDefined()
+  expect(screen.getByText("Materials")).toBeDefined()
+  expect(screen.getAllByText("Bank transfer").length).toBeGreaterThan(0)
+  expect(screen.getAllByText("Pending").length).toBeGreaterThan(0)
+  fireEvent.click(screen.getByRole("button", { name: "New expense" }))
+  expect(screen.getByText("This is a flag only: no file is attached or stored, and no OCR is run.")).toBeDefined()
+  expect(screen.getByText("Amount (MAD)")).toBeDefined()
+  expect(screen.getByLabelText("Description")).toBeDefined()
+})
+
+it("translates expense categories and controls into Arabic RTL", () => {
+  act(() => useLanguageStore.getState().setLanguage("ar"))
+  useMizan.setState({ contacts: structuredClone(seedContacts), expenses: [{ ...seedExpenses[0], id: "expense-i18n-ar", method: "check", status: "approved", receipt: false, amount: 123.5 }] })
+  render(<Procurement />)
+  expect(screen.getByText("المشتريات والمصاريف")).toBeDefined()
+  expect(screen.getByText("مواد البناء")).toBeDefined()
+  expect(screen.getAllByText("شيك").length).toBeGreaterThan(0)
+  expect(screen.getAllByText("تمت الموافقة").length).toBeGreaterThan(0)
+  fireEvent.click(screen.getByRole("button", { name: "مصروف جديد" }))
+  expect(screen.getByText("هذا مجرد مؤشر: لا يتم إرفاق ملف أو حفظه، ولا تُجرى معالجة ضوئية للنصوص (OCR)." )).toBeDefined()
+  expect(screen.getByLabelText("الوصف")).toBeDefined()
+  expect(document.documentElement.lang).toBe("ar")
+  expect(document.documentElement.dir).toBe("rtl")
 })

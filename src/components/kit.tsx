@@ -97,7 +97,7 @@ export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
       {...props}
-      className={`${inputBase} appearance-none bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2364748b%22 stroke-width=%223%22><path d=%22M6 9l6 6 6-6%22/></svg>')] bg-[length:12px] bg-[right_0.7rem_center] bg-no-repeat pr-8 ${props.className ?? ""}`}
+      className={`${inputBase} appearance-none bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2364748b%22 stroke-width=%223%22><path d=%22M6 9l6 6 6-6%22/></svg>')] bg-[length:12px] bg-[right_0.7rem_center] rtl:bg-[left_0.7rem_center] bg-no-repeat pe-8 rtl:pe-3 rtl:ps-8 ${props.className ?? ""}`}
     />
   )
 }
@@ -120,7 +120,7 @@ export function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: 
       role="switch"
       aria-checked={checked}
     >
-      <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${checked ? "left-[18px]" : "left-0.5"}`} />
+      <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${checked ? "start-[18px]" : "start-0.5"}`} />
     </button>
   )
 }
