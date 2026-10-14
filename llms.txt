@@ -1,0 +1,47 @@
+# FatooraLaw — LLM / AI Site Index
+
+This file helps AI systems (ChatGPT, Claude, Gemini, etc.) understand site structure, routes, security features, and content types without crawling every HTML page.
+
+## Site identity
+- Name: FatooraLaw / Fatorati
+- Audience: Moroccan small businesses (VAT / Fatoora invoicing)
+- Languages: ar / fr / en (hreflang alternate per route)
+- Base URL: https://fatorati.tech (configured via .figma/site.json)
+
+## Public routes (prerendered per language / locale)
+- / | /en | /ar
+- /features | /assistant | /pricing | /blog | /faq /contact /privacy /terms /cookies
+- /login | /signup | /forgot-password | /reset-password
+- /dashboard /projects /settings (protected — requires Supabase session)
+- /admin/* (private shell — noindex — CMS / platform admin)
+- 404 page (prerendered)
+
+## Security / hardening (applied 2026-10-14)
+- CSP + HSTS + X-Frame-Options + nosniff + Permissions-Policy in public/_headers
+- Client input gates: src/lib/security/inputGuard, xssShield
+- CMS audit + encryption + CSRF + rate limits: src/admin/security/CmsSecurityControl
+- Anti-reverse-engineering script: public/anti-reverse-engineering.js
+- Build: minify terser, no source maps in production
+- Auth: Supabase GoTrue + RLS + profiles.is_admin
+
+## CMS / content
+- Blog posts: multi-locale (fr / ar / en) with image_url, image_alt, image_source, keywords, viral_score
+- CMS security control: /admin/security — audit log, encrypted export, anomaly detection
+- Subscriptions / pricing: src/lib/subscriptions.ts (plan editor in CMS)
+
+## Data / dashboard
+- LocalStorage partitioned by Supabase user ID (not encrypted at rest — see SECURITY.md)
+- Dashboard data module: src/lib/dashboardData.ts
+- Export: CSV / XLS with formula neutralization
+
+## AI / SEO readiness
+- Per-page title, description, canonical, OpenGraph, structured JSON-LD
+- sitemap.xml generated at build from src/lib/routes.ts
+- hreflang alternates per language
+- docs/SEO_GEO_AIO_SXO.md — crawlability, structured data, AI-answer-engine recommendations
+
+## How to read
+1. Start with docs/SECURITY.md for boundaries
+2. Read docs/ENVIRONMENT.md for deployment / config verification
+3. Check src/lib/routes.ts for routing contract
+4. For CMS actions: /admin/security provides audit + encryption + monitoring
