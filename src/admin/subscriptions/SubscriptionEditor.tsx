@@ -50,3 +50,21 @@ export default function SubscriptionEditor() {
     </div>
   )
 }
+
+/* Quick activation section for clients — not admin */
+export function ClientActivationQuick() {
+  const [email, setEmail] = useState("")
+  const [tier, setTier] = useState("Pro")
+  const [status, setStatus] = useState("")
+  return (
+    <div className="rounded-xl border bg-amber-50 p-4 shadow-sm mt-4">
+      <h3 className="font-bold text-amber-800">Activate Client — Plan Only (Not Admin)</h3>
+      <div className="flex gap-2 mt-2 flex-wrap">
+        <input value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="Client email" className="px-2 py-1 border rounded text-sm" />
+        <select value={tier} onChange={(e)=>setTier(e.target.value)} className="px-2 py-1 border rounded text-sm"><option>Essential</option><option>Pro</option><option>Pro Max</option></select>
+        <button onClick={()=>{ try { const a=JSON.parse(localStorage.getItem("client_activations")??"[]"); a.push({email, tier, activated:new Date().toISOString()}); localStorage.setItem("client_activations",JSON.stringify(a)); setStatus("Activated "+tier+" for "+email); } catch(_) {setStatus("Failed")} }} className="px-3 py-1 bg-amber-600 text-white text-sm rounded">Activate Plan</button>
+      </div>
+      <div className="text-xs text-gray-600 mt-1">Status: {status} — does NOT set is_admin. Admin stays only for operator.</div>
+    </div>
+  )
+}
