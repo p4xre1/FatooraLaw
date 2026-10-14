@@ -1,60 +1,68 @@
-import { useEffect, useState } from "react"
-import { useOutletContext } from "react-router"
-import { Eye, Save, Trash2 } from "lucide-react"
-import { Btn, Card, Field, Input, Select, Textarea } from "../../components/kit"
-import type { LocaleId } from "../../lib/locales"
-import type { AdminAccess } from "../lib/adminAuth"
-import { errorMessage, LocaleSelect, PanelCard } from "./SitePanelKit"
-import { deleteManagedPage, listManagedPages, saveManagedPage, type CmsPage, type CmsPageSlug } from "./client"
+import { useState, useEffect } from "react"
+import { Eye, EyeOff, Save, Edit3, Trash2 } from "lucide-react"
 
-const SLUGS: CmsPageSlug[] = ["about", "faq", "contact", "terms", "privacy"]
-const NAMES: Record<CmsPageSlug, string> = { about: "À propos / عن الموقع", faq: "FAQ / الأسئلة الشائعة", contact: "Contact / التواصل", terms: "Terms / الشروط", privacy: "Privacy / الخصوصية" }
-const empty = (slug: CmsPageSlug, locale: LocaleId): CmsPage => ({ slug, locale, title: "", excerpt: "", body: "", seo_title: "", seo_description: "", canonical_url: "", noindex: false, published: false, published_at: null })
+type PageEdit = {
+  path: string
+  title: string
+  description: string
+  body: string
+  hidden: boolean
+  lang: string
+}
+
+const DEFAULT_PAGES: PageEdit[] = [
+  { path: "/", title: "Fatorati — Small Business Dashboard", description: "VAT invoicing and business management for Moroccan entrepreneurs.", body: "", hidden: false, lang: "fr" },
+  { path: "/features", title: "Features", description: "Features of FatooraLaw dashboard.", body: "", hidden: false, lang: "fr" },
+  { path: "/pricing", title: "Pricing", description: "Subscription plans and pricing.", body: "", hidden: false, lang: "fr" },
+  { path: "/blog", title: "Blog", description: "Articles, news, legal dictionary.", body: "", hidden: false, lang: "fr" },
+  { path: "/faq", title: "FAQ", description: "Frequently asked questions.", body: "", hidden: false, lang: "fr" },
+  { path: "/contact", title: "Contact", description: "Contact details and support.", body: "", hidden: false, lang: "fr" },
+  { path: "/privacy", title: "Privacy", description: "Privacy policy.", body: "", hidden: false, lang: "fr" },
+  { path: "/terms", title: "Terms", description: "Terms of service.", body: "", hidden: false, lang: "fr" },
+  { path: "/cookies", title: "Cookies", description: "Cookie policy.", body: "", hidden: false, lang: "fr" },
+  { path: "/login", title: "Login", description: "Admin and user login.", body: "", hidden: false, lang: "fr" },
+]
 
 export default function PagesPanel() {
-  const access = useOutletContext<AdminAccess>()
-  const [rows, setRows] = useState<CmsPage[]>([])
-  const [slug, setSlug] = useState<CmsPageSlug>("about")
-  const [locale, setLocale] = useState<LocaleId>("fr")
-  const [draft, setDraft] = useState<CmsPage>(empty("about", "fr"))
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState("")
-  const [notice, setNotice] = useState("")
-  async function refresh() { setLoading(true); try { setRows(await listManagedPages()); setError("") } catch (err) { setError(errorMessage(err)) } finally { setLoading(false) } }
-  useEffect(() => { void refresh() }, [])
-  useEffect(() => { setDraft({ ...(rows.find((row) => row.slug === slug && row.locale === locale) ?? empty(slug, locale)), slug, locale }) }, [rows, slug, locale])
+  const [pages, setPages] = useState<PageEdit[]>([])
+  const [editId, setEditId] = useState<string | null>(null)
+  const [status, setStatus] = useState("")
 
-  async function save() {
-    if (!access.user?.id) return
-    setSaving(true); setError(""); setNotice("")
-    try { await saveManagedPage(draft, access.user.id); setNotice("تم حفظ الصفحة."); await refresh() }
-    catch (err) { setError(errorMessage(err)) } finally { setSaving(false) }
-  }
-  async function remove() {
-    if (!draft.id || !window.confirm("حذف مسودة الصفحة نهائياً؟")) return
-    setSaving(true); setError("")
-    try { await deleteManagedPage(draft.id); setNotice("تم حذف سجل الصفحة."); await refresh() }
-    catch (err) { setError(errorMessage(err)) } finally { setSaving(false) }
-  }
+  useEffect(() => {
+    try { setPages(JSON.parse(localStorage.getItem("cms_pages") ?? JSON.stringify(DEFAULT_PAGES))) } catch (_) { setPages(DEFAULT_PAGES) }
+  }, [])
 
-  return <PanelCard title="صفحات الموقع" description="إدارة صفحات «عن الموقع» والأسئلة الشائعة والتواصل والشروط والخصوصية بالفرنسية والعربية والإنجليزية. محتوى النص يُعرض كنص آمن ولا يُفسّر كـ HTML." loading={loading} error={error} notice={notice} action={<LocaleSelect value={locale} onChange={setLocale} />}>
-    <div className="grid gap-4 md:grid-cols-2">
-      <Field label="الصفحة"><Select value={slug} onChange={(event) => setSlug(event.target.value as CmsPageSlug)}>{SLUGS.map((item) => <option key={item} value={item}>{NAMES[item]}</option>)}</Select></Field>
-      <Field label="العنوان"><Input maxLength={200} value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} /></Field>
-      <div className="md:col-span-2"><Field label="مقتطف موجز"><Textarea rows={2} maxLength={1000} value={draft.excerpt} onChange={(event) => setDraft({ ...draft, excerpt: event.target.value })} /></Field></div>
-      <div className="md:col-span-2"><Field label="المحتوى" hint="استخدم فقرات منفصلة بعناوين تبدأ بـ ## أو قوائم تبدأ بـ -."><Textarea rows={13} maxLength={200000} value={draft.body} onChange={(event) => setDraft({ ...draft, body: event.target.value })} /></Field></div>
+  const save = () => { try { localStorage.setItem("cms_pages", JSON.stringify(pages)); setStatus("Saved to CMS") } catch (_) { setStatus("Save failed") } }
+  const update = (path: string, patch: Partial<PageEdit>) => setPages(pages.map((p) => p.path === path ? { ...p, ...patch } : p))
+
+  return (
+    <div className="p-6 max-w-5xl mx-auto">
+      <h1 className="text-2xl font-bold mb-2">CMS — All Site Pages (Edit Text + Hide)</h1>
+      <p className="text-xs text-gray-500 mb-4">Edit title / description / body per page. Toggle Hidden to exclude from navigation/render. Save writes to localStorage. For true build-time exclusion: rebuild after hiding.</p>
+      <div className="flex gap-2 mb-3"><button onClick={save} className="px-3 py-1 bg-blue-600 text-white text-sm rounded flex items-center gap-2"><Save size={14}/> Save All</button><span className="text-xs text-gray-500">Status: {status}</span></div>
+
+      <div className="space-y-3">
+        {pages.map((p) => (
+          <div key={p.path} className={`rounded-xl border bg-white p-4 shadow-sm ${p.hidden ? "opacity-60 border-dashed" : ""}`}>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="font-bold text-sm flex items-center gap-2">{p.path} <span className="text-xs text-gray-400">({p.lang})</span> {p.hidden && <span className="text-xs bg-red-100 text-red-600 px-1 rounded">HIDDEN</span>}</div>
+              <div className="flex gap-2">
+                <button onClick={() => update(p.path, { hidden: !p.hidden })} className={`px-2 py-1 text-xs rounded border ${p.hidden ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}><EyeOff size={12}/> {p.hidden ? "Show" : "Hide"}</button>
+                <button onClick={() => setEditId(editId === p.path ? null : p.path)} className="px-2 py-1 text-xs rounded border bg-blue-50 text-blue-700"><Edit3 size={12}/> Edit</button>
+              </div>
+            </div>
+            {editId === p.path ? (
+              <div className="space-y-2">
+                <input value={p.title} onChange={(e) => update(p.path, { title: e.target.value })} className="w-full px-2 py-1 border rounded text-sm font-semibold" />
+                <input value={p.description} onChange={(e) => update(p.path, { description: e.target.value })} className="w-full px-2 py-1 border rounded text-sm" />
+                <textarea value={p.body} onChange={(e) => update(p.path, { body: e.target.value })} rows={3} className="w-full px-2 py-1 border rounded text-sm resize-none" placeholder="Page body / content (plain text for AI/SEO)" />
+              </div>
+            ) : (
+              <div className="text-sm text-gray-600"><strong>Title:</strong> {p.title} | <strong>Desc:</strong> {p.description || "—"}</div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
-    <div className="grid gap-4 md:grid-cols-2">
-      <Field label="عنوان SEO"><Input maxLength={80} value={draft.seo_title} onChange={(event) => setDraft({ ...draft, seo_title: event.target.value })} /></Field>
-      <Field label="الوصف التعريفي"><Textarea rows={2} maxLength={320} value={draft.seo_description} onChange={(event) => setDraft({ ...draft, seo_description: event.target.value })} /></Field>
-      <div className="md:col-span-2"><Field label="الرابط القانوني Canonical" hint="اتركه فارغاً لاستخدام رابط الصفحة المحلي."><Input type="url" value={draft.canonical_url} onChange={(event) => setDraft({ ...draft, canonical_url: event.target.value })} /></Field></div>
-    </div>
-    <div className="flex flex-wrap gap-5">
-      <label className="flex items-center gap-2 text-[12px] font-medium text-ink"><input type="checkbox" checked={draft.published} onChange={(event) => setDraft({ ...draft, published: event.target.checked })} /> منشورة</label>
-      <label className="flex items-center gap-2 text-[12px] font-medium text-ink"><input type="checkbox" checked={draft.noindex} onChange={(event) => setDraft({ ...draft, noindex: event.target.checked })} /> منع الفهرسة</label>
-    </div>
-    <Card className="bg-canvas/70 p-4"><div className="flex items-center gap-2 text-[11px] font-bold text-muted"><Eye className="h-4 w-4" /> معاينة مسودة</div><h3 className="mt-2 text-[18px] font-bold text-ink">{draft.title || "عنوان الصفحة"}</h3><p className="mt-1 text-[11px] text-muted">{draft.excerpt}</p><pre className="mt-3 max-h-36 overflow-auto whitespace-pre-wrap font-sans text-[12px] leading-relaxed text-muted">{draft.body || "سيظهر محتوى الصفحة هنا."}</pre></Card>
-    <div className="flex flex-wrap justify-end gap-2">{draft.id && <Btn variant="danger" onClick={() => void remove()} disabled={saving}><Trash2 className="h-4 w-4" /> حذف الصفحة</Btn>}<Btn onClick={() => void save()} disabled={saving || !access.user?.id}><Save className="h-4 w-4" />{saving ? "جارٍ الحفظ…" : "حفظ الصفحة"}</Btn></div>
-  </PanelCard>
+  )
 }

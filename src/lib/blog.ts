@@ -10,6 +10,10 @@ export type BlogContent = {
   seo_title: string
   seo_description: string
   keywords: string[]
+  image_url?: string
+  image_alt?: string
+  image_source?: "r2" | "supabase" | "url" | "none"
+  viral_score?: number // 0-100 calculated from SEO standards
 }
 
 export type BlogTranslation = BlogContent & {

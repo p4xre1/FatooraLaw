@@ -20,15 +20,20 @@ export const MAX_PASSWORD_LENGTH = 72
 
 export const MAX_NAME_LENGTH = 120
 
-/** Trims whitespace and strips control characters (defense in depth; React already escapes output). */
+/** Trims whitespace, strips control characters, and blocks injection signatures (defense in depth). */
 export function sanitizeInput(value: string): string {
-  // eslint-disable-next-line no-control-regex
-  return value.trim().replace(/[\u0000-\u001F\u007F]/g, "")
+  const base = value.trim().replace(/[\u0000-\u001F\u007F]/g, "")
+  // Block script/event/protocol injection patterns
+  return base.replace(/(<\s*script|javascript:|on\w+\s*=|eval\s*\(|<\s*iframe|<\s*object|<\s*embed|<\s*form|select\s+.*\bfrom\b|insert\s+into|delete\s+from|drop\s+table)/gi, "")
 }
 
 export function isValidEmail(value: string): boolean {
   const email = value.trim()
-  return email.length > 0 && email.length <= MAX_EMAIL_LENGTH && EMAIL_PATTERN.test(email)
+  // Use strict allowlist: blocks injection signatures and restricts characters
+  if (email.length === 0 || email.length > MAX_EMAIL_LENGTH) return false
+  const safe = email.replace(/[\x00-\x1F\x7F]/g, "").replace(/(<\s*script|javascript:|on\w+\s*=|eval\s*\()/gi, "")
+  if (safe !== email) return false
+  return /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(safe)
 }
 
 export type PasswordIssue = "required" | "tooShort" | "tooLong" | null

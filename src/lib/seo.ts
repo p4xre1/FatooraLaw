@@ -434,7 +434,6 @@ ${languages}
 - The signed-in application (/dashboard, /projects, …) and the CMS (/admin)
   are private: they are marked \`noindex\` and require an account.
 - Contact: bonjour@fatorati.tech
-- Source code and entity profile: https://github.com/p4xre1/FatooraLaw
 - Official figures cited on the pages (VAT 20%, CGI article 208, Law 09-08)
   come from the Direction Générale des Impôts (https://www.tax.gov.ma/) and
   the CNDP (https://www.cndp.ma/). Demo dashboard numbers are labelled as fictional.

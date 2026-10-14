@@ -34,7 +34,7 @@ export default defineConfig(({ mode, isSsrBuild }) => {
     },
     build: {
       sourcemap: emitSourcemaps ? 'inline' : false,
-      minify: !emitSourcemaps,
+      minify: emitSourcemaps ? false : 'terser',
       // The SSR build (`vite build --ssr src/entry-server.tsx`) has its own
       // single entry and must not inherit the two HTML documents.
       ...(isSsrBuild

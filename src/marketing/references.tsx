@@ -490,7 +490,6 @@ export function ReferenceSection({ lang }: { lang: RefLang }) {
         {" · "}
         <a href={to("contact")} onClick={onInternalLinkClick} className="font-semibold hover:text-[var(--l-heading)]">{lang === "fr" ? "Contact" : lang === "en" ? "Contact" : "تواصل معنا"}</a>
         {" · "}
-        <ExternalLink href={GITHUB_URL}><cite>GitHub</cite></ExternalLink>
       </p>
 
       {copy.sections.map((section) => (
@@ -550,7 +549,6 @@ export function ReferenceSection({ lang }: { lang: RefLang }) {
           <li><ExternalLink href={SOURCES.cgi.url}><cite>{SOURCES.cgi.name}</cite></ExternalLink> — {copy.penaltyLabel}.</li>
           <li><ExternalLink href={SOURCES.cndp.url}><cite>{SOURCES.cndp.name}</cite></ExternalLink></li>
           <li><ExternalLink href={SOURCES.dgi.url}><cite>{SOURCES.dgi.name}</cite></ExternalLink></li>
-          <li><ExternalLink href={GITHUB_URL}><cite>GitHub — FatooraLaw</cite></ExternalLink></li>
         </ul>
         <p className="mt-4 text-[13px] leading-relaxed text-[var(--l-faint)]">{copy.notAdvice}</p>
       </section>

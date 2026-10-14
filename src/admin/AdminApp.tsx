@@ -9,9 +9,12 @@ import { BlogEditorView, BlogListView } from "./blogs"
 import AdminDashboardView from "./platform/DashboardView"
 import SubscriptionsView from "./platform/SubscriptionsView"
 import AnalyticsView from "./platform/AnalyticsView"
-import SecurityView from "./platform/SecurityView"
+import SecurityView from "./security/CmsSecurityControl"
 import NotificationsView from "./platform/NotificationsView"
 import AlgorithmsView from "./platform/AlgorithmsView"
+import PagesPanel from "./site/PagesPanel"
+import MonitorPanel from "./monitor/MonitorPanel"
+import ContentImprovement from "./content/ContentImprovement"
 import WebsiteView from "./site/WebsiteView"
 import SupportRequestsView from "./site/SupportRequestsView"
 import BackupsView from "./site/BackupsView"
@@ -40,6 +43,9 @@ export default function AdminApp() {
           </Route>
           <Route element={<ContentAdminRoute />}>
             <Route path="website" element={<WebsiteView />} />
+            <Route path="site/pages" element={<PagesPanel />} />
+          <Route path="monitor" element={<MonitorPanel />} />
+            <Route path="content-improvement" element={<ContentImprovement />} />
             <Route path="blogs" element={<BlogListView />} />
             <Route path="blogs/new" element={<BlogEditorView />} />
             <Route path="blogs/:id" element={<BlogEditorView />} />

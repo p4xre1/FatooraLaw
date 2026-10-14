@@ -51,6 +51,9 @@ function cleanLocales(locales: Record<EditableLocale, BlogContent>): Record<Edit
       seo_title: value.seo_title.trim(),
       seo_description: value.seo_description.trim(),
       keywords: [...new Set(value.keywords.map((keyword) => keyword.trim()).filter(Boolean))].slice(0, 20),
+      image_url: value.image_url ? value.image_url.trim() : "",
+      image_alt: value.image_alt ? value.image_alt.trim() : "",
+      image_source: (value.image_source as any) || "none",
     }]
   })) as Record<EditableLocale, BlogContent>
 }
