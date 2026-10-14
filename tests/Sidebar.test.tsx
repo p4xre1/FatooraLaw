@@ -230,10 +230,14 @@ it("filters the rail by search and reveals a match hidden in the collapsed group
   expect(screen.getByRole("button", { name: /Plus d'outils/ }).getAttribute("aria-expanded")).toBe("true")
 })
 
-it("keeps the French label searchable while the rail is in another language", () => {
+it("keeps every language's label searchable, not just the one on screen", () => {
   renderSidebar()
-  fireEvent.change(screen.getByLabelText("Rechercher un module"), { target: { value: "Stock" } })
-  expect(screen.getByRole("link", { name: "Stock & Matériel" })).not.toBeNull()
+  act(() => useLanguageStore.getState().setLanguage("en"))
+  // "Matériel" is in the French name only — the rail is now showing
+  // "Stock & Equipment". Matching just the visible label would make the search
+  // feel broken to anyone who thinks in the other language.
+  fireEvent.change(screen.getByLabelText("Search a module"), { target: { value: "Matériel" } })
+  expect(screen.getByRole("link", { name: "Stock & Equipment" })).not.toBeNull()
 })
 
 it("says so when nothing matches, and keeps the pinned footer usable", () => {

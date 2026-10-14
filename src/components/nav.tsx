@@ -5,20 +5,30 @@ import {
 } from "lucide-react"
 import type { ModuleKey } from "../store/types"
 
-export const NAV: { key: ModuleKey; label: string; icon: typeof LayoutDashboard; group: string }[] = [
-  { key: "dashboard", label: "Tableau de bord", icon: LayoutDashboard, group: "Pilotage" },
-  { key: "projects", label: "Projets", icon: FolderKanban, group: "Opérations" },
-  { key: "contacts", label: "Clients & Fournisseurs", icon: Users, group: "Opérations" },
-  { key: "procurement", label: "Achats & Dépenses", icon: ShoppingCart, group: "Opérations" },
-  { key: "inventory", label: "Stock & Matériel", icon: Boxes, group: "Opérations" },
-  { key: "calendar", label: "Calendrier", icon: CalendarDays, group: "Suivi & Échéances" },
-  { key: "risk", label: "Gestion des Risques", icon: ShieldAlert, group: "Suivi & Échéances" },
-  { key: "tools", label: "Abonnements & Outils", icon: Wrench, group: "Suivi & Échéances" },
-  { key: "legal", label: "Coffre juridique", icon: Scale, group: "Conformité" },
-  { key: "reports", label: "Rapports & Fiscalité", icon: BarChart3, group: "Conformité" },
-  { key: "team", label: "Équipe & Rôles", icon: ShieldCheck, group: "Administration" },
-  { key: "audit", label: "Journal d'audit", icon: ScrollText, group: "Administration" },
-  { key: "settings", label: "Paramètres", icon: Settings, group: "Administration" },
+/**
+ * The module catalogue: order, icon and legacy group.
+ *
+ * `label` is gone from here on purpose. Module names are translatable copy and
+ * now live in `src/i18n/shared.ts`, so the page title, the navigation rail, the
+ * team permission grid and the audit log all read the same thirteen names in
+ * whichever language is on screen. What stays is what is not copy: the order
+ * `App.tsx` picks a first allowed module in, the icons, and the group each
+ * module belonged to before the rail was regrouped.
+ */
+export const NAV: { key: ModuleKey; icon: typeof LayoutDashboard; group: string }[] = [
+  { key: "dashboard", icon: LayoutDashboard, group: "Pilotage" },
+  { key: "projects", icon: FolderKanban, group: "Opérations" },
+  { key: "contacts", icon: Users, group: "Opérations" },
+  { key: "procurement", icon: ShoppingCart, group: "Opérations" },
+  { key: "inventory", icon: Boxes, group: "Opérations" },
+  { key: "calendar", icon: CalendarDays, group: "Suivi & Échéances" },
+  { key: "risk", icon: ShieldAlert, group: "Suivi & Échéances" },
+  { key: "tools", icon: Wrench, group: "Suivi & Échéances" },
+  { key: "legal", icon: Scale, group: "Conformité" },
+  { key: "reports", icon: BarChart3, group: "Conformité" },
+  { key: "team", icon: ShieldCheck, group: "Administration" },
+  { key: "audit", icon: ScrollText, group: "Administration" },
+  { key: "settings", icon: Settings, group: "Administration" },
 ]
 
 export function Logo({ size = 32, light = false }: { size?: number; light?: boolean }) {

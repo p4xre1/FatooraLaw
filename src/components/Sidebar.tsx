@@ -6,7 +6,8 @@ import {
 import type { ModuleKey } from "../store/types"
 import { NAV, Logo } from "./nav"
 import { modulePath } from "../lib/routes"
-import { LOCALES } from "../lib/locales"
+import { LOCALES, LOCALE_IDS } from "../lib/locales"
+import { translations } from "../i18n"
 import { useTranslation, type Language } from "../lib/language/store"
 import { useMizan } from "../store/useMizan"
 
@@ -50,6 +51,16 @@ const MORE_MODULES: ModuleKey[] = ["risk", "legal", "tools"]
 const ACCOUNT_MODULES: ModuleKey[] = ["team", "audit"]
 
 const NAV_BY_KEY = new Map(NAV.map((entry) => [entry.key, entry]))
+
+/**
+ * Every published name of each module, so the rail can be searched in a language
+ * other than the one on screen: a visitor who switched the UI to English can
+ * still type "dépenses" and reach Achats & Dépenses. Matching only the visible
+ * label would make the search feel broken to anyone who thinks in the other one.
+ */
+const LABELS_IN_EVERY_LANGUAGE = new Map<ModuleKey, string[]>(
+  NAV.map((entry) => [entry.key, LOCALE_IDS.map((id) => translations[id].shared.modules[entry.key])]),
+)
 
 /* --------------------------- persisted prefs ---------------------------- */
 
@@ -146,14 +157,16 @@ export default function Sidebar({
 
   /* Items ---------------------------------------------------------------- */
 
-  const label = (key: ModuleKey) => t.modules[key] ?? NAV_BY_KEY.get(key)?.label ?? key
+  const label = (key: ModuleKey) => copy.shared.modules[key] ?? key
 
   /** A rail row: a real module, or the invoice placeholder when it ships. */
   type Item = { id: string; href: string; icon: typeof Search; label: string; on: boolean; moduleKey: ModuleKey | null }
 
   const query = q.trim().toLowerCase()
   const matches = (key: ModuleKey, text: string) =>
-    !query || text.toLowerCase().includes(query) || (NAV_BY_KEY.get(key)?.label ?? "").toLowerCase().includes(query)
+    !query ||
+    text.toLowerCase().includes(query) ||
+    (LABELS_IN_EVERY_LANGUAGE.get(key) ?? []).some((name) => name.toLowerCase().includes(query))
 
   /** Permission-filtered rows. The pinned footer uses this directly: it is
    *  pinned, so a search that matches nothing must not remove Paramètres. */

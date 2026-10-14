@@ -3,6 +3,7 @@ import { Loader2, ShieldAlert } from "lucide-react"
 import type { ModuleKey } from "./store/types"
 import { useMizan } from "./store/useMizan"
 import { NAV } from "./components/nav"
+import { useAppLanguage } from "./lib/language/store"
 import Auth from "./components/Auth"
 import NotFound from "./components/NotFound"
 import OnboardingModal from "./components/OnboardingModal"
@@ -92,6 +93,11 @@ export default function App() {
   const { auth, team } = useMizan()
   const path = useRoutePath()
   const { ready, recovery, clearRecovery, logout } = useSupabaseAuth()
+  // The page title and <title> follow the app language. This is the side-effect
+  // free hook on purpose: App also renders the marketing routes, where
+  // Landing.tsx owns lang/dir on <html> from the URL, and a preference-driven
+  // write here would fight it.
+  const { t: copy } = useAppLanguage()
   const { needsOnboarding, submitting: onboardingSubmitting, error: onboardingError, submit: submitOnboarding } = useOnboarding(auth?.id ?? null)
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -232,7 +238,7 @@ export default function App() {
   if (!current) {
     return <NoAccess onSignOut={signOutAndGoHome} />
   }
-  const title = NAV.find((n) => n.key === current)?.label ?? "Fatorati"
+  const title = copy.shared.modules[current]
 
   function go(m: ModuleKey) {
     navigate(modulePath(m))

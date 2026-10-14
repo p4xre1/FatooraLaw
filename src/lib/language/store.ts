@@ -104,37 +104,52 @@ export const useLanguageStore = create<LanguageState>()(
   ),
 )
 
-/**
- * Primary hook for every screen: exposes the active language, a setter, the
- * resolved text direction, and the translation dictionary for that language.
- * Also applies `dir`/`lang` to `<html>` so native browser behaviour (scrollbars,
- * form controls, text selection, and the `[dir="rtl"]` rules in `index.css`)
- * follows the language too.
- */
-export function useTranslation(): {
+type TranslationBundle = {
   language: Language
   setLanguage: (language: Language) => void
   dir: "rtl" | "ltr"
   /**
    * BCP-47 tag for this language (`fr-MA`, `ar-MA`, `en`), from the same locale
-   * table the marketing site uses for `hreflang`. Feed it to `Intl` so dates,
+   * table the marketing site keeps for `hreflang`. Feed it to `Intl` so dates,
    * numbers and relative times are formatted for the language on screen rather
    * than for the browser's.
    */
   tag: string
   t: Translation
-} {
+}
+
+/**
+ * The current language and its dictionary, with no side effects.
+ *
+ * Use this in any component that can render alongside the marketing pages:
+ * `src/marketing/Landing.tsx` writes `lang`/`dir` to `<html>` from the *URL*
+ * (`/ar/pricing`), so a preference-driven write there would fight it. `App.tsx`
+ * renders both the landing route and the signed-in shell, which is exactly that
+ * case — it reads the title from here and leaves the document alone.
+ */
+export function useAppLanguage(): TranslationBundle {
   const language = useLanguageStore((s) => s.language)
   const setLanguage = useLanguageStore((s) => s.setLanguage)
   const dir = isRTL(language) ? "rtl" : "ltr"
-
-  useEffect(() => {
-    if (typeof document === "undefined") return // prerendering has no document
-    document.documentElement.dir = dir
-    document.documentElement.lang = language
-  }, [dir, language])
-
   const t = useMemo(() => translations[language] ?? translations[DEFAULT_LANGUAGE], [language])
 
   return { language, setLanguage, dir, tag: localeInfo(language).tag, t }
+}
+
+/**
+ * Primary hook for a screen of the signed-in app: everything `useAppLanguage()`
+ * gives, plus `dir`/`lang` on `<html>` so native browser behaviour (scrollbars,
+ * form controls, text selection, and the `[dir="rtl"]` rules in `index.css`)
+ * follows the language too.
+ */
+export function useTranslation(): TranslationBundle {
+  const bundle = useAppLanguage()
+
+  useEffect(() => {
+    if (typeof document === "undefined") return // prerendering has no document
+    document.documentElement.dir = bundle.dir
+    document.documentElement.lang = bundle.language
+  }, [bundle.dir, bundle.language])
+
+  return bundle
 }

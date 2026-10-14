@@ -1,4 +1,3 @@
-import type { ModuleKey } from "../store/types.ts"
 import type { Language } from "../lib/language/store.ts"
 
 /**
@@ -9,15 +8,13 @@ import type { Language } from "../lib/language/store.ts"
  * keeps it reviewable, and `Record<Language, ShellCopy>` still makes a missing
  * key in any one language a compile error.
  *
- * `modules` is deliberately partial. French falls through to the labels in
- * `components/nav.tsx`, which `App.tsx` also derives the page title and the
- * first allowed module from, so restating them here would give the same string
- * two homes. English and Arabic supply every module.
+ * Module *names* are not here: they live in `src/i18n/shared.ts`, because the
+ * page title, the team permission grid and the audit log all need the same
+ * thirteen names, and this rail must not be the only place that knows them.
  */
 
 export type ShellCopy = {
   groups: { daily: string; management: string; more: string }
-  modules: Partial<Record<ModuleKey, string>>
   invoices: string
   newInvoice: string
   quickActions: string
@@ -42,7 +39,6 @@ export const shell: Record<Language, ShellCopy> = {
   fr: {
     groups: { daily: "Au quotidien", management: "Gestion", more: "Plus d'outils" },
     // French labels already live in `NAV`; only the other locales override.
-    modules: {},
     invoices: "Factures",
     newInvoice: "Nouvelle facture",
     quickActions: "Actions rapides",
@@ -64,21 +60,6 @@ export const shell: Record<Language, ShellCopy> = {
   },
   en: {
     groups: { daily: "Day to day", management: "Management", more: "More tools" },
-    modules: {
-      dashboard: "Dashboard",
-      projects: "Projects",
-      contacts: "Clients & Suppliers",
-      procurement: "Purchases & Expenses",
-      inventory: "Stock & Equipment",
-      calendar: "Calendar",
-      risk: "Risk Management",
-      tools: "Subscriptions & Tools",
-      legal: "Legal Vault",
-      reports: "Reports & Tax",
-      team: "Team & Roles",
-      audit: "Audit Log",
-      settings: "Settings",
-    },
     invoices: "Invoices",
     newInvoice: "New invoice",
     quickActions: "Quick actions",
@@ -100,21 +81,6 @@ export const shell: Record<Language, ShellCopy> = {
   },
   ar: {
     groups: { daily: "يومياً", management: "التدبير", more: "أدوات أخرى" },
-    modules: {
-      dashboard: "لوحة التحكم",
-      projects: "المشاريع",
-      contacts: "العملاء والموردون",
-      procurement: "المشتريات والمصاريف",
-      inventory: "المخزون والمعدات",
-      calendar: "التقويم",
-      risk: "إدارة المخاطر",
-      tools: "الاشتراكات والأدوات",
-      legal: "الخزنة القانونية",
-      reports: "التقارير والضرائب",
-      team: "الفريق والأدوار",
-      audit: "سجل التدقيق",
-      settings: "الإعدادات",
-    },
     invoices: "الفواتير",
     newInvoice: "فاتورة جديدة",
     quickActions: "إجراءات سريعة",

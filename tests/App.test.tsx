@@ -3,6 +3,7 @@ import { beforeEach, expect, it, vi } from "vitest"
 import App from "../src/App"
 import { useMizan } from "../src/store/useMizan"
 import { defaultSettings } from "../src/store/defaults"
+import { useLanguageStore } from "../src/lib/language/store"
 
 const { logoutMock } = vi.hoisted(() => ({ logoutMock: vi.fn() }))
 vi.mock("../src/hooks/useSupabaseAuth", () => ({ useSupabaseAuth: () => ({ ready: true, recovery: false, clearRecovery: vi.fn(), logout: logoutMock }) }))
@@ -48,4 +49,28 @@ it("routes the sidebar's sign-out through the shell's single logout path", () =>
   // effect still sees a signed-in visitor on "/" and sends it back to a module
   // route; asserting the call is what proves the wiring, not the final path.
   expect(logoutMock).toHaveBeenCalledOnce()
+})
+
+it("puts the module name in the page title in whichever language is chosen", async () => {
+  render(<App />)
+  // The signed-in shell is noindex, so the title is applied by applyNoIndexHead.
+  await waitFor(() => expect(document.title).toContain("Tableau de bord"))
+
+  act(() => useLanguageStore.getState().setLanguage("en"))
+  await waitFor(() => expect(document.title).toContain("Dashboard"))
+
+  act(() => useLanguageStore.getState().setLanguage("ar"))
+  await waitFor(() => expect(document.title).toContain("لوحة التحكم"))
+  expect(document.title).not.toContain("Tableau de bord")
+})
+
+it("leaves lang/dir on <html> alone, which the marketing pages own from the URL", () => {
+  // App renders both the landing routes and the signed-in shell, so it reads the
+  // language without the document side effect: Landing.tsx writes lang/dir from
+  // the URL prefix, and a preference-driven write here would fight it.
+  document.documentElement.lang = "ar"
+  document.documentElement.dir = "rtl"
+  render(<App />)
+  expect(document.documentElement.lang).toBe("ar")
+  expect(document.documentElement.dir).toBe("rtl")
 })
