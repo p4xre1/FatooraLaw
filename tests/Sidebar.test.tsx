@@ -1,12 +1,13 @@
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
-import { fireEvent, render, screen, within } from "@testing-library/react"
+import { act, fireEvent, render, screen, within } from "@testing-library/react"
 import { beforeEach, expect, it, vi } from "vitest"
 import Sidebar from "../src/components/Sidebar"
 import { useMizan } from "../src/store/useMizan"
 import { perms } from "../src/store/seed"
 import type { ModuleKey } from "../src/store/types"
 import { modulePath } from "../src/lib/routes"
+import { LANGUAGE_STORAGE_KEY, useLanguageStore } from "../src/lib/language/store"
 
 /**
  * The left rail's contract. `App.test.tsx` mocks this component out, so before
@@ -319,10 +320,14 @@ it("switches to English, keeping the same modules and the same active row", () =
   expect(screen.getByText("Day to day")).not.toBeNull()
   expect(screen.getByText("Management")).not.toBeNull()
   expect(screen.getByLabelText("Search a module")).not.toBeNull()
-  expect(localStorage.getItem("mizan.sidebar.lang")).toBe("en")
+  // One preference for the whole app now, not a sidebar-private key that had to
+  // be mirrored into the dashboard's by hand.
+  expect(useLanguageStore.getState().language).toBe("en")
+  expect(JSON.parse(localStorage.getItem(LANGUAGE_STORAGE_KEY)!).state.language).toBe("en")
+  expect(localStorage.getItem("mizan.sidebar.lang")).toBeNull()
 })
 
-it("switches to Arabic, mirrors the rail to RTL and keeps the dashboard's own switch in step", () => {
+it("switches to Arabic, mirroring the rail and the whole document to RTL", () => {
   const { aside } = renderSidebar()
   expect(aside.getAttribute("dir")).toBe("ltr")
   expect(aside.getAttribute("lang")).toBe("fr")
@@ -335,20 +340,24 @@ it("switches to Arabic, mirrors the rail to RTL and keeps the dashboard's own sw
   expect(screen.getByRole("link", { name: "لوحة التحكم" }).getAttribute("href")).toBe("/dashboard")
   expect(screen.getByText("يومياً")).not.toBeNull()
   expect(screen.getByLabelText("ابحث عن وحدة")).not.toBeNull()
-  expect(localStorage.getItem("mizan.sidebar.lang")).toBe("ar")
-  // The dashboard has no English, and shares this key: ar mirrors, en would not.
-  expect(localStorage.getItem("mizan.dashboard.lang")).toBe("ar")
+  expect(useLanguageStore.getState().language).toBe("ar")
+  // useTranslation() writes to <html>, so the page — not just the rail — flips.
+  expect(document.documentElement.getAttribute("dir")).toBe("rtl")
+  expect(document.documentElement.getAttribute("lang")).toBe("ar")
 })
 
-it("restores the chosen language on the next mount", () => {
-  localStorage.setItem("mizan.sidebar.lang", "en")
+it("restores the chosen language on the next mount", async () => {
+  localStorage.setItem(LANGUAGE_STORAGE_KEY, JSON.stringify({ state: { language: "en" }, version: 1 }))
+  await useLanguageStore.persist.rehydrate()
   renderSidebar()
   expect(screen.getByText("Day to day")).not.toBeNull()
   expect(screen.queryByText("Au quotidien")).toBeNull()
 })
 
-it("ignores a language value it does not publish", () => {
-  localStorage.setItem("mizan.sidebar.lang", "de")
+it("falls back to French for a language value it does not publish", () => {
+  // setLanguage validates, so bypass it: this covers a value that reached the
+  // store some other way, e.g. a hand-edited or truncated payload.
+  act(() => useLanguageStore.setState({ language: "de" as never }))
   renderSidebar()
   expect(screen.getByText("Au quotidien")).not.toBeNull()
 })

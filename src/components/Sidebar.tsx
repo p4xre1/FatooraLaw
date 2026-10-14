@@ -6,7 +6,8 @@ import {
 import type { ModuleKey } from "../store/types"
 import { NAV, Logo } from "./nav"
 import { modulePath } from "../lib/routes"
-import { DEFAULT_LOCALE, LOCALES, isLocaleId, localeInfo, type LocaleId } from "../lib/locales"
+import { LOCALES } from "../lib/locales"
+import { useTranslation, type Language } from "../lib/language/store"
 import { useMizan } from "../store/useMizan"
 
 /**
@@ -33,8 +34,14 @@ import { useMizan } from "../store/useMizan"
  */
 const INVOICE_ROUTE_ENABLED = false
 
-/** Sidebar-scoped preferences. Same `mizan.*` convention as the dashboard's. */
-const LANG_KEY = "mizan.sidebar.lang"
+/**
+ * Sidebar-scoped preference. Same `mizan.*` convention as the dashboard's.
+ *
+ * Language is *not* here: it is the app-wide preference in
+ * `lib/language/store.ts`, so the rail, the auth screens and every translated
+ * module follow one choice instead of three separate keys that had to be kept
+ * in step by hand.
+ */
 const MORE_KEY = "mizan.sidebar.more"
 
 /** Modules behind the collapsible "Plus d'outils" row. */
@@ -44,139 +51,7 @@ const ACCOUNT_MODULES: ModuleKey[] = ["team", "audit"]
 
 const NAV_BY_KEY = new Map(NAV.map((entry) => [entry.key, entry]))
 
-/* ------------------------------- copy ---------------------------------- */
-
-type Copy = {
-  groups: { daily: string; management: string; more: string }
-  modules: Partial<Record<ModuleKey, string>>
-  invoices: string
-  newInvoice: string
-  quickActions: string
-  newProject: string
-  newExpense: string
-  newContract: string
-  search: string
-  searchLabel: string
-  navLabel: string
-  noResults: string
-  collapse: string
-  expand: string
-  localNotice: string
-  exportBackup: string
-  account: string
-  language: string
-  signOut: string
-  openMenu: string
-}
-
-const COPY: Record<LocaleId, Copy> = {
-  fr: {
-    groups: { daily: "Au quotidien", management: "Gestion", more: "Plus d'outils" },
-    // French labels already live in `NAV`; only the other locales override.
-    modules: {},
-    invoices: "Factures",
-    newInvoice: "Nouvelle facture",
-    quickActions: "Actions rapides",
-    newProject: "Nouveau projet",
-    newExpense: "Nouvelle dépense",
-    newContract: "Générer un contrat",
-    search: "Rechercher un module…",
-    searchLabel: "Rechercher un module",
-    navLabel: "Navigation principale",
-    noResults: "Aucun module ne correspond.",
-    collapse: "Réduire le menu",
-    expand: "Déployer le menu",
-    localNotice: "Données stockées sur cet appareil.",
-    exportBackup: "Exporter une sauvegarde",
-    account: "Menu du compte",
-    language: "Langue",
-    signOut: "Se déconnecter",
-    openMenu: "Ouvrir",
-  },
-  en: {
-    groups: { daily: "Day to day", management: "Management", more: "More tools" },
-    modules: {
-      dashboard: "Dashboard",
-      projects: "Projects",
-      contacts: "Clients & Suppliers",
-      procurement: "Purchases & Expenses",
-      inventory: "Stock & Equipment",
-      calendar: "Calendar",
-      risk: "Risk Management",
-      tools: "Subscriptions & Tools",
-      legal: "Legal Vault",
-      reports: "Reports & Tax",
-      team: "Team & Roles",
-      audit: "Audit Log",
-      settings: "Settings",
-    },
-    invoices: "Invoices",
-    newInvoice: "New invoice",
-    quickActions: "Quick actions",
-    newProject: "New project",
-    newExpense: "New expense",
-    newContract: "Create a contract",
-    search: "Search a module…",
-    searchLabel: "Search a module",
-    navLabel: "Main navigation",
-    noResults: "No module matches.",
-    collapse: "Collapse menu",
-    expand: "Expand menu",
-    localNotice: "Data is stored on this device.",
-    exportBackup: "Export a backup",
-    account: "Account menu",
-    language: "Language",
-    signOut: "Sign out",
-    openMenu: "Open",
-  },
-  ar: {
-    groups: { daily: "يومياً", management: "التدبير", more: "أدوات أخرى" },
-    modules: {
-      dashboard: "لوحة التحكم",
-      projects: "المشاريع",
-      contacts: "العملاء والموردون",
-      procurement: "المشتريات والمصاريف",
-      inventory: "المخزون والمعدات",
-      calendar: "التقويم",
-      risk: "إدارة المخاطر",
-      tools: "الاشتراكات والأدوات",
-      legal: "الخزنة القانونية",
-      reports: "التقارير والضرائب",
-      team: "الفريق والأدوار",
-      audit: "سجل التدقيق",
-      settings: "الإعدادات",
-    },
-    invoices: "الفواتير",
-    newInvoice: "فاتورة جديدة",
-    quickActions: "إجراءات سريعة",
-    newProject: "مشروع جديد",
-    newExpense: "مصروف جديد",
-    newContract: "إنشاء عقد",
-    search: "ابحث عن وحدة…",
-    searchLabel: "ابحث عن وحدة",
-    navLabel: "التنقل الرئيسي",
-    noResults: "لا توجد وحدة مطابقة.",
-    collapse: "تصغير القائمة",
-    expand: "توسيع القائمة",
-    localNotice: "البيانات محفوظة على هذا الجهاز.",
-    exportBackup: "تصدير نسخة احتياطية",
-    account: "قائمة الحساب",
-    language: "اللغة",
-    signOut: "تسجيل الخروج",
-    openMenu: "فتح",
-  },
-}
-
 /* --------------------------- persisted prefs ---------------------------- */
-
-function readLang(): LocaleId {
-  try {
-    const stored = localStorage.getItem(LANG_KEY)
-    return isLocaleId(stored) ? stored : DEFAULT_LOCALE
-  } catch {
-    return DEFAULT_LOCALE
-  }
-}
 
 function readMoreOpen(): boolean {
   try {
@@ -214,7 +89,6 @@ export default function Sidebar({
   onLogout: () => void
 }) {
   const auth = useMizan((s) => s.auth)
-  const [lang, setLang] = useState<LocaleId>(readLang)
   const [q, setQ] = useState("")
   const [moreOpen, setMoreOpen] = useState<boolean>(readMoreOpen)
   const [quickOpen, setQuickOpen] = useState(false)
@@ -225,22 +99,12 @@ export default function Sidebar({
   const quickRef = useRef<HTMLDivElement>(null)
   const accountRef = useRef<HTMLDivElement>(null)
 
-  const t = COPY[lang]
-  const { dir, lang: langAttr } = localeInfo(lang)
+  // The app-wide language preference; `useTranslation()` also writes dir/lang
+  // to <html>, so the rest of the document follows the rail.
+  const { language, setLanguage, dir, t: copy } = useTranslation()
+  const t = copy.sidebar
 
   /* Preferences ---------------------------------------------------------- */
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(LANG_KEY, lang)
-      // Keep the dashboard's own FR/AR switch in step so the two do not
-      // disagree. The dashboard has no English, so `en` falls back to French
-      // there rather than to an untranslated label.
-      localStorage.setItem("mizan.dashboard.lang", lang === "ar" ? "ar" : "fr")
-    } catch {
-      /* Optional preference; the rail still works without storage. */
-    }
-  }, [lang])
 
   useEffect(() => {
     try {
@@ -340,8 +204,8 @@ export default function Sidebar({
     setAccountOpen(false)
   }
 
-  function chooseLang(next: LocaleId) {
-    setLang(next)
+  function chooseLang(next: Language) {
+    setLanguage(next)
     // The rail stays open so the visitor can see the labels change.
   }
 
@@ -398,7 +262,7 @@ export default function Sidebar({
       )}
       <aside
         dir={dir}
-        lang={langAttr}
+        lang={language}
         aria-label="Fatorati"
         className={`dark-scroll fixed inset-y-0 start-0 z-50 flex w-64 flex-col bg-sidebar text-sidebar-ink transition-all duration-200 lg:sticky lg:top-0 lg:start-auto lg:z-20 lg:h-screen ${collapsed ? "lg:w-[76px]" : "lg:w-64"} ${mobileOpen ? "" : "max-lg:-translate-x-full max-lg:rtl:translate-x-full"}`}
       >
@@ -693,7 +557,7 @@ export default function Sidebar({
                   </p>
                   <div className="flex gap-1">
                     {LOCALES.map((locale) => {
-                      const on = locale.id === lang
+                      const on = locale.id === language
                       return (
                         <button
                           key={locale.id}

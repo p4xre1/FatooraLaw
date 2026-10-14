@@ -1,5 +1,7 @@
 import type { LocaleId } from "../lib/locales.ts"
 import { auth } from "./auth.ts"
+import { shell } from "./shell.ts"
+import { dashboard } from "./dashboard.ts"
 
 /**
  * The application dictionary: every string the signed-in product shows, in the
@@ -17,14 +19,20 @@ import { auth } from "./auth.ts"
  */
 const en = {
   auth: auth.en,
+  sidebar: shell.en,
+  dashboard: dashboard.en,
 }
 
 const fr: typeof en = {
   auth: auth.fr,
+  sidebar: shell.fr,
+  dashboard: dashboard.fr,
 }
 
 const ar: typeof en = {
   auth: auth.ar,
+  sidebar: shell.ar,
+  dashboard: dashboard.ar,
 }
 
 export type Translation = typeof en

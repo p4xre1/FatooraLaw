@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest"
 import Dashboard from "../src/modules/Dashboard"
 import { accountStorageKey, useMizan } from "../src/store/useMizan"
 import { seedAudit, seedContacts, seedExpenses, seedProjects } from "../src/store/seed"
+import { useLanguageStore } from "../src/lib/language/store"
 
 vi.mock("../src/components/charts", () => ({
   Legend: () => null,
@@ -82,8 +83,30 @@ it("reacts to a real saved expense, preserving quick navigation and Arabic empty
   act(() => useMizan.getState().addExpense({ ...seedExpenses[0], date: "2026-10-12", amount: 19.5, status: "approved" }))
   expect(JSON.parse(screen.getByTestId("area-chart").textContent!).series[0].values.at(-1)).toBe(19.5)
   act(() => useMizan.setState({ expenses: [] }))
-  fireEvent.click(screen.getByRole("button", { name: "العربية" }))
+  // The dashboard no longer carries its own FR/AR button: it follows the
+  // app-wide preference the navigation rail also writes to.
+  act(() => useLanguageStore.getState().setLanguage("ar"))
   expect(screen.getByText("لا توجد بيانات مالية مسجلة")).toBeDefined()
+})
+
+it("translates the empty state into English, which the old FR/AR dictionary could not", () => {
+  useMizan.setState({ projects: [], contacts: [], expenses: [], audit: [] })
+  render(<Dashboard onNavigate={vi.fn()} />)
+  expect(screen.getByText("Aucune donnée financière enregistrée")).toBeDefined()
+  act(() => useLanguageStore.getState().setLanguage("en"))
+  expect(screen.getByText("No financial data recorded")).toBeDefined()
+  // Direction follows the language, from the same hook the auth screens use.
+  expect(document.querySelector(".mz-view")!.getAttribute("dir")).toBe("ltr")
+  expect(document.querySelector(".mz-view")!.getAttribute("lang")).toBe("en")
+})
+
+it("mirrors to RTL when the preference is Arabic", () => {
+  useMizan.setState({ projects: [], contacts: [], expenses: [], audit: [] })
+  act(() => useLanguageStore.getState().setLanguage("ar"))
+  render(<Dashboard onNavigate={vi.fn()} />)
+  expect(document.querySelector(".mz-view")!.getAttribute("dir")).toBe("rtl")
+  expect(document.documentElement.getAttribute("dir")).toBe("rtl")
+  expect(document.documentElement.getAttribute("lang")).toBe("ar")
 })
 
 
