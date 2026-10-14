@@ -1,0 +1,13 @@
+{
+  "openapi": "3.0.3",
+  "info": { "title": "FatooraLaw CMS Admin API", "version": "1.0.0", "description": "Internal CMS admin endpoints for audit, security controls, blog management, and subscription editing. Requires Supabase session + is_admin." },
+  "servers": [{ "url": "https://fatorati.tech/admin", "description": "Admin shell" }],
+  "paths": {
+    "/security": { "get": { "summary": "CMS Security Control", "responses": { "200": { "description": "Audit log, CSRF status, encryption readiness, anomaly count" } } } },
+    "/contact": { "get": { "summary": "Contact Inbox", "responses": { "200": { "description": "Message list with search and draft send" } } } },
+    "/blogs/new": { "post": { "summary": "New blog post with viral score", "responses": { "200": { "description": "Created post with image_url, image_alt, keywords" } } } },
+    "/subscriptions": { "get": { "summary": "Subscription plans", "responses": { "200": { "description": "Plan list with cost, dates, status" } } } }
+  },
+  "security": [{ "supabaseAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "Supabase JWT" } }],
+  "tags": [{ "name": "security", "description": "Audit and control" }, { "name": "content", "description": "Blog and CMS" }, { "name": "subscriptions", "description": "Plan management" }]
+}

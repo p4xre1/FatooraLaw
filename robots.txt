@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+Allow: /ai.txt
+Allow: /ai-sitemap.xml
+Disallow: /admin/
+Sitemap: https://fatorati.tech/sitemap.xml
+Sitemap: https://fatorati.tech/llms.txt
