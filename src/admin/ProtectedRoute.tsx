@@ -29,7 +29,8 @@ import { useAdminAuth } from "./lib/adminAuth"
  * keeping data safe; it isn't.
  */
 export default function ProtectedRoute() {
-  const { status } = useAdminAuth()
+  const access = useAdminAuth()
+  const { status } = access
   const location = useLocation()
 
   if (status === "checking") {
@@ -51,5 +52,5 @@ export default function ProtectedRoute() {
     return <Navigate to="/admin/login" replace state={{ from: location, forbidden: true }} />
   }
 
-  return <Outlet />
+  return <Outlet context={access} />
 }

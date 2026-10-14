@@ -3,11 +3,21 @@ import type { User } from "@supabase/supabase-js"
 import { isSupabaseConfigured, supabase } from "../../lib/supabase"
 
 export type AdminAuthStatus = "checking" | "unauthenticated" | "forbidden" | "authenticated"
-type AdminAuthState = { status: AdminAuthStatus; user: User | null }
+export type AdminAccess = {
+  status: AdminAuthStatus
+  user: User | null
+  isContentAdmin: boolean
+  isPlatformAdmin: boolean
+}
 
-/** UI gate only; protected profiles and posts RLS enforce actual CMS privileges. */
+/** UI gate only; Postgres RLS is the actual access-control boundary. */
 export function useAdminAuth() {
-  const [state, setState] = useState<AdminAuthState>({ status: "checking", user: null })
+  const [state, setState] = useState<AdminAccess>({
+    status: "checking",
+    user: null,
+    isContentAdmin: false,
+    isPlatformAdmin: false,
+  })
   const mounted = useRef(false)
   const revision = useRef(0)
 
@@ -15,25 +25,36 @@ export function useAdminAuth() {
     const request = ++revision.current
     const isCurrent = () => mounted.current && request === revision.current
     if (!isSupabaseConfigured) {
-      if (isCurrent()) setState({ status: "unauthenticated", user: null })
+      if (isCurrent()) setState({ status: "unauthenticated", user: null, isContentAdmin: false, isPlatformAdmin: false })
       return
     }
-    // Don't leave a previously verified user's CMS visible while checking
-    // a new session or a potentially revoked admin flag.
-    setState({ status: "checking", user: null })
+    setState({ status: "checking", user: null, isContentAdmin: false, isPlatformAdmin: false })
     try {
-      const { data, error } = await supabase.auth.getUser()
+      const { data: auth, error: authError } = await supabase.auth.getUser()
       if (!isCurrent()) return
-      if (error || !data.user) {
-        setState({ status: "unauthenticated", user: null })
+      if (authError || !auth.user) {
+        setState({ status: "unauthenticated", user: null, isContentAdmin: false, isPlatformAdmin: false })
         return
       }
-      const { data: profile, error: profileError } = await supabase.from("profiles")
-        .select("is_admin").eq("id", data.user.id).single()
+
+      // CMS editors and platform operators are separate roles. Each query is
+      // scoped to the signed-in user's own row by RLS; the database still
+      // enforces every operation on the data tables independently.
+      const [profileResult, platformResult] = await Promise.all([
+        supabase.from("profiles").select("is_admin").eq("id", auth.user.id).maybeSingle(),
+        supabase.from("platform_admins").select("user_id").eq("user_id", auth.user.id).maybeSingle(),
+      ])
       if (!isCurrent()) return
-      setState({ status: !profileError && profile?.is_admin === true ? "authenticated" : "forbidden", user: data.user })
+      const isContentAdmin = !profileResult.error && profileResult.data?.is_admin === true
+      const isPlatformAdmin = !platformResult.error && platformResult.data?.user_id === auth.user.id
+      setState({
+        status: isContentAdmin || isPlatformAdmin ? "authenticated" : "forbidden",
+        user: auth.user,
+        isContentAdmin,
+        isPlatformAdmin,
+      })
     } catch {
-      if (isCurrent()) setState({ status: "unauthenticated", user: null })
+      if (isCurrent()) setState({ status: "unauthenticated", user: null, isContentAdmin: false, isPlatformAdmin: false })
     }
   }, [])
 
@@ -43,12 +64,12 @@ export function useAdminAuth() {
     void verify()
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (!mounted.current) return
-      const request = ++revision.current // Invalidate work before deferred verification.
+      const request = ++revision.current
       if (event === "SIGNED_OUT") {
-        setState({ status: "unauthenticated", user: null })
+        setState({ status: "unauthenticated", user: null, isContentAdmin: false, isPlatformAdmin: false })
         return
       }
-      setState({ status: "checking", user: null })
+      setState({ status: "checking", user: null, isContentAdmin: false, isPlatformAdmin: false })
       const timer = setTimeout(() => {
         pending.delete(timer)
         if (mounted.current && request === revision.current) void verify()

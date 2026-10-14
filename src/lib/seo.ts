@@ -507,6 +507,48 @@ export function renderHeadTags(input: HeadInput): string {
   return [...tags, ...ld].join("\n    ")
 }
 
+export type CustomHeadTagsInput = {
+  title: string
+  description: string
+  canonical: string
+  locale: LocaleId
+  alternates: HreflangAlternate[]
+  siteUrl: string
+  jsonLd: unknown
+  socialImage?: string
+  noindex?: boolean
+}
+
+/** Static head tags for a database-backed page. */
+export function renderCustomHeadTags(input: CustomHeadTagsInput): string {
+  const escaped = escapeHtmlAttribute
+  const origin = input.siteUrl.replace(/\/+$/, "")
+  const canonical = input.canonical.startsWith("http") ? input.canonical : `${origin}${input.canonical}`
+  const image = input.socialImage ? `${origin}${input.socialImage}` : null
+  const robotDirectives = input.noindex ? "noindex, nofollow, noarchive" : "index, follow, max-image-preview:large, max-snippet:-1"
+  const tags = [
+    `<title>${escaped(input.title)}</title>`,
+    `<meta name="description" content="${escaped(input.description)}">`,
+    `<link rel="canonical" href="${escaped(canonical)}">`,
+    ...input.alternates.map((alternate) => `<link rel="alternate" hreflang="${escaped(alternate.hreflang)}" href="${escaped(alternate.href)}">`),
+    `<meta property="og:type" content="article">`,
+    `<meta property="og:site_name" content="Fatorati">`,
+    `<meta property="og:locale" content="${escaped(localeInfo(input.locale).ogLocale)}">`,
+    `<meta property="og:title" content="${escaped(input.title)}">`,
+    `<meta property="og:description" content="${escaped(input.description)}">`,
+    `<meta property="og:url" content="${escaped(canonical)}">`,
+    `<meta name="twitter:card" content="${image ? "summary_large_image" : "summary"}">`,
+    `<meta name="twitter:title" content="${escaped(input.title)}">`,
+    `<meta name="twitter:description" content="${escaped(input.description)}">`,
+    `<meta name="robots" content="${robotDirectives}">`,
+    `<meta name="googlebot" content="${input.noindex ? "noindex, nofollow" : "index, follow"}">`,
+    `<meta name="theme-color" content="#0f172a">`,
+    ...(image ? [`<meta property="og:image" content="${escaped(image)}">`, `<meta property="og:image:alt" content="${escaped(input.title)}">`, `<meta name="twitter:image" content="${escaped(image)}">`, `<meta name="twitter:image:alt" content="${escaped(input.title)}">`] : []),
+  ]
+  const jsonLd = JSON.stringify(input.jsonLd).replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026")
+  return [...tags, `<script id="${PAGE_JSON_LD_ID}" type="application/ld+json">${jsonLd}</script>`].join("\n    ")
+}
+
 /**
  * Document titles for private screens. They are only ever emitted with a
  * `noindex` head — a signed-in screen must not appear in results, but a
@@ -575,6 +617,7 @@ export function applyDocumentHead(input: HeadInput): void {
 
   document.title = entry.title
   setMeta("name", "description", entry.description)
+  setMeta("property", "og:type", "website")
   setMeta("property", "og:locale", localeInfo(locale).ogLocale)
   setMeta("property", "og:title", entry.title)
   setMeta("property", "og:description", entry.description)
@@ -582,7 +625,8 @@ export function applyDocumentHead(input: HeadInput): void {
   setMeta("name", "twitter:title", entry.title)
   setMeta("name", "twitter:description", entry.description)
   setMeta("name", "twitter:card", input.socialImage ? "summary_large_image" : "summary")
-  setMeta("name", "robots", noindex || !entry.index ? "noindex, nofollow" : "index, follow, max-image-preview:large, max-snippet:-1")
+  setMeta("name", "robots", noindex || !entry.index ? "noindex, nofollow, noarchive" : "index, follow, max-image-preview:large, max-snippet:-1")
+  setMeta("name", "googlebot", noindex || !entry.index ? "noindex, nofollow" : "index, follow")
   setLink("canonical", canonical)
   applyAlternateLinks(hreflangAlternates(page, siteUrl))
 
@@ -599,12 +643,66 @@ export function applyDocumentHead(input: HeadInput): void {
   script.textContent = JSON.stringify(jsonLd)
 }
 
+export type CustomDocumentHeadInput = {
+  title: string
+  description: string
+  canonical: string
+  locale: LocaleId
+  alternates: HreflangAlternate[]
+  siteUrl: string
+  jsonLd: unknown
+  socialImage?: string
+  noindex?: boolean
+}
+
+/** Head metadata for database-backed pages such as published blog articles. */
+export function applyCustomDocumentHead(input: CustomDocumentHeadInput): void {
+  if (typeof document === "undefined") return
+  const { title, description, canonical, locale, alternates, siteUrl, jsonLd, socialImage, noindex = false } = input
+  const image = socialImage ? `${siteUrl.replace(/\/+$/, "")}${socialImage}` : null
+  document.documentElement.lang = localeInfo(locale).lang
+  document.documentElement.dir = localeInfo(locale).dir
+  document.title = title
+  setMeta("name", "description", description)
+  setMeta("property", "og:type", "article")
+  setMeta("property", "og:site_name", "Fatorati")
+  setMeta("property", "og:locale", localeInfo(locale).ogLocale)
+  setMeta("property", "og:title", title)
+  setMeta("property", "og:description", description)
+  setMeta("property", "og:url", canonical)
+  setMeta("name", "twitter:title", title)
+  setMeta("name", "twitter:description", description)
+  setMeta("name", "twitter:card", image ? "summary_large_image" : "summary")
+  setMeta("name", "robots", noindex ? "noindex, nofollow, noarchive" : "index, follow, max-image-preview:large, max-snippet:-1")
+  setMeta("name", "googlebot", noindex ? "noindex, nofollow" : "index, follow")
+  if (image) {
+    setMeta("property", "og:image", image)
+    setMeta("property", "og:image:alt", title)
+    setMeta("name", "twitter:image", image)
+    setMeta("name", "twitter:image:alt", title)
+  }
+  setLink("canonical", canonical)
+  applyAlternateLinks(alternates)
+  let script = document.getElementById(PAGE_JSON_LD_ID) as HTMLScriptElement | null
+  if (!script) {
+    script = document.createElement("script")
+    script.id = PAGE_JSON_LD_ID
+    script.type = "application/ld+json"
+    document.head.appendChild(script)
+  }
+  script.textContent = JSON.stringify(jsonLd)
+}
+
 /**
  * Rewrite the `hreflang` alternates in place. They are keyed by `hreflang`
  * value (not by position), so a language added to the table later replaces its
  * own link instead of shuffling the existing ones.
  */
 function applyAlternateLinks(alternates: HreflangAlternate[]): void {
+  const keep = new Set(alternates.map((alternate) => alternate.hreflang))
+  for (const tag of document.head.querySelectorAll<HTMLLinkElement>('link[rel="alternate"][hreflang]')) {
+    if (!keep.has(tag.hreflang)) tag.remove()
+  }
   for (const alternate of alternates) {
     const selector = `link[rel="alternate"][hreflang="${alternate.hreflang}"]`
     let tag = document.head.querySelector<HTMLLinkElement>(selector)

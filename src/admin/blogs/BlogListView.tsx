@@ -83,6 +83,8 @@ export default function BlogListView() {
               <>
                 <Th>العنوان</Th>
                 <Th>الحالة</Th>
+                <Th>الترجمات</Th>
+                <Th>SEO</Th>
                 <Th>آخر تحديث</Th>
                 <Th className="text-end">إجراءات</Th>
               </>
@@ -90,7 +92,7 @@ export default function BlogListView() {
           >
             {posts.map((post) => (
               <tr key={post.id}>
-                <Td className="max-w-xs truncate font-medium text-ink">{post.title}</Td>
+                <Td className="max-w-xs"><p className="truncate font-medium text-ink">{post.title}</p><p className="mt-0.5 truncate font-mono text-[10px] text-faint">/blog/{post.slug}</p></Td>
                 <Td>
                   <button onClick={() => onTogglePublish(post)} disabled={busyId === post.id} className="disabled:opacity-50">
                     <Badge tone={post.published ? "good" : "neutral"} dot>
@@ -98,6 +100,8 @@ export default function BlogListView() {
                     </Badge>
                   </button>
                 </Td>
+                <Td><div className="flex gap-1"><LocaleStatus label="FR" ready={!!(post.title && post.slug && post.content)} /><LocaleStatus label="AR" ready={!!(post.translations.ar?.title && post.translations.ar.slug && post.translations.ar.content)} /><LocaleStatus label="EN" ready={!!(post.translations.en?.title && post.translations.en.slug && post.translations.en.content)} /></div></Td>
+                <Td><div className="flex gap-1"><LocaleStatus label="FR" ready={!!(post.seo_title.trim() && post.seo_description.trim())} /><LocaleStatus label="AR" ready={!!(post.translations.ar?.seo_title && post.translations.ar.seo_description)} /><LocaleStatus label="EN" ready={!!(post.translations.en?.seo_title && post.translations.en.seo_description)} /></div></Td>
                 <Td className="text-muted">{new Date(post.updated_at).toLocaleDateString("ar-MA")}</Td>
                 <Td className="text-end">
                   <div className="flex justify-end gap-1">
@@ -118,4 +122,8 @@ export default function BlogListView() {
       </Card>
     </div>
   )
+}
+
+function LocaleStatus({ label, ready }: { label: string; ready: boolean }) {
+  return <Badge tone={ready ? "good" : "neutral"}>{label}</Badge>
 }

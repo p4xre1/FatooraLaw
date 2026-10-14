@@ -139,6 +139,8 @@ export type LocaleEntry = { page: LandingPage; locale: LocaleId; path: string }
  *   `/en`          → `{ locale: "en", path: "/" }`
  *   `/ar/login`    → `{ locale: "fr", path: "/ar/login" }`  (unknown path → 404)
  */
+const BLOG_ARTICLE_PATH = /^\/blog\/([a-z0-9]+(?:-[a-z0-9]+)*)$/
+
 export function localeRoute(pathname?: string | null): LocaleRoute {
   const path = normalizePath(pathname)
   for (const locale of LOCALES) {
@@ -146,10 +148,17 @@ export function localeRoute(pathname?: string | null): LocaleRoute {
     if (path === locale.prefix) return { locale: locale.id, path: "/" }
     if (path.startsWith(`${locale.prefix}/`)) {
       const rest = path.slice(locale.prefix.length)
-      if (landingPageFromPath(rest) !== null) return { locale: locale.id, path: rest }
+      if (landingPageFromPath(rest) !== null || BLOG_ARTICLE_PATH.test(rest)) return { locale: locale.id, path: rest }
     }
   }
   return { locale: DEFAULT_LOCALE, path }
+}
+
+/** A public, localized article URL such as `/ar/blog/slug`. */
+export function blogArticleFromPath(pathname?: string | null): { locale: LocaleId; slug: string } | null {
+  const { locale, path } = localeRoute(pathname)
+  const match = BLOG_ARTICLE_PATH.exec(path)
+  return match ? { locale, slug: match[1] } : null
 }
 
 /**
@@ -167,6 +176,15 @@ export function localizedPath(path: string, locale: LocaleId = DEFAULT_LOCALE): 
 /** Canonical path of a marketing page in one locale. Never contains a `#`. */
 export function localizedLandingPath(page: LandingPage, locale: LocaleId = DEFAULT_LOCALE): string {
   return localizedPath(landingPath(page), locale)
+}
+
+/** Canonical URL of a translated blog article. Slugs are intentionally ASCII. */
+export function localizedBlogArticlePath(locale: LocaleId, slug: string): string {
+  const normalizedSlug = slug.trim().toLowerCase()
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(normalizedSlug)) return localizedLandingPath("blog", locale)
+  const { prefix } = localeInfo(locale)
+  const path = `/blog/${normalizedSlug}`
+  return prefix ? `${prefix}${path}` : path
 }
 
 /** Every public page × locale, home first, locales in table order. */
@@ -200,7 +218,8 @@ export function modulePath(key: ModuleKey): string {
 
 /** True when the public layout (header, footer, cookie banner) should render. */
 export function isPublicPath(pathname: string | undefined | null): boolean {
-  return landingPageFromPath(pathname) !== null
+  const path = localeRoute(pathname).path
+  return landingPageFromPath(path) !== null || BLOG_ARTICLE_PATH.test(path)
 }
 
 /** True when `pathname` addresses a screen that must never be indexed. */

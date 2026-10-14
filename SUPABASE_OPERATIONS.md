@@ -19,15 +19,28 @@ SQL operator. This restricts browser clients to updating their own profile name
 and prevents self-promotion through `profiles.is_admin`. It clears both table
 and pre-existing column-level write grants. It is safe to rerun.
 
-If these features are not yet installed, also run:
+For an existing installation, apply the incremental SQL Editor scripts in
+this order:
 
-- `supabase/migrations/2026_add_cms_posts.sql`
-- `supabase/migrations/2026_add_onboarding_responses.sql`
+1. `supabase/migrations/20261012_harden_profile_permissions.sql`
+2. `supabase/migrations/2026_add_cms_posts.sql` if `public.posts` is absent
+3. `supabase/migrations/20261013_cms_control_center.sql`
+4. `supabase/migrations/20261014_cms_site_operations.sql`
+5. `supabase/migrations/2026_add_onboarding_responses.sql` only if that feature
+   is not already installed
+
+`20261013_cms_control_center.sql` creates or reuses the platform-control
+foundation (`platform_admins`, `plan_catalog`, `account_subscriptions`,
+`purchase_requests`, `usage_monthly`, and `is_platform_admin()`) before adding
+CMS controls. The SQL excerpt you shared shows the workspace's
+`public.subscriptions` table; that table is deliberately left untouched and is
+not used for account billing. The incremental upgrade was smoke-tested against
+a core-only schema with that table present.
 
 These are SQL Editor upgrade scripts, not a complete Supabase CLI migration
-history. The fresh schema includes both sections and reapplies profile
-hardening after its initial broad grants; rerunning the fresh schema must not
-reopen admin-flag writes.
+history. The fresh schema includes the posts, platform and CMS sections and
+reapplies profile hardening after its initial broad grants; rerunning the fresh
+schema must not reopen admin-flag writes.
 
 Inspect existing admin flags against the legitimate editor list. The patch
 stops future unauthorized writes but does not automatically revoke already
@@ -35,8 +48,8 @@ compromised flags or repair edited posts.
 
 ## Two different administrator permissions
 
-**Content editors** at `/admin` use `profiles.is_admin`. After creating the
-editor's Auth account, run from trusted SQL (replace the email):
+**Content editors** use `profiles.is_admin` for blog and website editing. After
+creating the editor's Auth account, a trusted SQL operator can grant that role:
 
 ```sql
 update public.profiles
@@ -44,23 +57,36 @@ set is_admin = true
 where email = 'editor@example.com';
 ```
 
-**Platform/billing operators** use `platform_admins`. The bootstrap query at
-`schema.sql`'s platform-control section provisions this separate permission.
-Adding an operator there alone does not grant CMS editor access.
+**Platform operators** use `platform_admins`. Bootstrap the first one only
+from trusted SQL after their Auth account exists:
 
-Normal browser clients cannot modify either privilege. Do not put a
+```sql
+insert into public.platform_admins (user_id)
+select id from auth.users where email = 'operator@example.com'
+on conflict do nothing;
+```
+
+A platform operator can also edit blog and website content. Content editors
+cannot access billing/subscription administration, support requests, analytics,
+security controls or backups. Normal browser clients cannot modify either
+privilege; role changes use operator-gated, audited RPCs. Do not put a
 service-role key into frontend code to work around a permission error.
 
-## What works against Supabase today
+## What the CMS control center provides
 
-- Authentication, email confirmation, password-recovery sessions.
-- Admin verification and CMS post create/read/update/delete with posts RLS.
-- One-time onboarding checks and retry-safe response upserts.
+- Localized blog/page editors with server/static-rendered public article routes,
+  canonical/SEO metadata, sitemap selection, previews and revision history.
+- Website content and image assets, feature/release/download/product records,
+  announcements, support inbox, analytics, admin audit and CMS JSON backups.
+- Role-gated plan/subscription records, platform settings, notifications and
+  account access administration.
 
 The business dashboard still uses account-partitioned Zustand/localStorage
-records. SQL tables for projects, expenses, contacts, and so on are **not yet
-connected** to those store actions. Changing a plan in SQL does not currently
-limit locally created dashboard records.
+records. SQL tables for projects, expenses, contacts, and the workspace's own
+`subscriptions` are **not connected** to those store actions. Editing the
+platform plan catalog does not currently limit locally stored dashboard data.
+No payment-provider integration or webhook is configured; purchase and download
+analytics are intent/click events, not confirmed orders or payments.
 
 ## Plans, purchases, and availability
 
@@ -82,8 +108,10 @@ keep tested daily backups, and rehearse restores and migrations.
 ## Validation scope
 
 `pnpm test` exercises SQL grants/RLS using embedded PostgreSQL and stubbed
-Supabase roles/`auth.uid()`. It covers fresh setup, incremental CMS setup,
-profile-hardening reapplication, administrator publication, and draft isolation.
-It does **not** apply anything to your live Supabase project or verify Auth,
-redirect allowlists, CAPTCHA, Cloudflare headers, backups, or billing in that
-hosted environment.
+Supabase roles/`auth.uid()`. It covers fresh setup, migration reapplication,
+platform-only blog publishing, published-versus-draft reads, support/event RPCs,
+audit/revisions, backup restore and profile-hardening reapplication. It does
+**not** apply anything to your live Supabase project or verify Auth, redirect
+allowlists, CAPTCHA/rate limits, Cloudflare headers, Storage behavior, backups,
+or billing in that hosted environment. Run the migrations against a staging
+project first and rehearse a restore before production.

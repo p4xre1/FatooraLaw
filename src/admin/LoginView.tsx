@@ -41,14 +41,14 @@ export default function LoginView() {
   return (
     <AuthShell
       title="لوحة تحكم المحتوى"
-      subtitle="مساحة مخصّصة لفريق النشر لإدارة مقالات ومحتوى الموقع بأمان."
+      subtitle="مساحة محمية لإدارة المحتوى واشتراكات المنصة وأمانها."
     >
       {state?.forbidden && (
         <div className="mb-5 flex items-start gap-2 rounded-lg border border-serious/20 bg-serious-50 px-3 py-2.5 text-[12.5px] leading-relaxed text-serious">
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>
-            تم تسجيل الدخول بنجاح، لكن هذا الحساب لا يملك صلاحيات المسؤول اللازمة للوصول إلى لوحة التحكم. تواصل مع
-            مسؤول النظام إذا كنت تعتقد أن هذا خطأ.
+            تم تسجيل الدخول بنجاح، لكن هذا الحساب لا يملك صلاحية محرر المحتوى أو مشغل المنصة. تواصل مع
+            مشغل المنصة إذا كنت تعتقد أن هذا خطأ.
           </span>
         </div>
       )}

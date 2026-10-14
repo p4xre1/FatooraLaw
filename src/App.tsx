@@ -15,12 +15,15 @@ import Sidebar from "./components/Sidebar"
 import Topbar from "./components/Topbar"
 import LocalSaveNotice from "./components/LocalSaveNotice"
 import { Btn } from "./components/kit"
-import Landing from "./marketing/Landing"
+import Landing, { BlogArticlePage } from "./marketing/Landing"
+import { readPrerenderedBlogPost, readPrerenderedBlogPosts } from "./lib/blogPrerender"
+import { readPrerenderedSiteCmsData } from "./lib/siteCmsPrerender"
 import { applyNoIndexHead, privateTitleFor } from "./lib/seo"
 import {
   AUTH_PATHS,
   DEFAULT_APP_PATH,
   authScreenFromPath,
+  blogArticleFromPath,
   landingPageFromPath,
   localeRoute,
   moduleFromPath,
@@ -99,10 +102,18 @@ export default function App() {
   // stripped. `<Landing/>` then reads the locale back off the URL itself, and
   // a prefix in front of a private screen stays an unknown path.
   const landingPage = landingPageFromPath(localeRoute(path).path)
+  const articleRoute = blogArticleFromPath(path)
   const authScreen = authScreenFromPath(path)
   const routeModule = moduleFromPath(path)
+  const initialBlogPosts = useMemo(() => landingPage === "home" || landingPage === "blog"
+    ? readPrerenderedBlogPosts(path, localeRoute(path).locale)
+    : undefined, [path, landingPage])
+  const initialArticlePost = useMemo(() => articleRoute
+    ? readPrerenderedBlogPost(path, articleRoute.locale, articleRoute.slug)
+    : undefined, [path, articleRoute?.locale, articleRoute?.slug])
+  const initialSiteCmsData = useMemo(() => readPrerenderedSiteCmsData(path, localeRoute(path).locale), [path])
   /** A path that belongs to no screen: `/404`, a typo, an old link. */
-  const unknownPath = !landingPage && !authScreen && !routeModule && path !== "/"
+  const unknownPath = !landingPage && !articleRoute && !authScreen && !routeModule && path !== "/"
 
   // Leaving a local development session must also clear its opt-in marker,
   // otherwise the next reload would sign the same tab straight back in.
@@ -174,6 +185,7 @@ export default function App() {
     if (unknownPath) {
       return <NotFound onHome={() => navigate("/")} />
     }
+    if (articleRoute) return <BlogArticlePage locale={articleRoute.locale} slug={articleRoute.slug} initialPost={initialArticlePost} onEnter={() => navigate(AUTH_PATHS.login)} />
     if (authScreen) {
       return (
         <>
@@ -189,13 +201,16 @@ export default function App() {
     }
     // Public page: `<Landing/>` reads the page from the same URL, so links,
     // reloads and shares all work.
-    return <Landing onEnter={() => navigate(AUTH_PATHS.login)} />
+    return <Landing onEnter={() => navigate(AUTH_PATHS.login)} initialBlogPosts={initialBlogPosts} initialSiteCmsData={initialSiteCmsData} />
   }
 
   // A signed-in visitor on a public marketing page: show it (the redirect
   // effect above only takes over `/` and the auth screens).
   if (landingPage && landingPage !== "home") {
-    return <Landing onEnter={() => navigate(DEFAULT_APP_PATH)} />
+    return <Landing onEnter={() => navigate(DEFAULT_APP_PATH)} initialBlogPosts={initialBlogPosts} initialSiteCmsData={initialSiteCmsData} />
+  }
+  if (articleRoute) {
+    return <BlogArticlePage locale={articleRoute.locale} slug={articleRoute.slug} initialPost={initialArticlePost} onEnter={() => navigate(DEFAULT_APP_PATH)} />
   }
 
   if (unknownPath) {
