@@ -54,7 +54,7 @@ export default function Tools() {
         <AreaChart labels={trend.labels} series={[{ name: t.projectedSeries, values: trend.values }]} height={200} format={(value) => `${number(value)} MAD`} />
       </Card>
       <Card className="overflow-hidden">
-        <Table head={<><Th>{t.table.tool}</Th><Th className="text-right">{t.table.costPerMonth}</Th><Th>{t.table.startDate}</Th><Th>{t.table.expiry}</Th><Th>{common.status}</Th><Th /></>}>
+        <Table head={<><Th>{t.table.tool}</Th><Th className="text-end">{t.table.costPerMonth}</Th><Th>{t.table.startDate}</Th><Th>{t.table.expiry}</Th><Th>{common.status}</Th><Th /></>}>
           {tools.map((tool) => {
             const status = subscriptionStatus(tool, today)
             const days = daysUntil(tool.expiry, today)
@@ -62,13 +62,13 @@ export default function Tools() {
             return (
               <tr key={tool.id} className="transition-colors hover:bg-canvas/60">
                 <Td><span className="flex items-center gap-2.5 font-semibold text-ink"><span className="grid h-7 w-7 place-items-center rounded-lg bg-brand-50 text-brand"><Wrench className="h-3.5 w-3.5" /></span>{tool.name}</span></Td>
-                <Td className="tnum text-right font-semibold text-ink">{number(tool.cost)} MAD</Td>
+                <Td className="tnum text-end font-semibold text-ink">{number(tool.cost)} MAD</Td>
                 <Td className="tnum text-muted">{tool.start ? date(tool.start) : "—"}</Td>
                 <Td className="tnum text-muted">{tool.expiry ? date(tool.expiry) : t.noExpiry}</Td>
                 <Td>
                   {status === "expired" ? <Badge tone="serious" dot>{t.status.expired}</Badge> : status === "scheduled" ? <Badge tone="brand" dot>{t.status.scheduled}</Badge> : status === "unknown" ? <Badge tone="neutral">{t.status.unknown}</Badge> : soon ? <Badge tone="warn" dot>{t.status.expiresIn(days!)}</Badge> : <Badge tone="good" dot>{t.status.active}</Badge>}
                 </Td>
-                <Td className="text-right"><IconBtn onClick={() => removeTool(tool.id)} aria-label={t.removeAria(tool.name)}><Trash2 className="h-4 w-4" /></IconBtn></Td>
+                <Td className="text-end"><IconBtn onClick={() => removeTool(tool.id)} aria-label={t.removeAria(tool.name)}><Trash2 className="h-4 w-4" /></IconBtn></Td>
               </tr>
             )
           })}
