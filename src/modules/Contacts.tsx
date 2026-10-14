@@ -2,10 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { Plus, Search, Upload, Download, MessageCircle, Mail, Trash2, Users } from "lucide-react"
 import type { Contact } from "../store/types"
 import { useMizan } from "../store/useMizan"
-import { money, fmtDate, toCSV, parseCSV } from "../lib/mizan"
+import { money, toCSV, parseCSV } from "../lib/mizan"
+import { useFormats } from "../lib/language/formats"
 import { Card, SectionTitle, Btn, Badge, Table, Th, Td, Modal, Field, Input, Select, EmptyState, IconBtn } from "../components/kit"
 
 export default function Contacts() {
+  const { date } = useFormats()
   const { auth, contacts, projects, contracts, addContact, removeContact, importContacts } = useMizan()
   const [q, setQ] = useState("")
   const [facet, setFacet] = useState<"all" | "client" | "supplier">("all")
@@ -133,7 +135,7 @@ export default function Contacts() {
           {historyFor(ledger.id).length === 0 ? <p className="py-6 text-center text-[13px] text-muted">Aucune transaction.</p> : (
             <Table head={<><Th>Date</Th><Th>Type</Th><Th>Libellé</Th><Th className="text-end">Montant</Th></>}>
               {historyFor(ledger.id).map((h, i) => (
-                <tr key={i}><Td className="text-muted">{fmtDate(h.ts)}</Td><Td><Badge tone="neutral">{h.kind}</Badge></Td><Td className="font-medium">{h.label}</Td><Td className="tnum text-end font-semibold">{money(h.amount)}</Td></tr>
+                <tr key={i}><Td className="text-muted">{date(h.ts)}</Td><Td><Badge tone="neutral">{h.kind}</Badge></Td><Td className="font-medium">{h.label}</Td><Td className="tnum text-end font-semibold">{money(h.amount)}</Td></tr>
               ))}
             </Table>
           )}

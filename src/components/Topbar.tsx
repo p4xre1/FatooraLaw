@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { Menu, Plus, ChevronDown, LogOut, ShieldCheck, FolderPlus, ReceiptText, FileSignature } from "lucide-react"
 import type { ModuleKey } from "../store/types"
 import { useMizan } from "../store/useMizan"
-import { roleLabels } from "../lib/mizan"
+import { useTranslation } from "../lib/language/store"
 import { LOCAL_DEV_USER } from "../lib/localDevMode"
 
 export default function Topbar({
@@ -14,6 +14,8 @@ export default function Topbar({
   onLogout: () => void
 }) {
   const auth = useMizan((s) => s.auth)
+  const { t: copy } = useTranslation()
+  const { roles } = copy.shared
   const [qa, setQa] = useState(false)
   const [pm, setPm] = useState(false)
   const qaRef = useRef<HTMLDivElement>(null)
@@ -75,7 +77,7 @@ export default function Topbar({
                 <p className="truncate text-[13.5px] font-semibold text-ink">{auth?.name}</p>
                 <p className="truncate text-[12px] text-muted">{auth?.email}</p>
                 <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-700">
-                  <ShieldCheck className="h-3 w-3" /> {auth ? roleLabels[auth.role] : ""}
+                  <ShieldCheck className="h-3 w-3" /> {auth ? roles[auth.role] : ""}
                 </span>
                 {/* Never let a development-only local workspace pass for a real account. */}
                 {import.meta.env.DEV && auth?.id === LOCAL_DEV_USER.id && (

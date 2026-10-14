@@ -4,7 +4,8 @@ import type { Project } from "../store/types"
 import { useMizan } from "../store/useMizan"
 import { MAX_AMOUNT, parseAmount } from "../lib/businessValidation"
 import { addCalendarDays, todayISO } from "../lib/calendarDates"
-import { money, fmtDate } from "../lib/mizan"
+import { money } from "../lib/mizan"
+import { useFormats } from "../lib/language/formats"
 import { uid } from "../store/seed"
 import { Card, SectionTitle, Btn, Badge, Progress, Table, Th, Td, Modal, Field, Input, Select, EmptyState } from "../components/kit"
 
@@ -16,6 +17,7 @@ const statusMap = {
 }
 
 export default function Projects() {
+  const { date } = useFormats()
   const { projects, contacts, stock, addProject, toggleMilestone, assignStock } = useMizan()
   const [openId, setOpenId] = useState<string | null>(null)
   const open = projects.find((p) => p.id === openId) ?? null
@@ -37,7 +39,7 @@ export default function Projects() {
             const marginPct = p.budget ? (margin / p.budget) * 100 : 0
             return (
               <tr key={p.id} className="transition-colors hover:bg-canvas/60">
-                <Td><span className="font-semibold text-ink">{p.name}</span><div className="text-[11px] text-muted">{fmtDate(p.start)} → {fmtDate(p.end)}</div></Td>
+                <Td><span className="font-semibold text-ink">{p.name}</span><div className="text-[11px] text-muted">{date(p.start)} → {date(p.end)}</div></Td>
                 <Td className="text-muted">{clientName(p.clientId)}</Td>
                 <Td className="tnum text-end font-medium">{money(p.budget)}</Td>
                 <Td className="tnum text-end text-emerald-700">{money(p.paid)}</Td>

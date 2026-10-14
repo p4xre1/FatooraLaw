@@ -4,7 +4,8 @@ import type { Expense } from "../store/types"
 import { useMizan } from "../store/useMizan"
 import { MAX_AMOUNT, parseAmount } from "../lib/businessValidation"
 import { todayISO } from "../lib/calendarDates"
-import { money, fmtDate, toExcel } from "../lib/mizan"
+import { money, toExcel } from "../lib/mizan"
+import { useFormats } from "../lib/language/formats"
 import { Card, SectionTitle, Btn, Badge, Table, Th, Td, Modal, Field, Input, Select, EmptyState, IconBtn, Toggle } from "../components/kit"
 
 const methodMeta = {
@@ -16,6 +17,7 @@ const methodMeta = {
 const CATEGORIES = ["Matériaux", "Quincaillerie", "Location", "Carburant", "Main d'œuvre", "Transport", "Autre"]
 
 export default function Procurement() {
+  const { date } = useFormats()
   const { expenses, contacts, addExpense, setExpenseStatus, removeExpense } = useMizan()
   const suppliers = contacts.filter((c) => c.type === "supplier")
   const [q, setQ] = useState("")
@@ -93,7 +95,7 @@ export default function Procurement() {
               const M = methodMeta[e.method].icon
               return (
                 <tr key={e.id} className="transition-colors hover:bg-canvas/60">
-                  <Td className="text-muted">{fmtDate(e.date)}</Td>
+                  <Td className="text-muted">{date(e.date)}</Td>
                   <Td><span className="font-semibold text-ink">{vendorName(e.vendorId)}</span><div className="text-[11px] text-muted">{e.note}</div></Td>
                   <Td className="text-muted">{e.category}</Td>
                   <Td><span className="inline-flex items-center gap-1.5 text-muted"><M className="h-3.5 w-3.5" /> {methodMeta[e.method].label}</span></Td>

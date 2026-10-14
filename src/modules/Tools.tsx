@@ -6,11 +6,13 @@ import { useToday } from "../hooks/useToday"
 import { daysUntil, validDateRange } from "../lib/calendarDates"
 import { MAX_AMOUNT, parseAmount } from "../lib/businessValidation"
 import { monthlySubscriptionCosts, subscriptionStatus } from "../lib/subscriptions"
-import { fmtDate, num } from "../lib/mizan"
+import { num } from "../lib/mizan"
+import { useFormats } from "../lib/language/formats"
 import { AreaChart } from "../components/charts"
 import { Card, SectionTitle, Btn, Badge, Modal, Field, Input, Table, Th, Td, IconBtn } from "../components/kit"
 
 export default function Tools() {
+  const { date } = useFormats()
   const { tools, addTool, removeTool } = useMizan()
   const [open, setOpen] = useState(false)
   const today = useToday()
@@ -57,8 +59,8 @@ export default function Tools() {
               <tr key={tool.id} className="transition-colors hover:bg-canvas/60">
                 <Td><span className="flex items-center gap-2.5 font-semibold text-ink"><span className="grid h-7 w-7 place-items-center rounded-lg bg-brand-50 text-brand"><Wrench className="h-3.5 w-3.5" /></span>{tool.name}</span></Td>
                 <Td className="tnum text-right font-semibold text-ink">{num(tool.cost)} MAD</Td>
-                <Td className="tnum text-muted">{tool.start ? fmtDate(tool.start) : "—"}</Td>
-                <Td className="tnum text-muted">{tool.expiry ? fmtDate(tool.expiry) : "Sans échéance"}</Td>
+                <Td className="tnum text-muted">{tool.start ? date(tool.start) : "—"}</Td>
+                <Td className="tnum text-muted">{tool.expiry ? date(tool.expiry) : "Sans échéance"}</Td>
                 <Td>
                   {status === "expired" ? <Badge tone="serious" dot>Expiré</Badge> : status === "scheduled" ? <Badge tone="brand" dot>À venir</Badge> : status === "unknown" ? <Badge tone="neutral">Dates à vérifier</Badge> : soon ? <Badge tone="warn" dot>Expire dans {days} j</Badge> : <Badge tone="good" dot>Actif</Badge>}
                 </Td>

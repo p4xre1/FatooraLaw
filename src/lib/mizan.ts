@@ -19,36 +19,43 @@ export function num(n: number): string {
   return new Intl.NumberFormat("fr-MA").format(n)
 }
 
-export function fmtDate(iso: string | number): string {
+/**
+ * Date, time and relative-time formatting.
+ *
+ * The locale tag is a required argument on all three. They used to hardcode
+ * `"fr-MA"` and French strings, which meant an Arabic or English screen still
+ * showed French dates; making the tag required means a call site has to say
+ * which language it is formatting for, and `tsc` finds every one that does not.
+ * Callers inside components get it from `useFormats()` (lib/language/formats.ts)
+ * rather than threading it themselves.
+ */
+export function fmtDate(iso: string | number, locale: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return "—"
-  return new Intl.DateTimeFormat("fr-MA", { day: "2-digit", month: "short", year: "numeric" }).format(d)
+  return new Intl.DateTimeFormat(locale, { day: "2-digit", month: "short", year: "numeric" }).format(d)
 }
 
-export function fmtDateTime(ts: number): string {
-  return new Intl.DateTimeFormat("fr-MA", {
+export function fmtDateTime(ts: number, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
     day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
   }).format(new Date(ts))
 }
 
-export function timeAgo(ts: number): string {
+export function timeAgo(ts: number, locale: string, justNow: string): string {
   const diff = Date.now() - ts
   const m = Math.floor(diff / 60000)
-  if (m < 1) return "à l'instant"
-  if (m < 60) return `il y a ${m} min`
+  if (m < 1) return justNow
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" })
+  if (m < 60) return rtf.format(-m, "minute")
   const h = Math.floor(m / 60)
-  if (h < 24) return `il y a ${h} h`
-  const d = Math.floor(h / 24)
-  return `il y a ${d} j`
+  if (h < 24) return rtf.format(-h, "hour")
+  return rtf.format(-Math.floor(h / 24), "day")
 }
 
-export const roleLabels: Record<Role, string> = {
-  owner: "Propriétaire",
-  accountant: "Comptable",
-  supervisor: "Superviseur",
-  assistant: "Assistant",
-}
-
+/**
+ * Role badge colours. The role *names* live in `src/i18n/shared.ts` — this keeps
+ * only the presentation, so no colour is tied to a language.
+ */
 export const roleTints: Record<Role, string> = {
   owner: "bg-brand-50 text-brand-700 ring-brand/20",
   accountant: "bg-emerald-50 text-emerald-700 ring-emerald-brand/20",

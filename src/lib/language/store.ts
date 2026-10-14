@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react"
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
-import { DEFAULT_LOCALE, isRTL as isRTLLocale, type LocaleId } from "../locales.ts"
+import { DEFAULT_LOCALE, isRTL as isRTLLocale, localeInfo, type LocaleId } from "../locales.ts"
 import { translations, type Translation } from "../../i18n/index.ts"
 
 /**
@@ -115,6 +115,13 @@ export function useTranslation(): {
   language: Language
   setLanguage: (language: Language) => void
   dir: "rtl" | "ltr"
+  /**
+   * BCP-47 tag for this language (`fr-MA`, `ar-MA`, `en`), from the same locale
+   * table the marketing site uses for `hreflang`. Feed it to `Intl` so dates,
+   * numbers and relative times are formatted for the language on screen rather
+   * than for the browser's.
+   */
+  tag: string
   t: Translation
 } {
   const language = useLanguageStore((s) => s.language)
@@ -129,5 +136,5 @@ export function useTranslation(): {
 
   const t = useMemo(() => translations[language] ?? translations[DEFAULT_LANGUAGE], [language])
 
-  return { language, setLanguage, dir, t }
+  return { language, setLanguage, dir, tag: localeInfo(language).tag, t }
 }
