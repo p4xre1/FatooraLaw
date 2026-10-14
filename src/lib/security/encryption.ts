@@ -8,7 +8,7 @@ const ALGO = "AES-GCM"
 const KEY_LENGTH = 256
 
 /** Derive a CryptoKey from a password + salt using PBKDF2. */
-export async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey> {
+export async function deriveKey(password: string, salt: Uint8Array<ArrayBuffer>): Promise<CryptoKey> {
   const enc = new TextEncoder()
   const base = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveKey"])
   return crypto.subtle.deriveKey(

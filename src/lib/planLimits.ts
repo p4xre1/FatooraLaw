@@ -4,7 +4,13 @@
  */
 export type PlanTier = "none" | "essential" | "pro" | "pro_max"
 
-export const PLAN_FEATURES = {
+export type PlanFeature =
+  | "dashboard" | "contacts" | "calendar" | "calendar_deadlines"
+  | "contracts" | "legal_vault" | "reports" | "exports"
+  | "roles_permissions" | "blog_cms" | "multi_user" | "advanced_audit"
+  | "priority_support" | "monitor_site" | "content_improvement"
+
+export const PLAN_FEATURES: Record<PlanTier, readonly PlanFeature[]> = {
   none: ["dashboard", "contacts"],
   essential: ["dashboard", "contacts", "calendar", "calendar_deadlines"],
   pro: ["dashboard", "contacts", "calendar", "calendar_deadlines", "contracts", "legal_vault", "reports", "exports", "roles_permissions", "blog_cms"],
@@ -26,5 +32,6 @@ export function getUserPlan(): PlanTier {
 }
 
 export function hasFeature(tier: PlanTier, feature: string): boolean {
-  return (PLAN_FEATURES[tier] ?? []).includes(feature)
+  // Unknown feature names are simply not in any list: they stay locked.
+  return (PLAN_FEATURES[tier] ?? []).includes(feature as PlanFeature)
 }
