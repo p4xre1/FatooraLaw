@@ -12,6 +12,7 @@ import AnalyticsView from "./platform/AnalyticsView"
 import SecurityView from "./security/CmsSecurityControl"
 import NotificationsView from "./platform/NotificationsView"
 import AlgorithmsView from "./platform/AlgorithmsView"
+import PagesPanel from "./site/PagesPanel"
 import WebsiteView from "./site/WebsiteView"
 import SupportRequestsView from "./site/SupportRequestsView"
 import BackupsView from "./site/BackupsView"
@@ -40,6 +41,7 @@ export default function AdminApp() {
           </Route>
           <Route element={<ContentAdminRoute />}>
             <Route path="website" element={<WebsiteView />} />
+            <Route path="site/pages" element={<PagesPanel />} />
             <Route path="blogs" element={<BlogListView />} />
             <Route path="blogs/new" element={<BlogEditorView />} />
             <Route path="blogs/:id" element={<BlogEditorView />} />
