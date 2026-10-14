@@ -740,32 +740,94 @@ function goToFeaturePreview(event: React.MouseEvent<HTMLAnchorElement>, id: stri
 
 /* ------------------------------- Controls ------------------------- */
 
-function LangSwitcher({ lang, onLocaleChange }: { lang: LocaleId; onLocaleChange: (next: LocaleId) => void }) {
+/** The name both copies of the control share, so a screen reader hears one thing. */
+const LANG_CONTROL_LABEL = "Language / اللغة / Langue"
+
+/**
+ * The language control, in the two shapes the header needs.
+ *
+ * `mode="menu"` is the wide bar's dropdown: at ≥1360 px the control sits on the
+ * first screenful with the whole viewport under it, so a floating list is fine
+ * and keeps the bar compact. It is capped to the viewport on both axes
+ * (`.landing-lang-menu`) so it can never be positioned outside a short screen.
+ *
+ * `mode="inline"` is the drawer's copy — phones and every tablet up to 1360 px,
+ * where the bar's preferences are hidden (`.landing-nav-preferences`). The
+ * drawer is a `max-height`-capped scroller, so a dropdown opened from its lower
+ * rows was clipped by the panel's bottom edge; worse, an absolutely positioned
+ * list adds nothing to the panel's scroll height, so the cut-off languages
+ * could not be scrolled into reach at all — one tap showed a box running off
+ * the screen. The drawer therefore lists the three languages in place, one tap
+ * each, the way the ERP's own rail switcher does.
+ */
+function LangSwitcher({ lang, onLocaleChange, mode = "menu", className = "" }: {
+  lang: LocaleId
+  onLocaleChange: (next: LocaleId) => void
+  mode?: "menu" | "inline"
+  className?: string
+}) {
   const [open, setOpen] = useState(false)
+  const trigger = useRef<HTMLButtonElement>(null)
+  const menuId = useId()
   const current = LANGS.find((l) => l.code === lang)!
+
+  // Escape closes the list and hands focus back to the control that opened it.
+  useEffect(() => {
+    if (!open) return
+    function onKey(event: KeyboardEvent) {
+      if (event.key !== "Escape") return
+      setOpen(false)
+      trigger.current?.focus()
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [open])
+
+  if (mode === "inline") {
+    return (
+      <div role="group" aria-label={LANG_CONTROL_LABEL} className={`landing-lang-inline ${className}`}>
+        {LANGS.map((l) => (
+          <button
+            key={l.code}
+            type="button"
+            onClick={() => onLocaleChange(l.code)}
+            aria-pressed={l.code === lang}
+            lang={l.code}
+            title={l.label}
+          >
+            {l.label}
+          </button>
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div className="relative">
       <button
+        ref={trigger}
+        type="button"
         onClick={() => setOpen((o) => !o)}
         className="landing-control inline-flex items-center gap-1.5 rounded-lg border border-[var(--l-border-strong)] bg-[var(--l-chip)] px-2.5 py-2 text-[12.5px] font-semibold text-[var(--l-text)] transition-colors hover:border-blue-400/50"
-        aria-haspopup="listbox" aria-expanded={open}
+        aria-haspopup="listbox" aria-expanded={open} aria-controls={menuId}
       >
-        <Globe className="h-4 w-4" />
+        <Globe className="h-4 w-4" aria-hidden="true" />
         <span className="hidden sm:inline" lang={current.code}>{current.label}</span>
-        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" />
       </button>
       {open && (
         <>
-          <button className="fixed inset-0 z-40 cursor-default" aria-hidden onClick={() => setOpen(false)} />
-          <ul className="absolute end-0 z-50 mt-2 w-40 overflow-hidden rounded-xl border border-[var(--l-border-strong)] bg-[var(--l-panel)] py-1 shadow-2xl" style={{ animation: "mz-pop .15s ease-out" }} role="listbox">
+          <button type="button" tabIndex={-1} aria-hidden className="fixed inset-0 z-40 cursor-default" onClick={() => setOpen(false)} />
+          <ul id={menuId} className="landing-lang-menu" style={{ animation: "mz-pop .15s ease-out" }} role="listbox">
             {LANGS.map((l) => (
               <li key={l.code}>
                 <button
+                  type="button"
                   onClick={() => { onLocaleChange(l.code); setOpen(false) }}
-                  className={`flex w-full items-center justify-between px-3.5 py-2 text-[13px] transition-colors hover:bg-blue-500/10 ${l.code === lang ? "font-bold text-[var(--l-heading)]" : "text-[var(--l-muted)]"}`}
+                  className={`flex w-full items-center justify-between gap-2 px-3.5 py-2.5 text-[13px] transition-colors hover:bg-blue-500/10 ${l.code === lang ? "font-bold text-[var(--l-heading)]" : "text-[var(--l-muted)]"}`}
                   role="option" aria-selected={l.code === lang} lang={l.code}
                 >
-                  {l.label} {l.code === lang && <Check className="h-3.5 w-3.5 text-blue-400" />}
+                  {l.label} {l.code === lang && <Check className="h-3.5 w-3.5 text-blue-400" aria-hidden="true" />}
                 </button>
               </li>
             ))}
@@ -918,10 +980,17 @@ function Header({ t, lang, onLocaleChange, theme, setTheme, onEnter }: { t: Dict
       {mobileOpen && <>
         <button type="button" className="landing-mobile-overlay" aria-label="Fermer la navigation" tabIndex={-1} onClick={() => setMobileOpen(false)} />
         <div id={menuId} className="landing-mobile-panel">
+          {/* Language and theme first: the panel scrolls on short screens, so
+              these must not sit below the fold — and the languages are laid out
+              inline, never as a box that can open off the panel's edge. Picking
+              a language also closes the drawer, which is a menu, not a page. */}
+          <div className="landing-drawer-preferences">
+            <LangSwitcher mode="inline" lang={lang} onLocaleChange={(next) => { setMobileOpen(false); onLocaleChange(next) }} />
+            <ThemeToggle theme={theme} setTheme={setTheme} />
+          </div>
           <nav aria-label="Navigation principale">{MOBILE_NAV_LINKS.map((link) => (
             <a key={link.section} href={to(link.section)} onClick={(event) => { onInternalLinkClick(event); setMobileOpen(false) }}>{t.nav[link.key]}</a>
           ))}</nav>
-          <div className="mt-5 flex items-center gap-3"><LangSwitcher lang={lang} onLocaleChange={onLocaleChange} /><ThemeToggle theme={theme} setTheme={setTheme} /></div>
           {/* Between 1160 and 1360 px the bar spends its width on the page
               links, so the sign-in action waits here instead — one click away,
               in the same drawer the language and theme controls use. It is

@@ -36,7 +36,10 @@ export function AuthShell({
 
         {/* Form panel */}
         <div className="flex w-full flex-1 flex-col px-6 py-8 sm:px-10 lg:px-14">
-          <div className="flex items-center justify-between gap-3">
+          {/* `flex-wrap` keeps the segmented switcher on screen on the narrowest
+              phones: it drops to its own line rather than being pushed off the
+              right edge by the wordmark beside it. */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-[15px] font-bold text-ink lg:hidden">
               <ShieldCheck className="h-5 w-5 text-brand" aria-hidden="true" />
               Fatoora
