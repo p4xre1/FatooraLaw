@@ -4,6 +4,7 @@
  */
 import { useState, useEffect } from "react"
 import { ShieldAlert, Clock, Users, Globe, FileAlert } from "lucide-react"
+import PlanGate from "../../components/PlanGate"
 
 export default function MonitorPanel() {
   const [stats, setStats] = useState({ ipCount: 0, reports: 0, hourly: 0, users: 0 })
@@ -47,6 +48,9 @@ export default function MonitorPanel() {
           <div className="text-sm text-gray-600 mt-2">Profiles from Supabase <strong>profiles</strong> table (is_admin, role, email). GDPR data export/delete available per profile.</div>
         </div>
       </div>
+      <PlanGate feature="advanced_audit" fallback={<div className="rounded-xl border bg-red-50 p-3 text-red-600 text-sm">Advanced Audit / Multi-User Tracking requires Pro Max.</div>}>
+        <div className="rounded-xl border bg-gradient-to-br from-violet-50 to-white p-5 shadow-sm"><h3 className="font-bold">Advanced Audit & Multi-User Tracking</h3><div className="text-sm text-gray-600">Full server-side audit + multi-user workspace tracking available at Pro Max tier.</div></div>
+      </PlanGate>
     </div>
   )
 }
