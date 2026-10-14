@@ -1,9 +1,9 @@
 import {
   LayoutDashboard, FolderKanban, Users, ShoppingCart, Boxes, Scale,
   BarChart3, ShieldCheck, ScrollText, Settings, CalendarDays, ShieldAlert, Wrench,
-  ReceiptText,
 } from "lucide-react"
 import type { ModuleKey } from "../store/types"
+import { Brand } from "./Brand"
 
 /**
  * The module catalogue: order, icon and legacy group.
@@ -31,15 +31,19 @@ export const NAV: { key: ModuleKey; icon: typeof LayoutDashboard; group: string 
   { key: "settings", icon: Settings, group: "Administration" },
 ]
 
-export function Logo({ size = 32, light = false }: { size?: number; light?: boolean }) {
-  return (
-    <span className="inline-flex items-center gap-2.5 select-none">
-      <span className="grid place-items-center rounded-[9px] bg-brand text-white shadow-sm" style={{ width: size, height: size }}>
-        <ReceiptText strokeWidth={2.4} style={{ width: size * 0.55, height: size * 0.55 }} aria-hidden="true" />
-      </span>
-      <span className={`text-[18px] font-extrabold tracking-tight leading-none ${light ? "text-white" : "text-ink"}`}>
-        Fatorati
-      </span>
-    </span>
-  )
+/**
+ * The wordmark as the dashboard uses it.
+ *
+ * `size` keeps its old meaning for every call site — a 32 px brand height — but
+ * the mark is now the real artwork (`scripts/brand-assets.py`) instead of a
+ * receipt glyph in a blue tile with the name set in text. The lock-up's
+ * wordmark is ~0.43 of its height, so the height is scaled up to keep the name
+ * the same optical size as the 18 px text it replaces.
+ *
+ * `light` picks the white artwork for the dark navy surfaces (the sidebar and
+ * the auth brand panel). The component is a plain <img>: no colour class, no
+ * inline style, no state.
+ */
+export function Logo({ size = 32, light = false, alt = "Fatorati" }: { size?: number; light?: boolean; alt?: string }) {
+  return <Brand height={Math.round(size * 1.06)} tone={light ? "white" : "blue"} alt={alt} className="select-none" />
 }

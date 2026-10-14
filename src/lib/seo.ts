@@ -492,7 +492,7 @@ export function renderHeadTags(input: HeadInput): string {
     noindex || !entry.index
       ? `<meta name="robots" content="noindex, nofollow">`
       : `<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">`,
-    `<meta name="theme-color" content="#0f172a">`,
+    `<meta name="theme-color" content="#3a88ea">`,
     image ? `<meta property="og:image" content="${escaped(image)}">` : "",
     image ? `<meta property="og:image:width" content="1200">` : "",
     image ? `<meta property="og:image:height" content="630">` : "",
@@ -541,7 +541,7 @@ export function renderCustomHeadTags(input: CustomHeadTagsInput): string {
     `<meta name="twitter:description" content="${escaped(input.description)}">`,
     `<meta name="robots" content="${robotDirectives}">`,
     `<meta name="googlebot" content="${input.noindex ? "noindex, nofollow" : "index, follow"}">`,
-    `<meta name="theme-color" content="#0f172a">`,
+    `<meta name="theme-color" content="#3a88ea">`,
     ...(image ? [`<meta property="og:image" content="${escaped(image)}">`, `<meta property="og:image:alt" content="${escaped(input.title)}">`, `<meta name="twitter:image" content="${escaped(image)}">`, `<meta name="twitter:image:alt" content="${escaped(input.title)}">`] : []),
   ]
   const jsonLd = JSON.stringify(input.jsonLd).replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026")
@@ -592,7 +592,7 @@ export function renderNoIndexHeadTags(title: string): string {
     `<title>${escapeHtmlAttribute(title)}</title>`,
     `<meta name="robots" content="noindex, nofollow, noarchive">`,
     `<meta name="googlebot" content="noindex, nofollow">`,
-    `<meta name="theme-color" content="#0f172a">`,
+    `<meta name="theme-color" content="#3a88ea">`,
   ].join("\n    ")
 }
 

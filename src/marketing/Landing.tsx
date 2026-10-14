@@ -6,6 +6,7 @@ import {
   Menu, X, Download, ShoppingBag, Megaphone, Monitor, Smartphone, Send,
 } from "lucide-react"
 import { Logo } from "../components/nav"
+import { Brand } from "../components/Brand"
 import { SITE_URL } from "../lib/site"
 import { listPublishedPosts, getPublishedPostBySlug, type PublicBlogPost } from "../lib/blog"
 import { CONTACT_CITY, CONTACT_COUNTRY, CONTACT_EMAIL, CONTACT_PHONE, telHref } from "../lib/contact"
@@ -701,8 +702,20 @@ function GhostLink({ children, href, className = "" }: { children: React.ReactNo
   return <a href={href} onClick={onInternalLinkClick} className={`landing-secondary inline-flex items-center justify-center gap-2 ${className}`}>{children}</a>
 }
 
-function LandingBrand({ size = 32 }: { size?: number }) {
-  return <span className="landing-brand"><Logo size={size} /></span>
+function LandingBrand({ size = 34, alt = "" }: { size?: number; alt?: string }) {
+  /**
+   * The landing header and footer sit on a light surface that may become dark
+   * navy when the visitor switches theme, so this is the `auto` treatment: both
+   * files in the DOM, CSS picks one per theme (see `.landing-brand` in
+   * landing.css). No script reads the theme, so the mark is already right on the
+   * first painted frame.
+   *
+   * `alt` is the caller's business: the header passes nothing because the link
+   * around it is labelled "Fatorati accueil", the footer passes the brand name
+   * because that mark is the only place the name appears in that column, and
+   * the dashboard mock-up keeps it decorative.
+   */
+  return <span className="landing-brand"><Brand height={size} tone="auto" alt={alt} /></span>
 }
 
 /**
@@ -971,7 +984,7 @@ function DashboardPreview({ t }: { t: Dict }) {
 
         <div className="flex">
           <aside className="hidden w-[184px] shrink-0 flex-col gap-1 border-e border-[var(--l-border)] bg-[var(--l-surface)] p-3 sm:flex">
-            <div className="px-2 pb-3"><LandingBrand size={26} /></div>
+            <div className="px-2 pb-3"><LandingBrand size={28} /></div>
             {t.prev.nav.map((label, i) => {
               const Icon = previewIcons[i]
               const active = i === 4
@@ -1594,7 +1607,7 @@ function Footer({ t, extra, onEnter }: { t: Dict; extra: ExtraCopy; onEnter: () 
       <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
         <div className="grid gap-10 border-b border-[var(--l-border)] pb-12 lg:grid-cols-[1.2fr_0.8fr_0.8fr]">
           <div>
-            <LandingBrand size={32} />
+            <LandingBrand size={34} alt="Fatorati" />
             <h2 className="font-display mt-6 max-w-xl text-[26px] font-bold leading-tight tracking-tight text-[var(--l-heading)] sm:text-[32px]">{t.footer.title}</h2>
             <GlowButton onClick={onEnter} className="mt-6">{t.signup} <ArrowRight className="h-4 w-4 rtl:rotate-180" /></GlowButton>
           </div>

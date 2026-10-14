@@ -100,6 +100,10 @@ type FigmaSiteConfiguration = {
   }
   icons?: {
     icon?: string
+    /** PNG the iOS "add to home screen" tile uses (180x180, opaque). */
+    appleTouchIcon?: string
+    /** Web app manifest, e.g. "/site.webmanifest". */
+    manifest?: string
   }
   openGraph?: {
     image?: string
@@ -124,6 +128,13 @@ type FigmaSiteConfiguration = {
     sameAs?: string[]
     /** Topics the entity is a source for. Must match what the public pages actually cover. */
     knowsAbout?: string[]
+    /**
+     * Square logo published in the Organization structured data (schema.org
+     * `logo`). Use the app-icon PNG (>= 112 px), not the favicon: the favicon is
+     * a tab icon and is far too small for an entity logo. Falls back to
+     * `icons.icon` when omitted.
+     */
+    logoUrl?: string
   }
   analytics?: {
     googleAnalyticsId?: string
@@ -235,7 +246,12 @@ function figmaSiteConfiguration(config: FigmaSiteConfiguration): Plugin {
             telephone: org.telephone,
           }
           if (org.legalName) organizationNode.legalName = org.legalName
-          if (favicon) organizationNode.logo = { '@type': 'ImageObject', url: `${siteUrl}${favicon}` }
+          // The entity's logo for rich results: the square app icon (1024 px),
+          // not the 16-48 px tab icon — Google renders this one at up to 112 px
+          // and rejects a mark it cannot resolve. `logoUrl` is optional and
+          // falls back to the configured icon.
+          const logoPath = config.organization?.logoUrl ?? favicon
+          if (logoPath) organizationNode.logo = { '@type': 'ImageObject', url: `${siteUrl}${logoPath}` }
           if (org.addressLocality || org.addressCountry) {
             organizationNode.address = {
               '@type': 'PostalAddress',
@@ -285,6 +301,18 @@ function figmaSiteConfiguration(config: FigmaSiteConfiguration): Plugin {
         }
         if (favicon) {
           tags.push({ tag: 'link', attrs: { rel: 'icon', href: favicon }, injectTo: 'head' })
+        }
+        // The rest of the icon set. Browsers and operating systems ask for
+        // these whether or not a page mentions them (iOS reads
+        // /apple-touch-icon.png, Android uses the manifest), and a missing one
+        // is both a 404 in the logs and a generic grey glyph in the tab, the
+        // home screen and the task switcher. Driven by .figma/make/site.json so
+        // the set is declared in the same place as the rest of the brand.
+        if (config.icons?.appleTouchIcon) {
+          tags.push({ tag: 'link', attrs: { rel: 'apple-touch-icon', sizes: '180x180', href: config.icons.appleTouchIcon }, injectTo: 'head' })
+        }
+        if (config.icons?.manifest) {
+          tags.push({ tag: 'link', attrs: { rel: 'manifest', href: config.icons.manifest }, injectTo: 'head' })
         }
         // Open Graph tags (og:title/og:description/og:url/og:image) are
         // per-route and emitted by renderHeadTags into the route-head block

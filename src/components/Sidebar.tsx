@@ -5,6 +5,7 @@ import {
 } from "lucide-react"
 import type { ModuleKey } from "../store/types"
 import { NAV, Logo } from "./nav"
+import { BrandIcon } from "./Brand"
 import { modulePath } from "../lib/routes"
 import { LOCALES, LOCALE_IDS } from "../lib/locales"
 import { translations } from "../i18n"

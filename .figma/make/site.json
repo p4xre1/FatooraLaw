@@ -12,10 +12,13 @@
     "addressCountry": "MA",
     "foundingDate": "2026-01-01",
     "sameAs": ["https://github.com/p4xre1/FatooraLaw"],
-    "knowsAbout": ["Gestion des TPE au Maroc", "TVA et échéances DGI", "Loi 09-08 / CNDP", "Suivi des abonnements"]
+    "knowsAbout": ["Gestion des TPE au Maroc", "TVA et échéances DGI", "Loi 09-08 / CNDP", "Suivi des abonnements"],
+    "logoUrl": "/brand/fatorati-icon-on-blue.png"
   },
   "icons": {
-    "icon": "/fatorati-logo.svg"
+    "icon": "/favicon.ico",
+    "appleTouchIcon": "/apple-touch-icon.png",
+    "manifest": "/site.webmanifest"
   },
   "robots": {
     "index": true

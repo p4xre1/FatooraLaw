@@ -98,29 +98,50 @@
   background: var(--l-header);
   align-items: center;
   justify-content: space-between;
-  gap: 1.5rem;
+  gap: clamp(1.5rem, 2vw, 2.25rem);
   min-height: 76px;
-  max-width: 1300px;
+  max-width: 1360px;
   margin-inline: auto;
   padding-inline: clamp(20px, 3vw, 40px);
 }
-.landing-root.landing-atlas .landing-brand { display: inline-flex; flex-shrink: 0; }
-.landing-root.landing-atlas .landing-brand > span > span:first-child {
-  background: var(--l-primary);
-  border-radius: 7px;
-  box-shadow: none;
-}
-.landing-root.landing-atlas .landing-brand > span > span:last-child {
-  font-family: var(--l-font);
-  font-size: 21px;
-  font-weight: 750;
-  letter-spacing: -0.035em;
-  color: var(--l-heading);
-}
+/* ---------------------------------------------------------------------------
+   Brand mark — the real artwork, not a glyph in a tile (see components/Brand).
+
+   `tone="auto"` renders both files and this is where the theme decides which
+   one is visible, so the header/footer mark follows the light ⇄ dark switch
+   without any script reading the theme.
+   --------------------------------------------------------------------------- */
+.landing-root.landing-atlas .landing-brand { display: inline-flex; align-items: center; flex-shrink: 0; }
+.landing-root.landing-atlas .landing-brand .brand-mark { display: block; width: auto; }
+.landing-root.landing-atlas .landing-brand .brand-on-dark { display: none; }
+.landing-root.landing-atlas[data-theme='dark'] .landing-brand .brand-on-light { display: none; }
+.landing-root.landing-atlas[data-theme='dark'] .landing-brand .brand-on-dark { display: block; }
+
+/* ---------------------------------------------------------------------------
+   Desktop navigation — spacing.
+
+   The eight page links used to sit a fixed 0.85rem (13.6 px) apart, which reads
+   as one run-on line: the gap was smaller than the space between two words
+   inside a single label. The words now get a fluid column gap *plus* their own
+   inline padding, so the visual separation is 24 px at the 1160 px breakpoint
+   and ~34 px on a wide desktop, and each link is a real click target instead of
+   a text-width one.
+
+   The numbers are measured, not guessed (HarfBuzz shaping, the Inter/Tajawal
+   files the page actually loads, 13.5 px/weight 550 — the labels are 430 px in
+   French, 362 px in English and 381 px in Arabic):
+
+     at 1160 px  content 1090 px = lock-up 115 + links 539 + actions 246
+                 + 2 shell gaps 46  →  7 gaps of ≤18.9 px available
+     at 1360 px  content 1280 px with the language/theme controls back in the
+                 bar  →  7 gaps of ≤26 px available
+
+   hence the clamp below (14.8 px at 1160, 24 px from ~1650 px up) and the
+   0.3rem inline padding that appears as soon as the nav row itself does. */
 .landing-root.landing-atlas .landing-nav-desktop {
   display: none;
   align-items: center;
-  gap: 0.85rem;
+  column-gap: clamp(1rem, 1.9vw - 0.45rem, 1.5rem);
   font-size: 13.5px;
   font-weight: 550;
 }
@@ -134,7 +155,7 @@
 .landing-root.landing-atlas .landing-nav-desktop a::after {
   content: '';
   position: absolute;
-  inset-inline: 0;
+  inset-inline: var(--nav-link-pad, 0);
   bottom: 15px;
   height: 2px;
   background: var(--l-primary);
@@ -341,18 +362,36 @@
 .landing-root.landing-atlas[data-motion='reduced'] *::before,
 .landing-root.landing-atlas[data-motion='reduced'] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 
+/* ---------------------------------------------------------------------------
+   Two desktop tiers, because there are two different widths of room.
+
+   ≥1160 px — the page links and the sign-in link, and nothing else: the
+              language switcher and the theme toggle stay in the drawer (the
+              hamburger is still shown), which is what keeps the links from
+              being squeezed at exactly the width where they used to overflow.
+   ≥1360 px — the shell has reached its 1360 px maximum, so there is room for
+              the language switcher and theme toggle in the bar as well, and
+              for real padding on each link. The drawer retires here.
+   --------------------------------------------------------------------------- */
 @media (min-width: 1160px) {
-  .landing-root.landing-atlas .landing-nav-desktop,
-  .landing-root.landing-atlas .landing-nav-preferences { display: flex; }
+  .landing-root.landing-atlas .landing-nav-desktop { display: flex; }
   .landing-root.landing-atlas .landing-login-link { display: inline-block; }
+  /* Click-target padding, not just visual air: 0.3rem per side on top of the
+     column gap, and the hover underline is inset by the same amount so it stays
+     under the words rather than under the padding. Declared on the shell (an
+     ancestor of the links) so both the rule and its `::after` read one value. */
+  .landing-root.landing-atlas .landing-nav-shell { --nav-link-pad: 0.3rem; }
+  .landing-root.landing-atlas .landing-nav-desktop a { padding-inline: var(--nav-link-pad); }
+  .landing-root.landing-atlas .landing-mega-menu { display: block; position: absolute; top: 100%; inset-inline: 0; background: var(--l-panel); border-bottom: 1px solid var(--l-border); box-shadow: 0 24px 42px -20px rgb(9 30 66 / 22%); animation: landing-menu-enter 170ms ease-out both; }
+}
+@media (min-width: 1360px) {
+  .landing-root.landing-atlas .landing-nav-preferences { display: flex; }
   .landing-root.landing-atlas .landing-menu-toggle,
   .landing-root.landing-atlas .landing-mobile-panel,
   .landing-root.landing-atlas .landing-mobile-overlay { display: none; }
-  .landing-root.landing-atlas .landing-mega-menu { display: block; position: absolute; top: 100%; inset-inline: 0; background: var(--l-panel); border-bottom: 1px solid var(--l-border); box-shadow: 0 24px 42px -20px rgb(9 30 66 / 22%); animation: landing-menu-enter 170ms ease-out both; }
 }
 @media (max-width: 600px) {
   .landing-root.landing-atlas .landing-nav-shell { min-height: 68px; gap: 12px; }
-  .landing-root.landing-atlas .landing-brand > span > span:last-child { font-size: 18px; }
   .landing-root.landing-atlas .landing-nav-actions { gap: 8px; }
   .landing-root.landing-atlas .landing-nav-actions .landing-primary { min-height: 37px; padding: 9px 13px; font-size: 12px; }
   .landing-root.landing-atlas .landing-hero h1 { font-size: clamp(33px, 8.5vw, 44px); line-height: 1.14; }
