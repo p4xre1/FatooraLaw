@@ -301,16 +301,18 @@ function NoIndexTitle({ title }: { title: string }) {
 }
 
 function NoAccess({ onSignOut }: { onSignOut: () => void }) {
+  const { t: copy } = useAppLanguage()
+  const t = copy.app.noAccess
   useEffect(() => {
-    applyNoIndexHead("Aucun accès | Fatorati")
-  }, [])
+    applyNoIndexHead(t.pageTitle)
+  }, [t.pageTitle])
   return (
     <div className="grid min-h-screen place-items-center bg-canvas p-6">
       <div className="max-w-md space-y-4 text-center">
         <ShieldAlert className="mx-auto h-8 w-8 text-warn" />
-        <h1 className="text-xl font-bold">Aucun accès disponible</h1>
-        <p className="text-sm text-muted">Ce compte est désactivé ou aucun module ne lui est attribué. Contactez le propriétaire de votre espace.</p>
-        <Btn onClick={onSignOut}>Se déconnecter</Btn>
+        <h1 className="text-xl font-bold">{t.title}</h1>
+        <p className="text-sm text-muted">{t.body}</p>
+        <Btn onClick={onSignOut}>{copy.topbar.signOut}</Btn>
       </div>
     </div>
   )

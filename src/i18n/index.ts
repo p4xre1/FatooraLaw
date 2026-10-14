@@ -17,6 +17,9 @@ import { procurement } from "./procurement.ts"
 import { reports } from "./reports.ts"
 import { settings } from "./settings.ts"
 import { topbar } from "./topbar.ts"
+import { onboarding } from "./onboarding.ts"
+import { localSave } from "./localSave.ts"
+import { app } from "./app.ts"
 
 /**
  * The application dictionary: every string the signed-in product shows, in the
@@ -51,6 +54,9 @@ const en = {
   reports: reports.en,
   settings: settings.en,
   topbar: topbar.en,
+  onboarding: onboarding.en,
+  localSave: localSave.en,
+  app: app.en,
 }
 
 const fr: typeof en = {
@@ -72,6 +78,9 @@ const fr: typeof en = {
   reports: reports.fr,
   settings: settings.fr,
   topbar: topbar.fr,
+  onboarding: onboarding.fr,
+  localSave: localSave.fr,
+  app: app.fr,
 }
 
 const ar: typeof en = {
@@ -93,6 +102,9 @@ const ar: typeof en = {
   reports: reports.ar,
   settings: settings.ar,
   topbar: topbar.ar,
+  onboarding: onboarding.ar,
+  localSave: localSave.ar,
+  app: app.ar,
 }
 
 export type Translation = typeof en

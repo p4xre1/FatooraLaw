@@ -1,33 +1,15 @@
 import { useEffect, useRef, useState } from "react"
 import { isSupabaseConfigured, supabase } from "../lib/supabase"
-
-export type ReferralSource = "google_search" | "social_media" | "word_of_mouth" | "online_ad" | "blog_article" | "other"
-export type BusinessProfile = "small_company" | "self_employed" | "professional" | "tradesperson" | "individual"
-export type OnboardingAnswers = {
-  referralSource: ReferralSource
-  referralSourceOther: string
-  businessProfile: BusinessProfile
-  wantsNotifications: boolean
-}
-
-export const referralSourceLabels: Record<ReferralSource, string> = {
-  google_search: "Recherche sur Google",
-  social_media: "Réseaux sociaux (Facebook, Instagram, LinkedIn...)",
-  word_of_mouth: "Recommandation d'un proche ou collègue",
-  online_ad: "Publicité en ligne",
-  blog_article: "Article ou blog",
-  other: "Autre",
-}
-export const businessProfileLabels: Record<BusinessProfile, string> = {
-  small_company: "Petite entreprise / PME",
-  self_employed: "Indépendant / Auto-entrepreneur",
-  professional: "Profession libérale (avocat, comptable, consultant...)",
-  tradesperson: "Artisan / Corps de métier",
-  individual: "Particulier",
-}
+import { useAppLanguage } from "../lib/language/store"
+import type { BusinessProfile, OnboardingAnswers, ReferralSource } from "../lib/onboardingTypes"
+export type { BusinessProfile, OnboardingAnswers, ReferralSource } from "../lib/onboardingTypes"
 
 /** A response row, not account creation, marks completion. Always scoped to the current user. */
 export function useOnboarding(userId: string | null) {
+  // This hook also runs while App is rendering a marketing URL. Use the
+  // side-effect-free preference reader so an Arabic landing page keeps its
+  // URL-owned <html lang/dir>; only the onboarding form itself writes those.
+  const { t: copy } = useAppLanguage()
   const [checked, setChecked] = useState(false)
   const [needsOnboarding, setNeedsOnboarding] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -78,10 +60,10 @@ export function useOnboarding(userId: string | null) {
         wants_notifications: answers.wantsNotifications,
       }, { onConflict: "user_id" })
       if (request !== revision.current) return
-      if (err) setError("Une erreur est survenue. Veuillez réessayer.")
+      if (err) setError(copy.onboarding.error)
       else setNeedsOnboarding(false)
     } catch {
-      if (request === revision.current) setError("Une erreur est survenue. Veuillez réessayer.")
+      if (request === revision.current) setError(copy.onboarding.error)
     } finally {
       if (request === revision.current) setSubmitting(false)
     }

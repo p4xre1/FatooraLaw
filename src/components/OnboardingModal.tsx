@@ -1,12 +1,9 @@
 import { useState } from "react"
 import type { FormEvent } from "react"
 import { ArrowRight, Loader2, AlertCircle } from "lucide-react"
+import type { ReferralSource, BusinessProfile, OnboardingAnswers } from "../lib/onboardingTypes"
+import { useTranslation } from "../lib/language/store"
 import { Btn, Field, Select, Input, Toggle } from "./kit"
-import {
-  referralSourceLabels,
-  businessProfileLabels,
-} from "../hooks/useOnboarding"
-import type { ReferralSource, BusinessProfile, OnboardingAnswers } from "../hooks/useOnboarding"
 
 /**
  * Blocking, non-dismissible welcome questionnaire — shown once, right
@@ -17,6 +14,8 @@ import type { ReferralSource, BusinessProfile, OnboardingAnswers } from "../hook
 export default function OnboardingModal({
   submitting, error, onSubmit,
 }: { submitting: boolean; error: string | null; onSubmit: (answers: OnboardingAnswers) => void }) {
+  const { t: copy } = useTranslation()
+  const t = copy.onboarding
   const [referralSource, setReferralSource] = useState<ReferralSource | "">("")
   const [referralOther, setReferralOther] = useState("")
   const [businessProfile, setBusinessProfile] = useState<BusinessProfile | "">("")
@@ -37,67 +36,49 @@ export default function OnboardingModal({
         style={{ animation: "mz-pop .18s ease-out" }}
       >
         <header className="border-b border-line px-5 py-4">
-          <h2 className="text-[15px] font-bold tracking-tight text-ink">Bienvenue sur Fatorati</h2>
-          <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted">
-            Trois petites questions avant de découvrir votre tableau de bord.
-          </p>
+          <h2 className="text-[15px] font-bold tracking-tight text-ink">{t.title}</h2>
+          <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted">{t.subtitle}</p>
         </header>
 
         <form className="space-y-4 overflow-y-auto px-5 py-5" onSubmit={handleSubmit}>
           {error && (
-            <div className="flex items-start gap-2 rounded-lg border border-serious/20 bg-serious-50 px-3 py-2.5 text-[12.5px] leading-relaxed text-serious">
+            <div role="alert" className="flex items-start gap-2 rounded-lg border border-serious/20 bg-serious-50 px-3 py-2.5 text-[12.5px] leading-relaxed text-serious">
               <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
-          <Field label="Comment avez-vous connu Fatorati ?">
-            <Select
-              required
-              value={referralSource}
-              onChange={(e) => setReferralSource(e.target.value as ReferralSource)}
-              autoFocus
-            >
-              <option value="" disabled>Sélectionnez une réponse</option>
-              {(Object.keys(referralSourceLabels) as ReferralSource[]).map((k) => (
-                <option key={k} value={k}>{referralSourceLabels[k]}</option>
+          <Field label={t.referralQuestion}>
+            <Select required value={referralSource} onChange={(e) => setReferralSource(e.target.value as ReferralSource)} autoFocus>
+              <option value="" disabled>{t.selectAnswer}</option>
+              {(Object.keys(t.referralSource) as ReferralSource[]).map((key) => (
+                <option key={key} value={key}>{t.referralSource[key]}</option>
               ))}
             </Select>
           </Field>
 
           {referralSource === "other" && (
-            <Field label="Précisez (optionnel)">
-              <Input
-                value={referralOther}
-                onChange={(e) => setReferralOther(e.target.value)}
-                maxLength={200}
-                autoFocus
-              />
+            <Field label={t.referralOther}>
+              <Input value={referralOther} onChange={(e) => setReferralOther(e.target.value)} maxLength={200} autoFocus />
             </Field>
           )}
 
-          <Field label="Comment décririez-vous votre activité ?" hint="Petite entreprise, indépendant, profession libérale, artisan ou particulier.">
-            <Select
-              required
-              value={businessProfile}
-              onChange={(e) => setBusinessProfile(e.target.value as BusinessProfile)}
-            >
-              <option value="" disabled>Sélectionnez une réponse</option>
-              {(Object.keys(businessProfileLabels) as BusinessProfile[]).map((k) => (
-                <option key={k} value={k}>{businessProfileLabels[k]}</option>
+          <Field label={t.businessQuestion} hint={t.businessHint}>
+            <Select required value={businessProfile} onChange={(e) => setBusinessProfile(e.target.value as BusinessProfile)}>
+              <option value="" disabled>{t.selectAnswer}</option>
+              {(Object.keys(t.businessProfile) as BusinessProfile[]).map((key) => (
+                <option key={key} value={key}>{t.businessProfile[key]}</option>
               ))}
             </Select>
           </Field>
 
           <div className="flex items-center justify-between gap-3 rounded-lg border border-line px-3 py-2.5">
-            <span className="text-[12.5px] leading-relaxed text-muted">
-              Recevoir des notifications sur les nouveautés et mises à jour
-            </span>
+            <span className="text-[12.5px] leading-relaxed text-muted">{t.notifications}</span>
             <Toggle checked={wantsNotifications} onChange={setWantsNotifications} />
           </div>
 
           <Btn type="submit" className="w-full" disabled={!canSubmit}>
-            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Terminer <ArrowRight className="h-4 w-4" /></>}
+            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <>{t.finish} <ArrowRight className="h-4 w-4" /></>}
           </Btn>
         </form>
       </div>
