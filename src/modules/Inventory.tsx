@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react"
-import { Plus, Search, Minus, AlertTriangle, Package, Wrench, Boxes } from "lucide-react"
+import { Plus, Search, Minus, AlertTriangle, Package, Wrench, Boxes, ScanBarcode } from "lucide-react"
 import type { StockItem } from "../store/types"
 import { MAX_QUANTITY, parseAmount } from "../lib/businessValidation"
 import { useMizan } from "../store/useMizan"
 import { useTranslation } from "../lib/language/store"
 import { Card, SectionTitle, Btn, Badge, Table, Th, Td, Modal, Field, Input, Select, EmptyState, IconBtn, Progress } from "../components/kit"
+import StockScanner from "../components/StockScanner"
 
 const FILTERS: ("all" | StockItem["type"])[] = ["all", "material", "equipment"]
 
@@ -16,6 +17,9 @@ export default function Inventory() {
   const [q, setQ] = useState("")
   const [kind, setKind] = useState<(typeof FILTERS)[number]>("all")
   const [creating, setCreating] = useState(false)
+  const [scanning, setScanning] = useState(false)
+  /** A scanned code with no article yet: the create form opens with it filled. */
+  const [scannedSku, setScannedSku] = useState<string | null>(null)
   const [adjustError, setAdjustError] = useState<string | null>(null)
 
   function adjust(id: string, delta: number) {
@@ -37,7 +41,12 @@ export default function Inventory() {
 
   return (
     <div className="mz-view space-y-5">
-      <SectionTitle title={modules.inventory} sub={t.subtitle(stock.length, lowStock.length)} action={<Btn onClick={() => setCreating(true)}><Plus className="h-4 w-4" /> {t.newItem}</Btn>} />
+      <SectionTitle title={modules.inventory} sub={t.subtitle(stock.length, lowStock.length)} action={(
+        <span className="flex flex-wrap gap-2">
+          <Btn variant="outline" onClick={() => setScanning(true)}><ScanBarcode className="h-4 w-4" /> {t.scan.button}</Btn>
+          <Btn onClick={() => setCreating(true)}><Plus className="h-4 w-4" /> {t.newItem}</Btn>
+        </span>
+      )} />
 
       {adjustError && <p role="alert" className="text-sm text-serious">{adjustError}</p>}
       {lowStock.length > 0 && (
@@ -101,16 +110,22 @@ export default function Inventory() {
         )}
       </Card>
 
-      {creating && <CreateStock onClose={() => setCreating(false)} onCreate={(s) => { addStock(s); setCreating(false) }} />}
+      {creating && <CreateStock initialSku={scannedSku ?? undefined} onClose={() => { setCreating(false); setScannedSku(null) }} onCreate={(s) => { addStock(s); setCreating(false); setScannedSku(null) }} />}
+      {scanning && (
+        <StockScanner
+          onClose={() => setScanning(false)}
+          onCreateWithSku={(sku) => { setScanning(false); setScannedSku(sku); setCreating(true) }}
+        />
+      )}
     </div>
   )
 }
 
-function CreateStock({ onClose, onCreate }: { onClose: () => void; onCreate: (s: Omit<StockItem, "id">) => void }) {
+function CreateStock({ onClose, onCreate, initialSku }: { onClose: () => void; onCreate: (s: Omit<StockItem, "id">) => void; initialSku?: string }) {
   const { t: copy } = useTranslation()
   const t = copy.inventory
   const common = copy.common
-  const [f, setF] = useState<Omit<StockItem, "id">>(() => ({ name: "", sku: "", qty: 0, minQty: 0, unit: t.defaultUnit, assignedProjectId: null, type: "material" }))
+  const [f, setF] = useState<Omit<StockItem, "id">>(() => ({ name: "", sku: initialSku ?? "", qty: 0, minQty: 0, unit: t.defaultUnit, assignedProjectId: null, type: "material" }))
   const [qty, setQty] = useState("0")
   const [minQty, setMinQty] = useState("0")
   const [error, setError] = useState<string | null>(null)

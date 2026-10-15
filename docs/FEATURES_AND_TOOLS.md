@@ -268,7 +268,18 @@ status translated to Approuvé / En attente.
 ---
 
 ### 3.5 Stock & Matériel — `/inventory`
-**File:** `src/modules/Inventory.tsx` (130 lines)
+**File:** `src/modules/Inventory.tsx` (130 lines)**File:** `src/modules/Inventory.tsx` (130 lines)
+
+**Scanner de codes-barres** (`components/StockScanner.tsx`, `lib/scanCamera.ts`,
+`lib/barcode.ts`, PRO/BOOST): one code — phone camera (platform
+`BarcodeDetector`, ZXing elsewhere, lazy-loaded), hardware reader, or typing —
+finds the article by SKU (exact after normalization: a near-miss creates,
+never moves the wrong stock). Found: Entrée/Sortie in place, live level and
+status. Unknown: the create form opens with the code already filled, which is
+how a delivery gets stocked. Every move lands in the audit journal via
+`adjustStock`. The lock page names the scanner when Stock is the module a
+FREE account is looking at.
+
 
 **What it does.** Stock levels with low-stock alerts and per-project assignment.
 

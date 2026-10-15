@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Check, Landmark, Lock, MessageCircle, ShieldCheck, Zap } from "lucide-react"
+import { Check, Landmark, Lock, MessageCircle, ScanBarcode, ShieldCheck, Zap } from "lucide-react"
 import { Btn, Card } from "./kit"
 import { useTranslation } from "../lib/language/store"
 import { useFormats } from "../lib/language/formats"
@@ -67,6 +67,11 @@ export default function PlanLock({ module, onNavigate }: { module: PlanModule; o
           <div className="min-w-0 flex-1">
             <h1 className="text-[17px] font-bold">{t.lockedTitle(t.names[needed])}</h1>
             <p className="mt-0.5 text-[13px] text-white/65">{t.lockedBody(moduleLabel(module), t.names[needed])}</p>
+            {module === "inventory" && (
+              <p className="mt-1.5 inline-flex items-center gap-1.5 text-[12px] font-semibold text-white/85">
+                <ScanBarcode className="h-3.5 w-3.5 text-emerald-brand" aria-hidden="true" /> {t.scannerNote}
+              </p>
+            )}
           </div>
           <div className="flex rounded-full bg-white/10 p-1" role="group" aria-label={`${t.period["1M"]} / ${t.period["1Y"]}`}>
             {(["1M", "1Y"] as PlanPeriod[]).map((value) => (
