@@ -27,8 +27,6 @@ export type ShellCopy = {
   noResults: string
   collapse: string
   expand: string
-  localNotice: string
-  exportBackup: string
   account: string
   language: string
   signOut: string
@@ -51,8 +49,6 @@ export const shell: Record<Language, ShellCopy> = {
     noResults: "Aucun module ne correspond.",
     collapse: "Réduire le menu",
     expand: "Déployer le menu",
-    localNotice: "Données stockées sur cet appareil.",
-    exportBackup: "Exporter une sauvegarde",
     account: "Menu du compte",
     language: "Langue",
     signOut: "Se déconnecter",
@@ -72,8 +68,6 @@ export const shell: Record<Language, ShellCopy> = {
     noResults: "No module matches.",
     collapse: "Collapse menu",
     expand: "Expand menu",
-    localNotice: "Data is stored on this device.",
-    exportBackup: "Export a backup",
     account: "Account menu",
     language: "Language",
     signOut: "Sign out",
@@ -93,8 +87,6 @@ export const shell: Record<Language, ShellCopy> = {
     noResults: "لا توجد وحدة مطابقة.",
     collapse: "تصغير القائمة",
     expand: "توسيع القائمة",
-    localNotice: "البيانات محفوظة على هذا الجهاز.",
-    exportBackup: "تصدير نسخة احتياطية",
     account: "قائمة الحساب",
     language: "اللغة",
     signOut: "تسجيل الخروج",

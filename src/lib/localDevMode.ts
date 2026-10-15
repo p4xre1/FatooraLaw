@@ -18,7 +18,7 @@ import { useMizan } from "../store/useMizan"
 
 export const LOCAL_DEV_USER = {
   id: "local-dev",
-  name: "Mode local (dev)",
+  name: "Mode local",
   email: "local-dev@localhost",
   /** Full local workspace, not a role demo. */
   role: "owner" as const,

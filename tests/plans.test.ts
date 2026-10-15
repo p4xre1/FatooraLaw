@@ -20,11 +20,11 @@ const redeemed = (plan: "pro" | "boost", period: "1M" | "1Y", day: string): Plan
   activationFor({ code: `${plan.toUpperCase()}-${period}-A1B2C3D4`, plan, period }, null, day)
 
 describe("the plan matrix", () => {
-  it("gives FREE the four things it is sold with, and nothing else", () => {
-    expect(PLANS.free.modules).toEqual(["dashboard", "projects", "contacts", "invoices", "reports", "settings"])
+  it("gives FREE the things it is sold with, and nothing else", () => {
+    expect(PLANS.free.modules).toEqual(["dashboard", "projects", "contacts", "procurement", "invoices", "reports", "settings"])
     for (const key of PLANS.free.modules) expect(planIncludes("free", key), key).toBe(true)
     // The rest of the product is visible in the rail but not openable.
-    for (const key of ["procurement", "inventory", "calendar", "risk", "legal", "tools", "team", "audit"] as ModuleKey[])
+    for (const key of ["inventory", "calendar", "risk", "legal", "tools", "team", "audit"] as ModuleKey[])
       expect(planIncludes("free", key), key).toBe(false)
   })
 
@@ -50,7 +50,7 @@ describe("the plan matrix", () => {
     expect(requiredPlan("contacts")).toBe("free")
     expect(requiredPlan("reports")).toBe("free")
     expect(requiredPlan("invoices")).toBe("free")
-    expect(requiredPlan("procurement")).toBe("pro")
+    expect(requiredPlan("procurement")).toBe("free")
     expect(requiredPlan("team")).toBe("pro")
     expect(requiredPlan("risk")).toBe("boost")
     expect(requiredPlan("legal")).toBe("boost")

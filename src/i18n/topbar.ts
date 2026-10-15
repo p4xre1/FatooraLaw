@@ -9,7 +9,7 @@ const en = {
   accountMenu: "Account menu",
   profileCompany: "Profile & company",
   signOut: "Sign out",
-  localDev: "Local mode (dev)",
+  localDev: "Local mode",
   openNavigation: "Open navigation",
 }
 
@@ -23,7 +23,7 @@ const fr: TopbarCopy = {
   accountMenu: "Menu du compte",
   profileCompany: "Profil & entreprise",
   signOut: "Déconnexion",
-  localDev: "Mode local (dev)",
+  localDev: "Mode local",
   openNavigation: "Ouvrir la navigation",
 }
 
@@ -35,7 +35,7 @@ const ar: TopbarCopy = {
   accountMenu: "قائمة الحساب",
   profileCompany: "الملف الشخصي والشركة",
   signOut: "تسجيل الخروج",
-  localDev: "الوضع المحلي (تطوير)",
+  localDev: "الوضع المحلي",
   openNavigation: "فتح قائمة التنقل",
 }
 

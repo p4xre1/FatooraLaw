@@ -5,7 +5,8 @@ import { daysUntil, todayISO } from "./calendarDates"
  * The three accounts Fatorati sells, and the only place that decides which
  * module each one unlocks.
  *
- *   FREE   clients, projects and invoicing, plus read access to the reports.
+ *   FREE   clients, projects, purchases & expenses and invoicing, plus read
+ *          access to the reports.
  *   PRO    everything except the "Plus d'outils" group (risks, legal vault,
  *          subscriptions & tools).
  *   BOOST  everything.
@@ -61,7 +62,7 @@ export const PLANS: Record<PlanCode, Plan> = {
     // Dashboard, settings and reports are never withheld: the first is the
     // account's home, the second is where a code is redeemed, and the third the
     // owner asked to leave readable on FREE.
-    modules: ["dashboard", "projects", "contacts", "invoices", "reports", "settings"],
+    modules: ["dashboard", "projects", "contacts", "procurement", "invoices", "reports", "settings"],
   },
   pro: {
     code: "pro",

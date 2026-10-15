@@ -74,7 +74,7 @@ export default function SupabaseSetupNotice({ onContinueLocally }: { onContinueL
             sans aucune requête réseau.
           </p>
           <Btn variant="outline" size="sm" className="mt-2.5" onClick={onContinueLocally}>
-            Continuer en mode local (développement)
+            Continuer en mode local
           </Btn>
         </div>
       )}

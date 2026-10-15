@@ -874,8 +874,8 @@ than abstract features:
 
 | Module | FREE | PRO | BOOST |
 |---|:-:|:-:|:-:|
-| Tableau de bord, Projets, Clients, Factures*, Rapports (lecture), Paramètres | ✅ | ✅ | ✅ |
-| Achats & Dépenses, Stock, Calendrier, Équipe, Journal d'audit | — | ✅ | ✅ |
+| Tableau de bord, Projets, Clients, Achats & Dépenses, Factures*, Rapports (lecture), Paramètres | ✅ | ✅ | ✅ |
+| Stock, Calendrier, Équipe, Journal d'audit | — | ✅ | ✅ |
 | Risques, Coffre juridique, Abonnements & Outils (« Plus d'outils ») | — | — | ✅ |
 
 *Factures has no route yet (`INVOICE_ROUTE_ENABLED` is off); the entitlement is

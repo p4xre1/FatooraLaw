@@ -14,7 +14,7 @@ const en = {
   /** The accounts. Same word in every language — they are product labels. */
   names: { free: "FREE", pro: "PRO", boost: "BOOST" } as Record<PlanCode, string>,
   tagline: {
-    free: "Clients, projects and invoicing, with reports to read.",
+    free: "Clients, projects, purchases & expenses and invoicing, with reports to read.",
     pro: "Everything except risks, the legal vault and subscriptions.",
     boost: "Everything there is, including risks, legal and subscriptions.",
   } as Record<PlanCode, string>,
@@ -24,7 +24,7 @@ const en = {
   period: { "1M": "1 month", "1Y": "1 year" } as Record<PlanPeriod, string>,
   /** The value sentence on each card — what the plan is worth, not what it has. */
   value: {
-    free: "Zero commitment: clients, projects and invoicing to start today — you pay only when you grow.",
+    free: "Zero commitment: clients, projects, purchases, expenses and invoicing to start today — you pay only when you grow.",
     pro: "The full cockpit of a growing business: spending, stock, deadlines, team and reports in one place.",
     boost: "The firm-grade tier: risks, legal vault and subscriptions — the compliance that keeps penalties away.",
   } as Record<PlanCode, string>,
@@ -87,7 +87,7 @@ type PlansCopy = typeof en
 const fr: PlansCopy = {
   names: { free: "FREE", pro: "PRO", boost: "BOOST" },
   tagline: {
-    free: "Clients, projets et facturation, avec les rapports en lecture.",
+    free: "Clients, projets, achats & dépenses et facturation, avec les rapports en lecture.",
     pro: "Tout sauf les risques, le coffre juridique et les abonnements.",
     boost: "Tout, y compris les risques, le juridique et les abonnements.",
   },
@@ -96,7 +96,7 @@ const fr: PlansCopy = {
   perYear: "/ an",
   period: { "1M": "1 mois", "1Y": "1 an" },
   value: {
-    free: "Zéro engagement : clients, projets et facturation pour démarrer aujourd'hui — vous payez quand vous grandissez.",
+    free: "Zéro engagement : clients, projets, achats, dépenses et facturation pour démarrer aujourd'hui — vous payez quand vous grandissez.",
     pro: "Le pilotage complet d'une activité qui grandit : dépenses, stock, échéances, équipe et rapports au même endroit.",
     boost: "Le niveau cabinet : risques, coffre juridique et abonnements — la conformité qui tient les pénalités à distance.",
   },
@@ -151,7 +151,7 @@ const fr: PlansCopy = {
 const ar: PlansCopy = {
   names: { free: "FREE", pro: "PRO", boost: "BOOST" },
   tagline: {
-    free: "العملاء والمشاريع والفواتير، مع قراءة التقارير.",
+    free: "العملاء والمشاريع والمشتريات والمصاريف والفواتير، مع قراءة التقارير.",
     pro: "كل شيء ما عدا المخاطر والخزنة القانونية والاشتراكات.",
     boost: "كل شيء، بما في ذلك المخاطر والقانوني والاشتراكات.",
   },
@@ -160,7 +160,7 @@ const ar: PlansCopy = {
   perYear: "/ سنة",
   period: { "1M": "شهر واحد", "1Y": "سنة واحدة" },
   value: {
-    free: "دون أي التزام: العملاء والمشاريع والفواتير لتبدأ اليوم — تدفع فقط عندما يكبر نشاطك.",
+    free: "دون أي التزام: العملاء والمشاريع والمشتريات والمصاريف والفواتير لتبدأ اليوم — تدفع فقط عندما يكبر نشاطك.",
     pro: "القيادة الكاملة لنشاط في نمو: المصاريف والمخزون والآجال والفريق والتقارير في مكان واحد.",
     boost: "مستوى المكاتب: المخاطر والخزنة القانونية والاشتراكات — الامتثال الذي يبعد عنك الغرامات.",
   },

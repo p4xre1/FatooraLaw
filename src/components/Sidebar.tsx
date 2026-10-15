@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import {
   Search, PanelLeftClose, PanelLeftOpen, Plus, ChevronDown, LogOut, Languages,
-  FolderPlus, ReceiptText, FileSignature, HardDrive, FileText, Lock,
+  FolderPlus, ReceiptText, FileSignature, FileText, Lock,
 } from "lucide-react"
 import type { ModuleKey } from "../store/types"
 import { planIncludes, requiredPlan, type PlanCode } from "../lib/plans"
@@ -544,36 +544,6 @@ export default function Sidebar({
 
         {/* ---- Pinned footer ---- */}
         <div className="shrink-0 space-y-1.5 border-t border-sidebar-line px-3 py-3">
-          {/* Local-storage notice + the existing export action in Paramètres. */}
-          {collapsed ? (
-            <button
-              type="button"
-              onClick={() => allowed.settings && go("settings")}
-              disabled={!allowed.settings}
-              aria-label={allowed.settings ? `${t.localNotice} ${t.exportBackup}` : t.localNotice}
-              title={allowed.settings ? `${t.localNotice} ${t.exportBackup}` : t.localNotice}
-              className={`${ITEM} justify-center px-0 text-sidebar-faint hover:bg-sidebar-hover hover:text-sidebar-ink disabled:pointer-events-none disabled:opacity-60`}
-            >
-              <HardDrive className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
-            </button>
-          ) : (
-            <div className="rounded-[10px] bg-sidebar-hover px-3 py-2.5">
-              <p className="flex items-start gap-2 text-[11.5px] leading-relaxed text-sidebar-ink">
-                <HardDrive className="mt-px h-4 w-4 shrink-0 text-sidebar-faint" aria-hidden="true" />
-                <span>{t.localNotice}</span>
-              </p>
-              {allowed.settings && (
-                <button
-                  type="button"
-                  onClick={() => go("settings")}
-                  className="ms-6 mt-1.5 text-[12px] font-semibold text-sidebar-active-deep underline decoration-sidebar-active/40 underline-offset-2 transition-colors hover:decoration-sidebar-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active"
-                >
-                  {t.exportBackup}
-                </button>
-              )}
-            </div>
-          )}
-
           {settingsItem && (
             <a
               href={settingsItem.href}

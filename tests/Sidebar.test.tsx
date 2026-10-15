@@ -161,9 +161,10 @@ it("hides every module the account is not allowed to open", () => {
   expect(screen.queryByRole("button", { name: "Exporter une sauvegarde" })).toBeNull()
 })
 
-it("keeps the local-data notice readable when Paramètres is not permitted", () => {
+it("shows no local-data notice in the footer, permitted or not", () => {
   renderSidebar({ allowed: perms(["dashboard"]) })
-  expect(screen.getByText("Données stockées sur cet appareil.")).not.toBeNull()
+  expect(screen.queryByText("Données stockées sur cet appareil.")).toBeNull()
+  expect(screen.queryByRole("button", { name: "Exporter une sauvegarde" })).toBeNull()
 })
 
 it("offers only the permitted administration modules in the account popover", () => {
@@ -214,8 +215,8 @@ it("gives every collapsed-rail control an accessible name and hides the group la
   // The primary action degrades to a '+' icon button. It no longer opens a
   // menu, so it is named after the action it performs, not "Actions rapides".
   expect(within(aside).getByRole("button", { name: "Nouveau projet" })).not.toBeNull()
-  // So does the pinned export shortcut.
-  expect(within(aside).getByRole("button", { name: /Données stockées sur cet appareil/ })).not.toBeNull()
+  // The local-data notice that used to sit pinned in this footer is gone.
+  expect(within(aside).queryByRole("button", { name: /Données stockées sur cet appareil/ })).toBeNull()
 })
 
 it("collapses and expands the rail through a named, stateful toggle", () => {
@@ -257,16 +258,14 @@ it("says so when nothing matches, and keeps the pinned footer usable", () => {
   // account block must survive a query that matches nothing.
   expect(screen.getByRole("link", { name: "Paramètres" })).not.toBeNull()
   expect(screen.getByRole("button", { name: "Menu du compte" })).not.toBeNull()
-  expect(screen.getByRole("button", { name: "Exporter une sauvegarde" })).not.toBeNull()
 })
 
 /* ------------------------------ local data ------------------------------ */
 
-it("links the local-data notice to the existing export action in Paramètres", () => {
-  const onNavigate = vi.fn()
-  renderSidebar({ onNavigate })
-  fireEvent.click(screen.getByRole("button", { name: "Exporter une sauvegarde" }))
-  expect(onNavigate).toHaveBeenCalledWith("settings")
+it("carries no local-data notice or export shortcut in the footer", () => {
+  renderSidebar()
+  expect(screen.queryByText("Données stockées sur cet appareil.")).toBeNull()
+  expect(screen.queryByRole("button", { name: "Exporter une sauvegarde" })).toBeNull()
 })
 
 /* ------------------------------- account -------------------------------- */
@@ -485,17 +484,18 @@ it("keeps locked modules visible on FREE, with the plan named in the tooltip", a
   usePlan.getState().forAccount("user-1")
   renderSidebar()
 
-  // FREE modules are untouched: no lock hint on the rows it includes.
+  // FREE modules are untouched: no lock hint on the rows it includes —
+  // Achats & Dépenses among them since it joined FREE.
   expect(screen.getByRole("link", { name: "Clients & Fournisseurs" }).getAttribute("title")).toBeNull()
   expect(screen.getByRole("link", { name: "Projets" }).getAttribute("title")).toBeNull()
   expect(screen.getByRole("link", { name: "Rapports & Fiscalité" }).getAttribute("title")).toBeNull()
+  expect(screen.getByRole("link", { name: "Achats & Dépenses" }).getAttribute("title")).toBeNull()
 
   // A PRO module says PRO; the row still links to its own page, where the
   // lock screen replaces the module.
   const calendar = screen.getByRole("link", { name: "Calendrier" })
   expect(calendar.getAttribute("href")).toBe(modulePath("calendar"))
   expect(calendar.getAttribute("title")).toContain("PRO")
-  expect(screen.getByRole("link", { name: "Achats & Dépenses" }).getAttribute("title")).toContain("PRO")
 
   // The advanced group names BOOST, not PRO.
   fireEvent.click(screen.getByRole("button", { name: /Plus d'outils/ }))
