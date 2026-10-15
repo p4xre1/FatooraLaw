@@ -9,7 +9,7 @@ import { useLanguageStore } from "../src/lib/language/store"
 
 const exports = vi.hoisted(() => ({ csv: vi.fn() }))
 vi.mock("../src/lib/mizan", async (actual) => ({ ...await actual<typeof import("../src/lib/mizan")>(), toCSV: exports.csv, runAsync: async (task: () => unknown) => task() }))
-vi.mock("../src/components/charts", () => ({ BarChart: (props: unknown) => <pre data-testid="report-chart">{JSON.stringify(props)}</pre>, Legend: () => null }))
+vi.mock("../src/components/charts", () => ({ BarChart: (props: unknown) => <pre data-testid="report-chart">{JSON.stringify(props)}</pre>, Legend: () => null, Donut: () => null }))
 
 beforeEach(() => {
   vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 9, 13, 12))
@@ -84,7 +84,10 @@ it("keeps sample business amounts out of reports without deleting the cache", ()
 it("uses dated approved expenses and exports exact values without fiscal or income assumptions", async () => {
   useMizan.setState({ projects: [{ ...seedProjects[0], id: "actual-project", name: "Actual project", budget: 700, paid: 200 }], expenses: [{ ...seedExpenses[0], id: "approved", amount: 12.35, date: "2026-10-13" }, { ...seedExpenses[0], id: "pending", amount: 999, status: "pending", date: "2026-10-13" }], contacts: [] })
   render(<Reports />)
-  const chart = JSON.parse(screen.getByTestId("report-chart").textContent!)
+  // Two charts now (the money diagram and this monthly one): pick the monthly.
+  const chart = screen.getAllByTestId("report-chart")
+    .map((el) => JSON.parse(el.textContent!))
+    .find((candidate) => candidate.series[0].name === "Dépenses approuvées")
   expect(chart.series).toHaveLength(1)
   expect(chart.series[0].values.at(-1)).toBe(12.35)
   await act(async () => fireEvent.click(screen.getByRole("button", { name: "Exporter les dépenses" })))

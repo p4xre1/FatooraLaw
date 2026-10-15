@@ -1,6 +1,10 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react"
+import { readFileSync } from "node:fs"
+import { resolve } from "node:path"
 import { afterEach, beforeEach, expect, it, vi } from "vitest"
 import Landing from "../src/marketing/Landing"
+
+const landingCss = () => readFileSync(resolve(process.cwd(), "src/marketing/landing.css"), "utf8")
 
 beforeEach(() => {
   window.history.replaceState({}, "", "/")
@@ -8,6 +12,19 @@ beforeEach(() => {
   document.body.style.overflow = ""
 })
 afterEach(() => vi.unstubAllGlobals())
+
+it("keeps every language choice inside the screen on phones and tablets", () => {
+  const css = landingCss()
+  // The drawer's copy is laid out in place — nothing floats, so nothing can be
+  // clipped by the panel's `max-height`/`overflow-y`, whatever the screen.
+  expect(css).toMatch(/\.landing-lang-inline \{[^}]*display: flex/)
+  expect(css).toMatch(/\.landing-drawer-preferences \{[^}]*display: flex/)
+  // The bar's dropdown — the one place a floating list is still used, at a
+  // width where there is room for it — is capped to the viewport on both axes.
+  expect(css).toMatch(/\.landing-lang-menu \{[^}]*max-width: calc\(100vw - 1\.5rem\)/)
+  expect(css).toMatch(/\.landing-lang-menu \{[^}]*max-height: min\(19rem, calc\(100dvh - 6rem\)\)/)
+  expect(css).toMatch(/\.landing-lang-menu \{[^}]*overflow-y: auto/)
+})
 
 it("defaults to the public light design and applies no class to the body or dashboard root", () => {
   const view = render(<Landing onEnter={() => {}} />)

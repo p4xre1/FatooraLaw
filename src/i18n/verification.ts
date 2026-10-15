@@ -1,0 +1,161 @@
+import type { Language } from "../lib/language/store.ts"
+
+/**
+ * Client verification: the call queue. A lead arrives (often from an ad),
+ * gets called, takes some time to convince, is verified — then payment
+ * and delivery take over. Every stage is stamped, so the page can say
+ * how long people waited and how long they needed.
+ */
+const en = {
+  subtitle: "Call, convince, verify — then payment and delivery.",
+  newLead: "New lead",
+  kpis: {
+    waiting: "Waiting for a call",
+    avgWait: "Avg wait before the call",
+    avgConvince: "Avg time to convince",
+    verifiedRate: "Verified rate",
+    toCollect: "To collect (verified)",
+  },
+  queue: {
+    title: "Clients to check",
+    empty: "No client to check. New leads appear here.",
+    client: "Client",
+    campaign: "Campaign / source",
+    arrived: "Arrived",
+    waiting: "Waiting",
+    attempts: "Calls",
+    status: "Verification",
+    convince: "Convincing",
+    payment: "Payment",
+    call: "Called",
+    noAnswer: "No answer",
+    verify: "Verify",
+    refuse: "Refuse",
+    markPaid: "Mark paid",
+    addAttempt: "+1 call",
+  },
+  times: {
+    waitBeforeCall: "Wait before the first call",
+    convince: "Time to convince",
+    totalVerify: "Total until verified",
+    inProgress: "in progress",
+  },
+  costs: {
+    title: "What each client cost us",
+    empty: "No client with an order yet.",
+    client: "Client",
+    orders: "Orders",
+    collected: "Collected",
+    product: "Products",
+    delivery: "Delivery",
+    packaging: "Packaging",
+    other: "Other",
+    ads: "Ads",
+    total: "Total cost",
+    profit: "Profit",
+  },
+}
+
+type VerificationCopy = typeof en
+
+const fr: VerificationCopy = {
+  subtitle: "Appeler, convaincre, vérifier — puis le paiement et la livraison.",
+  newLead: "Nouveau lead",
+  kpis: {
+    waiting: "En attente d'appel",
+    avgWait: "Attente moyenne avant l'appel",
+    avgConvince: "Temps moyen pour convaincre",
+    verifiedRate: "Taux de vérifiés",
+    toCollect: "À encaisser (vérifiés)",
+  },
+  queue: {
+    title: "Clients à contrôler",
+    empty: "Aucun client à contrôler. Les nouveaux leads apparaissent ici.",
+    client: "Client",
+    campaign: "Campagne / source",
+    arrived: "Arrivé",
+    waiting: "Attente",
+    attempts: "Appels",
+    status: "Vérification",
+    convince: "Conviction",
+    payment: "Paiement",
+    call: "Appelé",
+    noAnswer: "Sans réponse",
+    verify: "Vérifier",
+    refuse: "Refuser",
+    markPaid: "Marquer payé",
+    addAttempt: "+1 appel",
+  },
+  times: {
+    waitBeforeCall: "Attente avant le premier appel",
+    convince: "Temps pour convaincre",
+    totalVerify: "Total jusqu'à la vérification",
+    inProgress: "en cours",
+  },
+  costs: {
+    title: "Ce que chaque client nous a coûté",
+    empty: "Aucun client avec une commande pour le moment.",
+    client: "Client",
+    orders: "Commandes",
+    collected: "Encaissé",
+    product: "Produits",
+    delivery: "Livraison",
+    packaging: "Emballage",
+    other: "Autres",
+    ads: "Pub",
+    total: "Coût total",
+    profit: "Profit",
+  },
+}
+
+const ar: VerificationCopy = {
+  subtitle: "الاتصال، الإقناع، التحقق — ثم الدفع والتوصيل.",
+  newLead: "عميل محتمل جديد",
+  kpis: {
+    waiting: "في انتظار الاتصال",
+    avgWait: "متوسط الانتظار قبل الاتصال",
+    avgConvince: "متوسط وقت الإقناع",
+    verifiedRate: "نسبة المتحقق منهم",
+    toCollect: "المستحق تحصيله (المتحقق منهم)",
+  },
+  queue: {
+    title: "العملاء الواجب التحقق منهم",
+    empty: "لا يوجد عميل للتحقق منه. يظهر العملاء المحتملون الجدد هنا.",
+    client: "العميل",
+    campaign: "الحملة / المصدر",
+    arrived: "وصل",
+    waiting: "الانتظار",
+    attempts: "المكالمات",
+    status: "التحقق",
+    convince: "الإقناع",
+    payment: "الدفع",
+    call: "تم الاتصال",
+    noAnswer: "بدون رد",
+    verify: "تحقق",
+    refuse: "رفض",
+    markPaid: "تحديد كمدفوع",
+    addAttempt: "+١ مكالمة",
+  },
+  times: {
+    waitBeforeCall: "الانتظار قبل أول مكالمة",
+    convince: "وقت الإقناع",
+    totalVerify: "المجموع حتى التحقق",
+    inProgress: "جارٍ",
+  },
+  costs: {
+    title: "كم كلّفنا كل عميل",
+    empty: "لا يوجد عميل لديه طلب بعد.",
+    client: "العميل",
+    orders: "الطلبات",
+    collected: "المُحصَّل",
+    product: "المنتجات",
+    delivery: "التوصيل",
+    packaging: "التغليف",
+    other: "أخرى",
+    ads: "الإعلان",
+    total: "التكلفة الإجمالية",
+    profit: "الربح",
+  },
+}
+
+export const verification: Record<Language, VerificationCopy> = { ar, en, fr }

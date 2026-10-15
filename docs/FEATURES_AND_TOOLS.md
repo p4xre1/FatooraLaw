@@ -228,7 +228,39 @@ account's data.
 
 ---
 
+**The one-form rule** (`components/PartyPicker.tsx`): no dashboard form
+may demand a party that does not exist yet, and no client is typed twice.
+Wherever a form picks a client — a project, a contract, an order/lead —
+the select ends with "＋ Nouveau client…" and unfolds name / phone /
+city inline; expenses do the same for suppliers. Submitting creates the
+contact and saves with its id in the same gesture (`addContact` returns
+the new id), so the party is registered in Clients & Fournisseurs —
+ranked, mapped, verified and analysed like any other — from the single
+form. Contracts keep their explicit "Client non renseigné" choice.
+
+**Classement des clients** (`lib/clientRank.ts`, clients only): every client
+carries a score out of 100 — collected money 50 (log-scaled), projects 15,
+clear balance 15, age 10 from the birth year — and a tier (VIP ≥ 75, Or ≥ 55,
+Argent ≥ 35, Bronze below), relative to the client base. City, acquisition
+source ("nous a connus via"), sales channel ("achète via") and item keywords
+are *segments* that slice the ranked list, never points. The keyword profile
+of a client is inherited from the stock their projects consumed. The ledger
+detail shows the point-by-point breakdown, spend vs contracted, and the
+client's product words.
+
 ### 3.4 Achats & Dépenses — `/procurement`
+
+**Détail d'une dépense** (`lib/expenseCalc.ts`): an expense can be itemised —
+articles with quantities and unit prices (the "number of items" is their sum),
+a TVA rate of its own (defaulted from Paramètres, basis of the TVA
+récupérable), and the receipt photo itself stored with the record (image,
+512 KB max, validated like the logo). `amount` remains what was paid (TTC)
+everywhere; HT/TVA are derived — from the lines when itemised, from the TTC
+and rate otherwise, and `null` (shown as unknown) for legacy expenses with no
+rate, never invented. The list underlines the split and the item count, the
+receipt thumbnail opens the photo, and the Excel export carries items, rate
+and HT alongside the TTC.
+
 **File:** `src/modules/Procurement.tsx` (156 lines)
 
 **What it does.** An expense register with a two-state approval workflow.
@@ -267,8 +299,22 @@ status translated to Approuvé / En attente.
 
 ---
 
+Expense lines and stock articles both carry free **keywords**
+(`lib/keywords.ts`) — the vocabulary the client ranking analyses by.
+
 ### 3.5 Stock & Matériel — `/inventory`
-**File:** `src/modules/Inventory.tsx` (130 lines)
+**File:** `src/modules/Inventory.tsx` (130 lines)**File:** `src/modules/Inventory.tsx` (130 lines)
+
+**Scanner de codes-barres** (`components/StockScanner.tsx`, `lib/scanCamera.ts`,
+`lib/barcode.ts`, PRO/BOOST): one code — phone camera (platform
+`BarcodeDetector`, ZXing elsewhere, lazy-loaded), hardware reader, or typing —
+finds the article by SKU (exact after normalization: a near-miss creates,
+never moves the wrong stock). Found: Entrée/Sortie in place, live level and
+status. Unknown: the create form opens with the code already filled, which is
+how a delivery gets stocked. Every move lands in the audit journal via
+`adjustStock`. The lock page names the scanner when Stock is the module a
+FREE account is looking at.
+
 
 **What it does.** Stock levels with low-stock alerts and per-project assignment.
 
@@ -483,7 +529,64 @@ register with a printable summary card.
 
 ---
 
+### 3.9b Livraisons & Vérification clients — `/delivery`, `/verification`
+
+The ad-to-delivery pipeline (PRO/BOOST, in the **Gestion** group). An
+**order** (`DeliveryOrder`) is the unit everything hangs on: its client,
+its campaign, its items (stock lines carry their purchase cost), and its
+recorded costs — delivery, packaging, other fees. **Campaigns**
+(`AdCampaign`) record platform and spend; `lib/deliveryAnalytics.ts` turns
+them into a cost per verified client (spend ÷ distinct verified clients),
+charged once per client on their first verified order — a refused lead is
+never charged product or delivery costs in the per-client totals, and a
+repeat order is never charged the acquisition twice.
+
+**Vérification clients** is the call queue: Nouveau → Appelé → Sans
+réponse → Vérifié / Refusé, then payment (derived from the amount paid).
+The store stamps `firstCallAt` / `verifiedAt` / `paidAt` when a stage
+changes, so the page measures — never asks — how long a client waited for
+the first call and how long they took to convince (first call →
+verified). Its second table is the per-client cost ledger: products,
+delivery, packaging, other fees, ads, total, profit.
+
+**Livraisons** runs fulfilment (En attente → Préparation → Expédiée →
+Livrée / Retournée / Annulée): marking delivered takes the quantities out
+of stock once, a return puts them back. It also shows stock on hand vs
+reserved by verified orders vs available, the campaigns table, and a
+compact verified-buyer audience. The same audience is reported in depth
+in Rapports (§3.10): spend, buyers, average CAC, conversion, campaign
+table, and segments by city, source, channel, age band and product
+keywords — always computed from verified buyers, never estimated.
+
 ### 3.10 Rapports & Fiscalité — `/reports`
+
+**L'argent — la vue complète** (`lib/moneyOverview.ts`): every money
+figure the application reads — project budgets and collections, approved
+expenses and their recoverable VAT, order revenue / product / delivery /
+packaging costs and profit, campaign spend, client balances, stock value
+at purchase price, signed contracts, planned monthly subscriptions —
+consolidated once and shown three ways: a **diagram** (in vs out per
+source), a **financial score** out of 100 (collections 40, order
+profitability 30, cost coverage 30; parts shown, dataless parts drop out
+and the rest rescale), and an **infographic** (the in → out → remains
+flow, a donut of where the money goes, and the position figures).
+Subscriptions stay labelled planned-per-month and are never folded into
+the totals; the stock value counts only articles with a known purchase
+price and names the rest.
+
+**Clients par ville — Maroc**: a Morocco map (`lib/cities.ts`,
+`components/MoroccoMap.tsx`) with one dot per city — 75 cities covering all
+twelve regions — sized by client count or collected money (projects plus
+verified orders). The outline is the real boundary (Natural Earth 50 m
+admin-0, Morocco + southern provinces dissolved into one silhouette,
+simplified to 134 points with a ~3 km seaward buffer), the projection box
+keeps the true 1 574 km × 1 683 km proportions, and a geometry test keeps
+every city strictly inside (no tiles, no fetch — the app stays
+offline-capable). City names are matched by
+normalization plus FR/EN/AR aliases; a place the map does not know is listed
+beside it, never dropped. Selecting a city names its best clients (score
+order) with their product keywords.
+
 **File:** `src/modules/Reports.tsx` (57 lines)
 
 **What it does.** The same `dashboardData()` engine as the dashboard, presented
@@ -560,7 +663,7 @@ rendered at all.
 ⚠️ **This is UX, not security.** The function's own doc comment says it plainly:
 *"Module visibility only. Database RLS, not this function, is access control."*
 Because the team array lives in `localStorage`, a user can edit their own
-permissions in devtools. The same caveat applies to `PlanGate` (§6.3).
+permissions in devtools. The same caveat applies to plan codes (§6.2).
 
 ---
 
@@ -862,35 +965,97 @@ particulier) plus a notifications opt-in — and writes an
 `onboarding_responses` row. Its doc comment: *"A response row, not account
 creation, marks completion. Always scoped to the current user."*
 
-### 6.2 Plan gating
-**Files:** `src/lib/planLimits.ts`, `src/components/PlanGate.tsx`
+### 6.2 Plan gating — FREE / PRO / BOOST
+**Files:** `src/lib/plans.ts` (the matrix), `src/lib/planCodes.ts` (activation
+codes), `src/store/usePlan.ts` (per-account store), `src/components/PlanLock.tsx`
+(lock screen), `src/components/PlanStatus.tsx` (dashboard strip + Paramètres
+card), `scripts/plan-code.mjs` (the owner's code generator).
 
-Four tiers — `none`, `essential`, `pro`, `pro_max` — and fifteen gateable
-features:
+Three account types, defined as **module lists** — the rail, the router and the
+top bar all ask "can this account open X?", so the matrix names modules rather
+than abstract features:
 
-| Feature | none | essential | pro | pro_max |
-|---|:-:|:-:|:-:|:-:|
-| dashboard, contacts | ✅ | ✅ | ✅ | ✅ |
-| calendar, calendar_deadlines | — | ✅ | ✅ | ✅ |
-| contracts, legal_vault, reports, exports, roles_permissions, blog_cms | — | — | ✅ | ✅ |
-| multi_user, advanced_audit, priority_support, monitor_site, content_improvement | — | — | — | ✅ |
+| Module | FREE | PRO | BOOST |
+|---|:-:|:-:|:-:|
+| Tableau de bord, Projets, Clients, Achats & Dépenses, Factures*, Rapports (lecture), Paramètres | ✅ | ✅ | ✅ |
+| Stock, Calendrier, Équipe, Journal d'audit | — | ✅ | ✅ |
+| Risques, Coffre juridique, Abonnements & Outils (« Plus d'outils ») | — | — | ✅ |
 
-`getUserPlan()` reads `localStorage.user_plan`, and falls back to inferring a
-tier from the local `subscriptions` array (any active sub containing "max"/
-"équipe" or ≥ 400 → `pro_max`; "pro" or ≥ 100 → `pro`; any active → `essential`).
-`hasFeature()` treats unknown feature names as **locked** — a typo fails closed.
+*Factures has no route yet (`INVOICE_ROUTE_ENABLED` is off); the entitlement is
+already in FREE so the module is covered the day it ships. Prices: PRO 199 MAD/mo
+(1 990/yr), BOOST 499 MAD/mo (4 990/yr), in `PLANS` — the one place prices live.
 
-`<PlanGate feature="…" fallback={…}>` renders children when allowed, otherwise
-the fallback or a default upgrade panel.
+**How it presents.** The plan is a second filter after the role's permissions.
+A locked module stays visible in the rail with a 🔒 and a tooltip naming the plan
+(`Aucun` = FREE row untouched), and clicking it keeps its URL: the shell renders
+`PlanLock` instead of the module, with one card per plan generated **from the
+same table** that unlocks the rail (so a card cannot advertise a module the app
+would refuse). The top bar's quick actions carry the same lock mark. The
+dashboard shows a plan strip (plan, end date, days left); Paramètres has the
+"Plan & activation" card.
 
-⚠️ **Two caveats.** (1) The tier is read from `localStorage`, so it is
-user-editable — this is merchandising, not entitlement enforcement; real
-entitlement would need the ☁️ `account_subscriptions` / `plan_catalog` tables
-that already exist in the migrations. (2) The default panel mixes Arabic and
-English (*"مقفول — Locked"*), hardcodes the 199/499 MAD prices, and routes
-payment to a **WhatsApp link** (`wa.me/212772966980`) with *"Send receipt / RIP —
-then I activate your plan manually"*. That is a manual fulfilment process, not a
-payment integration, and it is inconsistent with the otherwise all-French UI.
+**How a code is sold and redeemed.** There is no payment gateway: the client
+messages WhatsApp (`212772966980`, pre-filled with plan + prices), pays by
+transfer (RIB), and receives a code like `PRO-1M-XXXXXXXX` minted offline with
+`node scripts/plan-code.mjs pro 1m`. The client types it into Paramètres; the
+window runs **from the redemption day** for a calendar month or year (month-end
+clamped: 31 Jan + 1M → 28 Feb). Redeeming the same plan again **extends** the
+running window from its own end; a different plan starts fresh today. An
+expired activation is kept so the dashboard can say "votre PRO a pris fin le …".
+Redemptions and refused attempts are written to the audit log. The activation
+record is stored per account (`mizan.plan.v1.<userId>`), exactly like the
+business data: another account on the same browser starts on FREE.
+
+⚠️ **Caveats.** (1) The code check is an HMAC whose key ships in the bundle —
+it stops typos, sharing and guessing, not a determined user who reads the
+bundle. Real entitlement is the ☁️ `account_subscriptions` / `plan_catalog`
+tables in the migrations; this is the merchandising layer in front of them.
+(2) Older code (`lib/planLimits.ts`, `components/PlanGate.tsx`, the
+`user_plan` localStorage key and its "Pro Max" copy) was removed; the admin
+monitor's audit card is now an ungated capability note, because operator
+tooling was never the customer's plan to gate.
+
+### 6.2.1 Codes per client, freeze and stop (CMS) — built
+
+The CMS page **الرموز والأسعار** (`/admin/subscription-editor`) is the subscription
+console:
+
+- **Code builder.** Each paying client gets a unique per-client code —
+  `PRO-1M-K7Q2-BF6VSEZJ` — where `K7Q2` is a random 4-character serial and the last
+  segment is an HMAC checksum over the *serial-bound* payload
+  (`fatorati:plan:v2:…`, `src/lib/planCodes.ts`). The builder records the client's
+  name, company, phone, how they found Fatorati (WhatsApp, Instagram, Facebook,
+  Google, referral, other) and a note, then offers copy + one-tap WhatsApp send.
+  Generic codes (`PRO-1M-BF6VSEZJ`, `scripts/plan-code.mjs`) keep working for the
+  owner; only serial codes are tracked per client.
+- **Registry.** Every issued code with its real start and end — written back by the
+  app itself when the code is redeemed (`markRedeemed`), so the dates are facts,
+  not estimates — the days left, and the status (pending, active, frozen, stopped,
+  expired). Persisted locally as `fatorati.subscriptions.v1`.
+- **Freeze (تجميد).** Pauses the client's clock: on resume the end date shifts by
+  the whole frozen stretch, so the client keeps exactly the days they paid for.
+  While frozen, remaining days are read as of the freeze day.
+- **Stop (إيقاف).** Terminal: the plan falls back to FREE immediately, named as
+  stopped in the app. Reactivating in the CMS turns the record back into an
+  unsent code the same serial can redeem again.
+- The app folds the record for the activation's serial into `planStatus`, so a
+  freeze or stop made in the CMS applies in the signed-in app in the same browser,
+  in the same tick — the honest local-first boundary until the records map onto
+  Supabase `account_subscriptions` and enforcement becomes server-side.
+
+### 6.2.2 Prices and plan paragraphs are CMS-editable — built
+
+Prices (MAD monthly/yearly per paid plan) and the selling paragraphs (tagline +
+value sentence, per plan per language) live in an editable catalog
+(`fatorati.plan-catalog.v1`, `src/lib/planCatalog.ts`) layered over the shipped
+defaults in `lib/plans.ts`. The CMS edits them and every in-app surface reads the
+effective values — the black plan cards on the lock page, the dashboard strip,
+Paramètres, and the pre-filled WhatsApp buy message — so one edit re-prices and
+re-words the whole app. Reset returns to the shipped defaults. The plan cards
+also carry a Mensuel/Annuel toggle, a computed yearly saving ("Économisez 398 MAD
+par an ≈ 2 mois offerts" for PRO), badges (PRO "Le plus choisi", BOOST "Meilleure
+valeur"), staggered entrance animation, and three promises the product actually
+keeps (activation immédiate, virement sans carte, support WhatsApp FR/AR).
 
 ### 6.3 Formatting utilities — `src/lib/mizan.ts`
 
@@ -948,6 +1113,19 @@ consent, stored under `COOKIE_CONSENT_KEY` and broadcast via
 `GOOGLE_ANALYTICS_ID`.
 
 ---
+
+### 6.8 Appearance — dark mode
+
+**Paramètres → Apparence**: Clair / Sombre / Système (`src/lib/theme.ts`). A
+device preference (persisted as `fatorati.theme.v1`, like the language, not
+per-account business data), applied at once with no save step. The dashboard is
+painted with semantic colour tokens (`bg-surface`, `text-ink`, `border-line`,
+the sidebar set), so dark mode is a single redefinition of those tokens under a
+`.dark` class (`src/index.css`) that `App` hangs on `<html>` while a signed-in
+screen is showing — plus `color-scheme: dark` so scrollbars and form controls
+agree. The marketing pages, auth screens and the CMS keep their designed light
+identity; the plan cards are black in both appearances (`--color-night` never
+flips). "Système" follows the OS live, including a sunset switch mid-session.
 
 ## 7. Admin CMS — 18 routes, 2 roles
 
@@ -1217,7 +1395,7 @@ webhooks.
 | `Team` invite modal | "Une invitation **sera envoyée** à cette adresse" | No email is sent |
 | `Procurement` receipt toggle | "Reçu / facture joint (**prêt OCR**)" | Boolean flag only; no file, no OCR |
 | `/assistant` panel | "Facture conforme ICE + TVA 20 %" | No invoice or TVA feature exists |
-| `PlanGate` default panel | Mixed Arabic/English, WhatsApp payment | Manual fulfilment, inconsistent with the all-French UI |
+| Plan activation codes | HMAC key ships in the bundle (§6.2) | Stops typos/sharing/guessing, not a determined user; real entitlement is `account_subscriptions` |
 
 ---
 

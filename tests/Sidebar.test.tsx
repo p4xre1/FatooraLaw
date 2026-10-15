@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs"
+import { readFileSync, readdirSync } from "node:fs"
 import { resolve } from "node:path"
 import { act, fireEvent, render, screen, within } from "@testing-library/react"
 import { beforeEach, expect, it, vi } from "vitest"
@@ -18,7 +18,7 @@ import { LANGUAGE_STORAGE_KEY, useLanguageStore } from "../src/lib/language/stor
  */
 
 const ALL = perms([
-  "dashboard", "projects", "contacts", "procurement", "inventory", "calendar",
+  "dashboard", "projects", "contacts", "procurement", "inventory", "delivery", "verification", "calendar",
   "risk", "tools", "legal", "reports", "team", "audit", "settings",
 ])
 
@@ -60,6 +60,14 @@ function navHrefs(nav: HTMLElement) {
   return within(nav).getAllByRole("link").map((link) => link.getAttribute("href"))
 }
 
+/** Every source file under `src/`, so a token's reach can be asserted. */
+function walk(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = resolve(dir, entry.name)
+    return entry.isDirectory() ? walk(path) : [path]
+  })
+}
+
 beforeEach(() => {
   window.history.replaceState({}, "", "/dashboard")
   useMizan.getState().signOut()
@@ -78,7 +86,7 @@ it("groups the rail into 'Au quotidien' then 'Gestion', with 'Plus d'outils' col
   expect(navHrefs(nav)).toEqual([
     modulePath("dashboard"), modulePath("contacts"),
     modulePath("procurement"), modulePath("calendar"),
-    modulePath("projects"), modulePath("inventory"), modulePath("reports"),
+    modulePath("projects"), modulePath("inventory"), modulePath("delivery"), modulePath("verification"), modulePath("reports"),
   ])
 
   // Collapsed by default: the three tools are not in the document at all.
@@ -103,7 +111,7 @@ it("expands 'Plus d'outils' on click and exposes the three tools", () => {
   ])
   // The rest of the rail is untouched by the expansion.
   const hrefs = navHrefs(nav)
-  for (const key of ["dashboard", "contacts", "procurement", "calendar", "projects", "inventory", "reports"] as ModuleKey[]) {
+  for (const key of ["dashboard", "contacts", "procurement", "calendar", "projects", "inventory", "delivery", "verification", "reports"] as ModuleKey[]) {
     expect(hrefs).toContain(modulePath(key))
   }
 })
@@ -153,9 +161,10 @@ it("hides every module the account is not allowed to open", () => {
   expect(screen.queryByRole("button", { name: "Exporter une sauvegarde" })).toBeNull()
 })
 
-it("keeps the local-data notice readable when Paramètres is not permitted", () => {
+it("shows no local-data notice in the footer, permitted or not", () => {
   renderSidebar({ allowed: perms(["dashboard"]) })
-  expect(screen.getByText("Données stockées sur cet appareil.")).not.toBeNull()
+  expect(screen.queryByText("Données stockées sur cet appareil.")).toBeNull()
+  expect(screen.queryByRole("button", { name: "Exporter une sauvegarde" })).toBeNull()
 })
 
 it("offers only the permitted administration modules in the account popover", () => {
@@ -203,17 +212,19 @@ it("gives every collapsed-rail control an accessible name and hides the group la
     expect(within(nav).getByRole("link", { name }).getAttribute("title")).toBe(name)
   }
 
-  // The primary action degrades to a '+' icon button. It no longer opens a
-  // menu, so it is named after the action it performs, not "Actions rapides".
-  expect(within(aside).getByRole("button", { name: "Nouveau projet" })).not.toBeNull()
-  // So does the pinned export shortcut.
-  expect(within(aside).getByRole("button", { name: /Données stockées sur cet appareil/ })).not.toBeNull()
+  // No primary/quick-actions button anywhere in the rail (the owner
+  // asked for it gone); the collapsed rail is brought back by its named
+  // expand control.
+  expect(within(aside).queryByRole("button", { name: "Actions rapides" })).toBeNull()
+  expect(within(aside).getByRole("button", { name: "Déployer le menu" })).not.toBeNull()
+  // The local-data notice that used to sit pinned in this footer is gone.
+  expect(within(aside).queryByRole("button", { name: /Données stockées sur cet appareil/ })).toBeNull()
 })
 
 it("collapses and expands the rail through a named, stateful toggle", () => {
   const setCollapsed = vi.fn()
   renderSidebar({ setCollapsed, collapsed: false })
-  const toggle = screen.getByRole("button", { name: "Réduire le menu" })
+  const toggle = screen.getByRole("button", { name: "Masquer le menu" })
   expect(toggle.getAttribute("aria-expanded")).toBe("true")
   fireEvent.click(toggle)
   expect(setCollapsed).toHaveBeenCalledWith(true)
@@ -249,16 +260,14 @@ it("says so when nothing matches, and keeps the pinned footer usable", () => {
   // account block must survive a query that matches nothing.
   expect(screen.getByRole("link", { name: "Paramètres" })).not.toBeNull()
   expect(screen.getByRole("button", { name: "Menu du compte" })).not.toBeNull()
-  expect(screen.getByRole("button", { name: "Exporter une sauvegarde" })).not.toBeNull()
 })
 
 /* ------------------------------ local data ------------------------------ */
 
-it("links the local-data notice to the existing export action in Paramètres", () => {
-  const onNavigate = vi.fn()
-  renderSidebar({ onNavigate })
-  fireEvent.click(screen.getByRole("button", { name: "Exporter une sauvegarde" }))
-  expect(onNavigate).toHaveBeenCalledWith("settings")
+it("carries no local-data notice or export shortcut in the footer", () => {
+  renderSidebar()
+  expect(screen.queryByText("Données stockées sur cet appareil.")).toBeNull()
+  expect(screen.queryByRole("button", { name: "Exporter une sauvegarde" })).toBeNull()
 })
 
 /* ------------------------------- account -------------------------------- */
@@ -291,13 +300,8 @@ it("navigates from the account popover and closes it", () => {
   expect(document.getElementById("sidebar-account-menu")).toBeNull()
 })
 
-it("closes both popovers on Escape", () => {
+it("closes the account popover on Escape", () => {
   renderSidebar()
-  fireEvent.click(screen.getByRole("button", { name: "Actions rapides" }))
-  expect(document.getElementById("sidebar-quick-actions")).not.toBeNull()
-  fireEvent.keyDown(document, { key: "Escape" })
-  expect(document.getElementById("sidebar-quick-actions")).toBeNull()
-
   fireEvent.click(screen.getByRole("button", { name: "Menu du compte" }))
   expect(document.getElementById("sidebar-account-menu")).not.toBeNull()
   fireEvent.keyDown(document, { key: "Escape" })
@@ -366,54 +370,154 @@ it("falls back to French for a language value it does not publish", () => {
   expect(screen.getByText("Au quotidien")).not.toBeNull()
 })
 
-/* --------------------------- quick actions ------------------------------ */
+/* --------------------------- quick actions & the ✕ --------------------------- */
 
-it("offers the three existing quick actions while no /invoices route exists", () => {
-  const onNavigate = vi.fn()
-  renderSidebar({ onNavigate })
-  fireEvent.click(screen.getByRole("button", { name: "Actions rapides" }))
-
-  const menu = document.getElementById("sidebar-quick-actions")!
-  fireEvent.click(within(menu).getByRole("button", { name: "Nouvelle dépense" }))
-  expect(onNavigate).toHaveBeenCalledWith("procurement")
+it("has no quick-actions button or menu in the rail", () => {
+  renderSidebar()
+  expect(screen.queryByRole("button", { name: "Actions rapides" })).toBeNull()
+  expect(document.getElementById("sidebar-quick-actions")).toBeNull()
 })
 
-it("drops quick actions the account cannot open", () => {
-  renderSidebar({ allowed: perms(["dashboard", "projects"]) })
-  fireEvent.click(screen.getByRole("button", { name: "Actions rapides" }))
-  const menu = document.getElementById("sidebar-quick-actions")!
-  expect(within(menu).getByRole("button", { name: "Nouveau projet" })).not.toBeNull()
-  expect(within(menu).queryByRole("button", { name: "Nouvelle dépense" })).toBeNull()
-  expect(within(menu).queryByRole("button", { name: "Générer un contrat" })).toBeNull()
+it("hides the rail from the ✕: the drawer closes and the rail folds", () => {
+  const setCollapsed = vi.fn()
+  const setMobileOpen = vi.fn()
+  renderSidebar({ setCollapsed, setMobileOpen, collapsed: false, mobileOpen: true })
+
+  const hide = screen.getByRole("button", { name: "Masquer le menu" })
+  fireEvent.click(hide)
+  expect(setMobileOpen).toHaveBeenCalledWith(false)
+  expect(setCollapsed).toHaveBeenCalledWith(true)
 })
 
 /* --------------------------- colour contract ---------------------------- */
 
-it("introduces no colour of its own: every token it names was already in the dark sidebar", () => {
+it("takes every colour from the left menu's own tokens", () => {
   const source = readFileSync(resolve(process.cwd(), "src/components/Sidebar.tsx"), "utf8")
 
-  // No literal colour anywhere in the component.
+  // No literal colour anywhere in the component: the palette lives in
+  // `src/index.css` as the `--color-sidebar-*` tokens, which is what lets the
+  // menu be restyled (white rail, Fatorati blue) without editing this file.
   expect(source).not.toMatch(/#[0-9a-fA-F]{3,8}\b/)
   expect(source).not.toMatch(/\brgba?\(/)
 
-  // Every colour-bearing utility must resolve to one of the tokens the sidebar
-  // already used before the redesign (plus `brand`/`navy`/`white`, also already
-  // present). Anything outside this list is a colour change.
-  const allowed = new Set([
-    "bg-sidebar", "bg-sidebar-hover", "bg-sidebar-active", "bg-brand", "bg-navy/50",
-    "text-sidebar-ink", "text-sidebar-faint", "text-white",
-    "border-sidebar-hover", "placeholder:text-sidebar-faint", "decoration-sidebar-faint",
-    "ring-brand",
-  ])
-  const used = new Set(
-    [...source.matchAll(/\b(?:bg|text|border|ring|decoration|from|via|to|fill|stroke|shadow|placeholder:text)-[a-z0-9]+(?:-[a-z0-9]+)*(?:\/\d+)?/g)]
-      .map((match) => match[0])
-      // Width/position/alignment utilities share these prefixes but name no colour.
-      .filter((token) => !["border-t", "border-b", "ring-1", "ring-2", "ring-inset", "text-start", "text-end", "text-center", "shadow-sm"].includes(token)),
-  )
-  expect([...used].filter((token) => !allowed.has(token))).toEqual([])
+  // Width/position utilities share the colour prefixes but name no colour.
+  const notColour = /^(?:border-[tbles](?:-\d)?|ring-\d|ring-inset|text-(?:start|end|center))$/
+  const used = [...source.matchAll(/\b(?:bg|text|border|ring|decoration|placeholder:text|from|via|to|fill|stroke|shadow)-[a-z0-9]+(?:-[a-z0-9]+)*(?:\/\d+)?/g)]
+    .map((match) => match[0])
+    .filter((token) => !notColour.test(token))
 
-  // No gradients, and the only shadow is the pre-existing one on the active row.
+  // Everything the rail paints with is either one of the menu's own `sidebar-*`
+  // tokens, white (text on the blue row), or the scrim behind the mobile drawer.
+  const allowed = (token: string) =>
+    /^(?:bg|text|border|ring|decoration|placeholder:text)-sidebar(?:-[a-z]+)*(?:\/\d+)?$/.test(token) ||
+    ["text-white", "bg-navy/50"].includes(token)
+  expect(used.filter((token) => !token.startsWith("shadow-") && !allowed(token))).toEqual([])
+
+  // No gradients. The only shadows are the two the rail legitimately owns: the
+  // selected row and the popovers that float above it.
   expect(source).not.toMatch(/bg-gradient|from-|via-|to-\[/)
-  expect(source.match(/shadow-(?!sm)\w+/g) ?? []).toEqual([])
+  expect(new Set(used.filter((token) => token.startsWith("shadow-")))).toEqual(new Set(["shadow-sm", "shadow-lg"]))
+})
+
+it("sizes the whole menu from one scale", () => {
+  const source = readFileSync(resolve(process.cwd(), "src/components/Sidebar.tsx"), "utf8")
+
+  // One row geometry: 44 px touch target below `lg`, 40 px on desktop, a single
+  // 14 px label size, 12 px gaps, 10 px radius.
+  const item = source.match(/const ITEM = "([^"]+)"/)?.[1] ?? ""
+  expect(item).toContain("h-11 lg:h-10")
+  expect(item).toContain("gap-3")
+  expect(item).toContain("text-[14px]")
+  expect(item).toContain("rounded-[10px]")
+
+  // Popover rows are the one deliberate step down.
+  const row = source.match(/const POPOVER_ITEM = "([^"]+)"/)?.[1] ?? ""
+  expect(row).toContain("h-9")
+  expect(row).toContain("text-[13px]")
+
+  // Every row icon is 18 px at one stroke weight — no row picks its own.
+  expect(source).toMatch(/<item\.icon className="h-\[18px\] w-\[18px\] shrink-0"/)
+  expect(source).not.toMatch(/strokeWidth=/)
+})
+
+it("styles the rail from the brand palette, and keeps that palette to the rail", () => {
+  const css = readFileSync(resolve(process.cwd(), "src/index.css"), "utf8")
+  // White rail, the brand's own blue for the selected row, the mark's fold blue
+  // for hover and small blue text (see `BRAND_BLUE`/`BRAND_NAVY` in
+  // scripts/brand-assets.py), and the hairlines the menu is drawn with.
+  expect(css).toMatch(/--color-sidebar:\s*#ffffff/)
+  expect(css).toMatch(/--color-sidebar-active:\s*#3a88ea/)
+  expect(css).toMatch(/--color-sidebar-active-deep:\s*#2b68bf/)
+  expect(css).toMatch(/--color-sidebar-line:\s*#e5e8ee/)
+
+  // The menu was restyled on its own: no other file may consume these tokens,
+  // or the rail stops being re-themable without dragging the dashboard along.
+  const root = resolve(process.cwd(), "src")
+  for (const file of walk(root)) {
+    if (file.endsWith("Sidebar.tsx") || file.endsWith("index.css")) continue
+    expect(readFileSync(file, "utf8"), file).not.toMatch(/\b(?:bg|text|border|ring|decoration)-sidebar(?:-[a-z]+)?\b/)
+  }
+})
+
+/* ------------------------------ plan locks ------------------------------ */
+
+import { usePlan } from "../src/store/usePlan"
+import { codeFor } from "../src/lib/planCodes"
+
+/**
+ * The plan is a second filter on top of the role's `allowed` map: a locked row
+ * stays visible (that is the upsell) but announces the plan that opens it.
+ * These run on a signed-out plan store, which is FREE — see plans.ts.
+ */
+
+async function activate(plan: "pro" | "boost") {
+  usePlan.getState().forAccount("user-1")
+  await usePlan.getState().redeem(await codeFor(plan, "1Y"))
+}
+
+it("keeps locked modules visible on FREE, with the plan named in the tooltip", async () => {
+  usePlan.getState().forAccount("user-1")
+  renderSidebar()
+
+  // FREE modules are untouched: no lock hint on the rows it includes —
+  // Achats & Dépenses among them since it joined FREE.
+  expect(screen.getByRole("link", { name: "Clients & Fournisseurs" }).getAttribute("title")).toBeNull()
+  expect(screen.getByRole("link", { name: "Projets" }).getAttribute("title")).toBeNull()
+  expect(screen.getByRole("link", { name: "Rapports & Fiscalité" }).getAttribute("title")).toBeNull()
+  expect(screen.getByRole("link", { name: "Achats & Dépenses" }).getAttribute("title")).toBeNull()
+
+  // A PRO module says PRO; the row still links to its own page, where the
+  // lock screen replaces the module.
+  const calendar = screen.getByRole("link", { name: "Calendrier" })
+  expect(calendar.getAttribute("href")).toBe(modulePath("calendar"))
+  expect(calendar.getAttribute("title")).toContain("PRO")
+
+  // The advanced group names BOOST, not PRO.
+  fireEvent.click(screen.getByRole("button", { name: /Plus d'outils/ }))
+  expect(screen.getByRole("link", { name: "Gestion des Risques" }).getAttribute("title")).toContain("BOOST")
+})
+
+it("unlocks in step with the plan: PRO opens the middle, BOOST opens the rest", async () => {
+  await activate("pro")
+  renderSidebar()
+  expect(screen.getByRole("link", { name: "Calendrier" }).getAttribute("title")).toBeNull()
+  fireEvent.click(screen.getByRole("button", { name: /Plus d'outils/ }))
+  expect(screen.getByRole("link", { name: "Coffre juridique" }).getAttribute("title")).toContain("BOOST")
+})
+
+it("leaves nothing locked on BOOST", async () => {
+  await activate("boost")
+  const { nav } = renderSidebar()
+  fireEvent.click(screen.getByRole("button", { name: /Plus d'outils/ }))
+  for (const link of within(nav).getAllByRole("link")) {
+    expect(link.getAttribute("title") ?? "").not.toMatch(/PRO|BOOST/)
+  }
+})
+
+it("still navigates from a locked row — the lock screen is the destination, not a dead end", () => {
+  usePlan.getState().forAccount("user-1")
+  const onNavigate = vi.fn()
+  renderSidebar({ onNavigate })
+  fireEvent.click(screen.getByRole("link", { name: "Calendrier" }))
+  expect(onNavigate).toHaveBeenCalledWith("calendar")
 })

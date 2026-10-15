@@ -1,8 +1,8 @@
 import { useEffect } from "react"
 import { NavLink, Outlet, useNavigate, useOutletContext } from "react-router"
 import {
-  Activity, BarChart3, Bell, BookOpenText, CreditCard, DatabaseBackup, FileEdit, FileText, Globe2, Headset, LayoutDashboard,
-  LogOut, Mail, MessageSquareWarning, ShieldCheck, SlidersHorizontal,
+  Activity, BarChart3, Bell, BookOpenText, CreditCard, DatabaseBackup, FileText, Globe2, Headset, LayoutDashboard,
+  KeyRound, LogOut, Mail, MessageSquareWarning, ShieldCheck, SlidersHorizontal,
 } from "lucide-react"
 import { supabase } from "../lib/supabase"
 import { IconBtn } from "../components/kit"
@@ -32,7 +32,7 @@ export default function AdminLayout() {
     ...(access.isPlatformAdmin ? [
       { to: "/admin/dashboard", label: "نظرة عامة", icon: LayoutDashboard },
       { to: "/admin/subscriptions", label: "الاشتراكات", icon: CreditCard },
-      { to: "/admin/subscription-editor", label: "محرر الاشتراكات", icon: FileEdit },
+      { to: "/admin/subscription-editor", label: "الرموز والأسعار", icon: KeyRound },
       { to: "/admin/traffic", label: "الزيارات", icon: Activity },
     ] : []),
     ...(canEditContent ? [

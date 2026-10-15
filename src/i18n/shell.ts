@@ -17,18 +17,12 @@ export type ShellCopy = {
   groups: { daily: string; management: string; more: string }
   invoices: string
   newInvoice: string
-  quickActions: string
-  newProject: string
-  newExpense: string
-  newContract: string
   search: string
   searchLabel: string
   navLabel: string
   noResults: string
-  collapse: string
+  hide: string
   expand: string
-  localNotice: string
-  exportBackup: string
   account: string
   language: string
   signOut: string
@@ -41,18 +35,12 @@ export const shell: Record<Language, ShellCopy> = {
     // French labels already live in `NAV`; only the other locales override.
     invoices: "Factures",
     newInvoice: "Nouvelle facture",
-    quickActions: "Actions rapides",
-    newProject: "Nouveau projet",
-    newExpense: "Nouvelle dépense",
-    newContract: "Générer un contrat",
     search: "Rechercher un module…",
     searchLabel: "Rechercher un module",
     navLabel: "Navigation principale",
     noResults: "Aucun module ne correspond.",
-    collapse: "Réduire le menu",
+    hide: "Masquer le menu",
     expand: "Déployer le menu",
-    localNotice: "Données stockées sur cet appareil.",
-    exportBackup: "Exporter une sauvegarde",
     account: "Menu du compte",
     language: "Langue",
     signOut: "Se déconnecter",
@@ -62,18 +50,12 @@ export const shell: Record<Language, ShellCopy> = {
     groups: { daily: "Day to day", management: "Management", more: "More tools" },
     invoices: "Invoices",
     newInvoice: "New invoice",
-    quickActions: "Quick actions",
-    newProject: "New project",
-    newExpense: "New expense",
-    newContract: "Create a contract",
     search: "Search a module…",
     searchLabel: "Search a module",
     navLabel: "Main navigation",
     noResults: "No module matches.",
-    collapse: "Collapse menu",
+    hide: "Hide menu",
     expand: "Expand menu",
-    localNotice: "Data is stored on this device.",
-    exportBackup: "Export a backup",
     account: "Account menu",
     language: "Language",
     signOut: "Sign out",
@@ -83,18 +65,12 @@ export const shell: Record<Language, ShellCopy> = {
     groups: { daily: "يومياً", management: "التدبير", more: "أدوات أخرى" },
     invoices: "الفواتير",
     newInvoice: "فاتورة جديدة",
-    quickActions: "إجراءات سريعة",
-    newProject: "مشروع جديد",
-    newExpense: "مصروف جديد",
-    newContract: "إنشاء عقد",
     search: "ابحث عن وحدة…",
     searchLabel: "ابحث عن وحدة",
     navLabel: "التنقل الرئيسي",
     noResults: "لا توجد وحدة مطابقة.",
-    collapse: "تصغير القائمة",
+    hide: "إخفاء القائمة",
     expand: "توسيع القائمة",
-    localNotice: "البيانات محفوظة على هذا الجهاز.",
-    exportBackup: "تصدير نسخة احتياطية",
     account: "قائمة الحساب",
     language: "اللغة",
     signOut: "تسجيل الخروج",

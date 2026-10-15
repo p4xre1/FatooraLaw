@@ -70,8 +70,8 @@ export default function Team() {
 
 const rolePresets: Record<Role, ModuleKey[]> = {
   owner: MODULE_KEYS,
-  accountant: ["dashboard", "procurement", "reports", "contacts"],
-  supervisor: ["dashboard", "projects", "inventory"],
+  accountant: ["dashboard", "procurement", "reports", "contacts", "verification"],
+  supervisor: ["dashboard", "projects", "inventory", "delivery", "verification"],
   assistant: ["dashboard", "contacts"],
 }
 

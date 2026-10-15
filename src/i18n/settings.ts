@@ -9,6 +9,13 @@ import type { Language } from "../lib/language/store.ts"
  */
 const en = {
   subtitle: "Company configuration, tax settings and documents",
+  appearance: {
+    title: "Appearance",
+    light: "Light",
+    dark: "Dark",
+    system: "System",
+    hint: "Dark mode applies to the app on this device. System follows your operating system, including when it changes during the day.",
+  },
   save: "Save",
   saved: "Saved",
   saveError: "Could not save settings.",
@@ -66,6 +73,13 @@ type SettingsCopy = typeof en
 
 const fr: SettingsCopy = {
   subtitle: "Configuration de l'entité, fiscalité & documents",
+  appearance: {
+    title: "Apparence",
+    light: "Clair",
+    dark: "Sombre",
+    system: "Système",
+    hint: "Le mode sombre s'applique à l'application sur cet appareil. « Système » suit le réglage de votre système, y compris lorsqu'il change dans la journée.",
+  },
   save: "Enregistrer",
   saved: "Enregistré",
   saveError: "Impossible d'enregistrer les paramètres.",
@@ -121,6 +135,13 @@ const fr: SettingsCopy = {
 
 const ar: SettingsCopy = {
   subtitle: "إعدادات الشركة والضرائب والمستندات",
+  appearance: {
+    title: "المظهر",
+    light: "فاتح",
+    dark: "داكن",
+    system: "النظام",
+    hint: "ينطبق الوضع الداكن على التطبيق في هذا الجهاز. أما «النظام» فيتبع إعداد نظام التشغيل، حتى عندما يتغير خلال اليوم.",
+  },
   save: "حفظ",
   saved: "تم الحفظ",
   saveError: "تعذر حفظ الإعدادات.",

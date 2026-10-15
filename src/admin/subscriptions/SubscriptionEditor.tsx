@@ -1,70 +1,405 @@
 /**
- * CMS Subscription / Plan Editor
- * Edit subscription tools (plan name, cost, start/expiry, status) and export.
+ * CMS — رموز التفعيل والأسعار (activation codes & prices).
+ *
+ * The owner's subscription console, in three parts:
+ *
+ *  1. **منشئ الرموز** — mint a per-client code (`PRO-1M-K7Q2-…`) for a named
+ *     client, with how they found Fatorati, and send it over WhatsApp.
+ *  2. **سجل الاشتراكات** — every code ever handed out: when it started, when
+ *     it ends, how many days remain, and the owner's two hands on it —
+ *     تجميد (freeze: the remaining days wait) and إيقاف (stop: it ends now).
+ *     The signed-in app reads the same ledger, so a freeze or stop made here
+ *     applies there in the same browser immediately.
+ *  3. **الأسعار والنصوص** — the prices and selling paragraphs of the three
+ *     plans, per language, applied at once to the lock page, the dashboard
+ *     strip and the WhatsApp buy message.
+ *
+ * Local-first, like the rest of the CMS today: records live in this browser
+ * (`fatorati.subscriptions.v1`, `fatorati.plan-catalog.v1`). The shapes map
+ * onto `account_subscriptions` / `plan_catalog` when Supabase is connected.
  */
-import { useState, useEffect } from "react"
-import { Plus, Trash2, Save, FileDown } from "lucide-react"
+import { useMemo, useState } from "react"
+import {
+  Ban, Check, Copy, FileDown, KeyRound, MessageCircle, Play, RotateCcw, Snowflake, Trash2,
+} from "lucide-react"
+import { useSubscriptions } from "../../store/useSubscriptions"
+import { usePlanCatalog } from "../../store/usePlanCatalog"
+import {
+  SUBSCRIPTION_SOURCES, daysLeft, displayStatus, projectedEnd,
+  type SubscriptionRecord, type SubscriptionSource,
+} from "../../lib/subscriptionLedger"
+import { codeForSerial, randomSerial } from "../../lib/planCodes"
+import { PLAN_ORDER, PLANS, type PlanCode, type PlanPeriod } from "../../lib/plans"
+import { defaultCatalog } from "../../lib/planCatalog"
+import { translations } from "../../i18n"
+import type { LocaleId } from "../../lib/locales"
 
-type Tool = { id: string; name: string; cost: number; start: string; expiry: string; status: string }
+const SOURCE_LABELS: Record<SubscriptionSource, string> = {
+  whatsapp: "واتساب",
+  instagram: "إنستغرام",
+  facebook: "فيسبوك",
+  google: "غوغل",
+  referral: "إحالة / صديق",
+  other: "أخرى",
+}
+
+const STATUS_LABELS = {
+  pending: "بانتظار التفعيل",
+  active: "نشط",
+  frozen: "مجمّد",
+  stopped: "موقوف",
+  expired: "منتهي",
+} as const
+
+const STATUS_STYLE: Record<keyof typeof STATUS_LABELS, string> = {
+  pending: "bg-amber-50 text-amber-700 ring-amber-600/20",
+  active: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
+  frozen: "bg-sky-50 text-sky-700 ring-sky-600/20",
+  stopped: "bg-rose-50 text-rose-700 ring-rose-600/20",
+  expired: "bg-slate-100 text-slate-500 ring-slate-500/20",
+}
+
+const dateFmt = new Intl.DateTimeFormat("ar-MA", { dateStyle: "medium" })
+const fmtDate = (iso: string | null) => {
+  if (!iso) return "—"
+  const date = new Date(`${iso}T12:00:00`)
+  return Number.isNaN(date.getTime()) ? iso : dateFmt.format(date)
+}
+
+/** wa.me needs digits only; a Moroccan local number gets its country code. */
+function whatsappNumber(contact: string): string {
+  const digits = contact.replace(/\D/g, "")
+  if (digits.startsWith("0")) return `212${digits.slice(1)}`
+  if (digits.length === 9) return `212${digits}`
+  return digits
+}
+
+const inputCls = "w-full rounded-lg border border-line-strong bg-white px-3 py-2 text-[13px] outline-none focus:border-brand"
+const labelCls = "mb-1 block text-[11px] font-bold text-muted"
 
 export default function SubscriptionEditor() {
-  const [list, setList] = useState<Tool[]>([])
-  const [status, setStatus] = useState("")
+  const records = useSubscriptions((state) => state.records)
+  const { issue, freeze, unfreeze, stop, reactivate, remove } = useSubscriptions.getState()
+  const [filter, setFilter] = useState("")
 
-  useEffect(() => {
-    try { setList(JSON.parse(localStorage.getItem("subscriptions") ?? "[]")) } catch (_) { setList([]) }
-  }, [])
+  const shown = useMemo(() => {
+    const q = filter.trim().toLowerCase()
+    if (!q) return records
+    return records.filter((r) => [r.clientName, r.company, r.contact, r.code].some((v) => v.toLowerCase().includes(q)))
+  }, [records, filter])
 
-  const save = () => { try { localStorage.setItem("subscriptions", JSON.stringify(list)); setStatus("Saved") } catch (_) { setStatus("Save failed") } }
-
-  const add = () => setList([...list, { id: crypto.randomUUID(), name: "Plan", cost: 0, start: new Date().toISOString().slice(0, 10), expiry: new Date(Date.now() + 30*86400000).toISOString().slice(0, 10), status: "active" }])
-  const remove = (id: string) => setList(list.filter((t) => t.id !== id))
-  const update = (id: string, patch: Partial<Tool>) => setList(list.map((t) => (t.id === id ? { ...t, ...patch } : t)))
-
-  const exportJson = () => {
-    const blob = new Blob([JSON.stringify(list, null, 2)], { type: "application/json" })
+  function exportJson() {
+    const blob = new Blob([JSON.stringify(records, null, 2)], { type: "application/json" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
-    a.href = url; a.download = `subscriptions_${new Date().toISOString().slice(0,10)}.json`; a.click()
+    a.href = url
+    a.download = `fatorati-subscriptions_${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
     URL.revokeObjectURL(url)
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Subscription / Plan Editor</h1>
-      <div className="flex gap-2 mb-4"><button onClick={add} className="px-3 py-2 bg-emerald-600 text-white rounded text-sm flex items-center gap-2"><Plus size={14}/> Add Plan</button><button onClick={save} className="px-3 py-2 bg-blue-600 text-white rounded text-sm flex items-center gap-2"><Save size={14}/> Save</button><button onClick={exportJson} className="px-3 py-2 bg-amber-600 text-white rounded text-sm flex items-center gap-2"><FileDown size={14}/> Export JSON</button></div>
-      <div className="text-xs text-gray-500 mb-3">Status: {status}</div>
-      <div className="space-y-3">
-        {list.map((t) => (
-          <div key={t.id} className="rounded-lg border bg-white p-3 shadow-sm flex flex-wrap gap-2 items-center">
-            <input value={t.name} onChange={(e) => update(t.id, { name: e.target.value })} className="px-2 py-1 border rounded text-sm min-w-[140px]" placeholder="Plan name" />
-            <input type="number" value={t.cost} onChange={(e) => update(t.id, { cost: Number(e.target.value) })} className="px-2 py-1 border rounded text-sm w-24" placeholder="Cost" />
-            <input type="date" value={t.start} onChange={(e) => update(t.id, { start: e.target.value })} className="px-2 py-1 border rounded text-sm" />
-            <input type="date" value={t.expiry} onChange={(e) => update(t.id, { expiry: e.target.value })} className="px-2 py-1 border rounded text-sm" />
-            <select value={t.status} onChange={(e) => update(t.id, { status: e.target.value })} className="px-2 py-1 border rounded text-sm"><option>active</option><option>expired</option><option>scheduled</option></select>
-            <button onClick={() => remove(t.id)} className="text-red-500 hover:text-red-700"><Trash2 size={16}/></button>
+    <div className="mx-auto max-w-6xl space-y-6 p-6">
+      <header>
+        <h1 className="flex items-center gap-2 text-2xl font-bold"><KeyRound className="h-6 w-6 text-brand" /> رموز التفعيل والأسعار</h1>
+        <p className="mt-1 text-[13px] text-muted">
+          أنشئ رمزاً لكل عميل، تابع بداية اشتراكه ونهايته، جمّده أو أوقفه، وعدّل الأسعار ونصوص الخطط — كل ذلك يظهر فوراً داخل التطبيق في هذا المتصفح.
+        </p>
+      </header>
+
+      <CodeBuilder />
+
+      <section className="rounded-2xl border bg-white p-4 shadow-sm">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-[15px] font-bold">سجل الاشتراكات ({records.length})</h2>
+          <div className="flex items-center gap-2">
+            <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="بحث: عميل، شركة، رمز…" className="rounded-lg border border-line-strong px-3 py-1.5 text-[12.5px] outline-none focus:border-brand" />
+            <button type="button" onClick={exportJson} className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-amber-700">
+              <FileDown className="h-3.5 w-3.5" /> تصدير JSON
+            </button>
           </div>
-        ))}
-      </div>
-      {list.length === 0 && <div className="text-gray-400 text-sm">No plans configured. Click Add Plan.</div>}
+        </div>
+
+        {shown.length === 0 && <p className="py-6 text-center text-[13px] text-gray-400">لا توجد اشتراكات بعد. أنشئ أول رمز من المنشئ أعلاه.</p>}
+
+        <div className="space-y-2.5">
+          {shown.map((record) => (
+            <RecordRow
+              key={record.id}
+              record={record}
+              onFreeze={() => freeze(record.id)}
+              onUnfreeze={() => unfreeze(record.id)}
+              onStop={() => stop(record.id)}
+              onReactivate={() => reactivate(record.id)}
+              onRemove={() => remove(record.id)}
+            />
+          ))}
+        </div>
+      </section>
+
+      <CatalogEditor />
+
+      <p className="rounded-xl border border-dashed bg-amber-50/60 p-3 text-[12px] leading-relaxed text-amber-800">
+        ملاحظة: هذه السجلات محفوظة في هذا المتصفح (local-first) — التجميد والإيقاف يسريان فوراً على التطبيق في نفس المتصفح.
+        عند ربط Supabase تنتقل نفس السجلات إلى جدول <span dir="ltr" className="font-mono">account_subscriptions</span> وتصبح السيطرة خادمية.
+      </p>
     </div>
   )
 }
 
-/* Quick activation section for clients — not admin */
-export function ClientActivationQuick() {
-  const [email, setEmail] = useState("")
-  const [tier, setTier] = useState("Pro")
-  const [status, setStatus] = useState("")
+/* ------------------------------ code builder ----------------------------- */
+
+function CodeBuilder() {
+  const records = useSubscriptions((state) => state.records)
+  const issue = useSubscriptions((state) => state.issue)
+  const [clientName, setClientName] = useState("")
+  const [company, setCompany] = useState("")
+  const [contact, setContact] = useState("")
+  const [source, setSource] = useState<SubscriptionSource>("whatsapp")
+  const [plan, setPlan] = useState<"pro" | "boost">("pro")
+  const [period, setPeriod] = useState<PlanPeriod>("1M")
+  const [note, setNote] = useState("")
+  const [created, setCreated] = useState<SubscriptionRecord | null>(null)
+  const [copied, setCopied] = useState(false)
+  const [busy, setBusy] = useState(false)
+
+  async function generate() {
+    if (!clientName.trim() || busy) return
+    setBusy(true)
+    // A serial already handed out must never be minted twice.
+    let serial = randomSerial()
+    while (records.some((r) => r.serial === serial)) serial = randomSerial()
+    const code = await codeForSerial(plan, period, serial)
+    const record = issue({
+      code, serial, plan, period,
+      clientName: clientName.trim(), company: company.trim(), contact: contact.trim(),
+      source, note: note.trim(), issuedAt: new Date().toISOString().slice(0, 10),
+    })
+    setCreated(record)
+    setCopied(false)
+    setBusy(false)
+  }
+
+  async function copyCode() {
+    if (!created) return
+    try {
+      await navigator.clipboard.writeText(created.code)
+      setCopied(true)
+    } catch { /* clipboard unavailable: the code is on screen to copy by hand */ }
+  }
+
+  const waNumber = created ? whatsappNumber(created.contact) : ""
+  const waText = created
+    ? encodeURIComponent(`Fatorati — code d'activation ${created.plan.toUpperCase()} (${created.period === "1M" ? "1 mois" : "1 an"}) : ${created.code}\nEntrez-le dans Paramètres → Plan & activation.`)
+    : ""
+
   return (
-    <div className="rounded-xl border bg-amber-50 p-4 shadow-sm mt-4">
-      <h3 className="font-bold text-amber-800">Activate Client — Plan Only (Not Admin)</h3>
-      <div className="flex gap-2 mt-2 flex-wrap">
-        <input value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="Client email" className="px-2 py-1 border rounded text-sm" />
-        <select value={tier} onChange={(e)=>setTier(e.target.value)} className="px-2 py-1 border rounded text-sm"><option>Essential</option><option>Pro</option><option>Pro Max</option></select>
-        <button onClick={()=>{ try { const a=JSON.parse(localStorage.getItem("client_activations")??"[]"); a.push({email, tier, activated:new Date().toISOString()}); localStorage.setItem("client_activations",JSON.stringify(a)); setStatus("Activated "+tier+" for "+email); } catch(_) {setStatus("Failed")} }} className="px-3 py-1 bg-amber-600 text-white text-sm rounded">Activate Plan</button>
+    <section className="rounded-2xl border bg-white p-4 shadow-sm">
+      <h2 className="mb-3 text-[15px] font-bold">منشئ الرموز — رمز جديد لعميل</h2>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div><label className={labelCls} htmlFor="cms-name">اسم العميل *</label><input id="cms-name" value={clientName} onChange={(e) => setClientName(e.target.value)} className={inputCls} placeholder="مثال: كريم بنجلون" /></div>
+        <div><label className={labelCls} htmlFor="cms-company">الشركة</label><input id="cms-company" value={company} onChange={(e) => setCompany(e.target.value)} className={inputCls} placeholder="مثال: Atlas BTP" /></div>
+        <div><label className={labelCls} htmlFor="cms-contact">الهاتف / واتساب</label><input id="cms-contact" value={contact} onChange={(e) => setContact(e.target.value)} className={inputCls} placeholder="06 XX XX XX XX" dir="ltr" /></div>
+        <div>
+          <label className={labelCls} htmlFor="cms-source">منين عرفنا؟ (المصدر)</label>
+          <select id="cms-source" value={source} onChange={(e) => setSource(e.target.value as SubscriptionSource)} className={inputCls}>
+            {SUBSCRIPTION_SOURCES.map((value) => <option key={value} value={value}>{SOURCE_LABELS[value]}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={labelCls}>الخطة</label>
+          <div className="flex gap-1.5">
+            {(["pro", "boost"] as const).map((value) => (
+              <button key={value} type="button" aria-pressed={plan === value} onClick={() => setPlan(value)} className={`flex-1 rounded-lg px-3 py-2 text-[13px] font-bold transition-colors ${plan === value ? "bg-brand text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
+                {value.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className={labelCls}>المدة</label>
+          <div className="flex gap-1.5">
+            {(["1M", "1Y"] as const).map((value) => (
+              <button key={value} type="button" aria-pressed={period === value} onClick={() => setPeriod(value)} className={`flex-1 rounded-lg px-3 py-2 text-[13px] font-bold transition-colors ${period === value ? "bg-brand text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
+                {value === "1M" ? "شهر واحد" : "سنة كاملة"}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="sm:col-span-2 lg:col-span-3"><label className={labelCls} htmlFor="cms-note">ملاحظة</label><input id="cms-note" value={note} onChange={(e) => setNote(e.target.value)} className={inputCls} placeholder="مثال: دفع بالتحويل — المرجع…" /></div>
       </div>
-      <div className="text-xs text-gray-600 mt-1">Status: {status} — does NOT set is_admin. Admin stays only for operator.</div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <button type="button" onClick={() => void generate()} disabled={!clientName.trim() || busy} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-[13px] font-bold text-white transition-colors hover:bg-emerald-700 disabled:opacity-40">
+          <KeyRound className="h-4 w-4" /> إنشاء رمز التفعيل
+        </button>
+        <span className="text-[12px] text-muted">تبدأ المدة من يوم إدخال العميل للرمز، لا من يوم إنشائه.</span>
+      </div>
+
+      {created && (
+        <div className="mt-4 rounded-xl bg-ink p-4 text-white" dir="ltr">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-white/50">
+            {created.plan.toUpperCase()} · {created.period === "1M" ? "1 month" : "1 year"} · {created.clientName}
+          </p>
+          <p className="mt-1 font-mono text-[20px] font-bold tracking-wider">{created.code}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button type="button" onClick={() => void copyCode()} className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-[12.5px] font-semibold hover:bg-white/20">
+              {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />} {copied ? "Copié" : "Copier"}
+            </button>
+            {waNumber && (
+              <a href={`https://wa.me/${waNumber}?text=${waText}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-emerald-600">
+                <MessageCircle className="h-3.5 w-3.5" /> Envoyer sur WhatsApp
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+    </section>
+  )
+}
+
+/* ------------------------------- record row ------------------------------ */
+
+function RecordRow({ record, onFreeze, onUnfreeze, onStop, onReactivate, onRemove }: {
+  record: SubscriptionRecord
+  onFreeze: () => void
+  onUnfreeze: () => void
+  onStop: () => void
+  onReactivate: () => void
+  onRemove: () => void
+}) {
+  const status = displayStatus(record)
+  const left = daysLeft(record)
+
+  return (
+    <div className="rounded-xl border border-line p-3">
+      <div className="flex flex-wrap items-start gap-3">
+        <div className="min-w-40 flex-1">
+          <p className="text-[13.5px] font-bold">{record.clientName}{record.company && <span className="font-medium text-muted"> · {record.company}</span>}</p>
+          <p className="text-[12px] text-muted" dir="ltr">{record.contact || "—"}</p>
+          <p className="mt-0.5 font-mono text-[11.5px] text-slate-500" dir="ltr">{record.code}</p>
+        </div>
+
+        <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset ${record.plan === "boost" ? "bg-violet-50 text-violet-700 ring-violet-600/20" : "bg-blue-50 text-blue-700 ring-blue-600/20"}`}>
+          {record.plan.toUpperCase()} · {record.period === "1M" ? "شهر" : "سنة"}
+        </span>
+        <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset ${STATUS_STYLE[status]}`}>{STATUS_LABELS[status]}</span>
+      </div>
+
+      <div className="mt-2.5 grid grid-cols-2 gap-2 text-[12px] sm:grid-cols-5">
+        <div><p className="text-[10.5px] font-bold text-faint">المصدر</p><p>{SOURCE_LABELS[record.source]}</p></div>
+        <div><p className="text-[10.5px] font-bold text-faint">البداية</p><p>{record.startsAt ? fmtDate(record.startsAt) : "لم يُفعَّل بعد"}</p></div>
+        <div><p className="text-[10.5px] font-bold text-faint">النهاية{!record.endsAt && " (متوقعة)"}</p><p>{fmtDate(projectedEnd(record))}</p></div>
+        <div><p className="text-[10.5px] font-bold text-faint">المتبقي</p><p>{left === null ? "—" : left === 0 ? "اليوم الأخير" : `${left} يوم`}</p></div>
+        <div><p className="text-[10.5px] font-bold text-faint">أُنشئ في</p><p>{fmtDate(record.issuedAt)}</p></div>
+      </div>
+      {record.note && <p className="mt-1.5 text-[12px] text-muted">📝 {record.note}</p>}
+
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {status !== "frozen" && status !== "stopped" && status !== "expired" && (
+          <button type="button" onClick={onFreeze} className="inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-sky-700">
+            <Snowflake className="h-3.5 w-3.5" /> تجميد
+          </button>
+        )}
+        {status === "frozen" && (
+          <button type="button" onClick={onUnfreeze} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-emerald-700">
+            <Play className="h-3.5 w-3.5" /> استئناف
+          </button>
+        )}
+        {status !== "stopped" && (
+          <button type="button" onClick={onStop} className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-rose-700">
+            <Ban className="h-3.5 w-3.5" /> إيقاف
+          </button>
+        )}
+        {status === "stopped" && (
+          <button type="button" onClick={onReactivate} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-slate-700">
+            <RotateCcw className="h-3.5 w-3.5" /> إعادة تفعيل
+          </button>
+        )}
+        <button type="button" onClick={onRemove} aria-label="حذف السجل" className="ms-auto inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12px] font-semibold text-rose-600 hover:bg-rose-50">
+          <Trash2 className="h-3.5 w-3.5" /> حذف
+        </button>
+      </div>
     </div>
+  )
+}
+
+/* --------------------------- prices & paragraphs -------------------------- */
+
+const LOCALE_TABS: { id: LocaleId; label: string }[] = [
+  { id: "ar", label: "العربية" },
+  { id: "fr", label: "Français" },
+  { id: "en", label: "English" },
+]
+
+function CatalogEditor() {
+  const catalog = usePlanCatalog((state) => state.catalog)
+  const { setPrice, setCopy, reset } = usePlanCatalog.getState()
+  const [locale, setLocale] = useState<LocaleId>("fr")
+  const [savedTick, setSavedTick] = useState(0)
+  const defaults = defaultCatalog()
+
+  const priceDraft = (plan: "pro" | "boost", field: "monthly" | "yearly") => catalog.prices[plan][field]
+  const copyValue = (plan: PlanCode, field: "tagline" | "value") =>
+    catalog.copy[plan]?.[locale]?.[field] ?? ""
+  const copyFallback = (plan: PlanCode, field: "tagline" | "value") =>
+    field === "tagline" ? translations[locale].plans.tagline[plan] : translations[locale].plans.value[plan]
+
+  return (
+    <section className="rounded-2xl border bg-white p-4 shadow-sm">
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-[15px] font-bold">الأسعار والنصوص</h2>
+        <div className="flex items-center gap-2">
+          {savedTick > 0 && <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-emerald-600"><Check className="h-3.5 w-3.5" /> تم الحفظ — يظهر فوراً في التطبيق</span>}
+          <button type="button" onClick={() => { reset(); setSavedTick((n) => n + 1) }} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 text-[12px] font-semibold text-slate-700 hover:bg-slate-200">
+            <RotateCcw className="h-3.5 w-3.5" /> استعادة الافتراضي
+          </button>
+        </div>
+      </div>
+      <p className="mb-4 text-[12.5px] text-muted">الأسعار بالدرهم (MAD). النص المعدَّل يغلب النص الأصلي؛ اترك الحقل فارغاً لاستعمال النص الأصلي.</p>
+
+      <div className="grid gap-3 lg:grid-cols-2">
+        {(["pro", "boost"] as const).map((plan) => (
+          <div key={plan} className="rounded-xl border border-line p-3">
+            <p className="mb-2 text-[13px] font-extrabold">{plan.toUpperCase()} <span className="font-medium text-muted">· الافتراضي {defaults.prices[plan].monthly}/{defaults.prices[plan].yearly}</span></p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className={labelCls} htmlFor={`price-${plan}-m`}>شهرياً (MAD)</label>
+                <input id={`price-${plan}-m`} type="number" min={0} value={priceDraft(plan, "monthly")} onChange={(e) => { setPrice(plan, "monthly", Number(e.target.value)); setSavedTick((n) => n + 1) }} className={inputCls} dir="ltr" />
+              </div>
+              <div>
+                <label className={labelCls} htmlFor={`price-${plan}-y`}>سنوياً (MAD)</label>
+                <input id={`price-${plan}-y`} type="number" min={0} value={priceDraft(plan, "yearly")} onChange={(e) => { setPrice(plan, "yearly", Number(e.target.value)); setSavedTick((n) => n + 1) }} className={inputCls} dir="ltr" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4">
+        <div className="mb-2 flex gap-1.5" role="tablist" aria-label="لغة النصوص">
+          {LOCALE_TABS.map((tab) => (
+            <button key={tab.id} type="button" role="tab" aria-selected={locale === tab.id} onClick={() => setLocale(tab.id)} className={`rounded-lg px-3 py-1.5 text-[12.5px] font-bold ${locale === tab.id ? "bg-brand text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        <div className="grid gap-3 lg:grid-cols-3">
+          {PLAN_ORDER.map((plan: PlanCode) => (
+            <div key={plan} className="space-y-2 rounded-xl border border-line p-3">
+              <p className="text-[13px] font-extrabold">{PLANS[plan].code.toUpperCase()}</p>
+              <div>
+                <label className={labelCls} htmlFor={`copy-${plan}-tagline`}>السطر التعريفي</label>
+                <input id={`copy-${plan}-tagline`} value={copyValue(plan, "tagline")} placeholder={copyFallback(plan, "tagline")} onChange={(e) => { setCopy(plan, locale, "tagline", e.target.value); setSavedTick((n) => n + 1) }} className={inputCls} dir="auto" />
+              </div>
+              <div>
+                <label className={labelCls} htmlFor={`copy-${plan}-value`}>جملة القيمة (أعلى البطاقة)</label>
+                <textarea id={`copy-${plan}-value`} rows={3} value={copyValue(plan, "value")} placeholder={copyFallback(plan, "value")} onChange={(e) => { setCopy(plan, locale, "value", e.target.value); setSavedTick((n) => n + 1) }} className={inputCls} dir="auto" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   )
 }

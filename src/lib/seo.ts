@@ -564,6 +564,8 @@ export const PRIVATE_TITLES: Record<string, string> = {
   [MODULE_PATHS.contacts]: "Clients & Fournisseurs | Fatorati",
   [MODULE_PATHS.procurement]: "Achats & Dépenses | Fatorati",
   [MODULE_PATHS.inventory]: "Stock & Matériel | Fatorati",
+  [MODULE_PATHS.delivery]: "Livraisons | Fatorati",
+  [MODULE_PATHS.verification]: "Vérification clients | Fatorati",
   [MODULE_PATHS.calendar]: "Calendrier | Fatorati",
   [MODULE_PATHS.risk]: "Gestion des Risques | Fatorati",
   [MODULE_PATHS.tools]: "Abonnements & Outils | Fatorati",

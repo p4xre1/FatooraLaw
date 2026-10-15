@@ -8,6 +8,7 @@ import { useFormats } from "../lib/language/formats"
 import { useTranslation } from "../lib/language/store"
 import { uid } from "../store/seed"
 import { Card, SectionTitle, Btn, Badge, Progress, Table, Th, Td, Modal, Field, Input, Select } from "../components/kit"
+import PartyPicker, { NEW_PARTY, emptyPartyDraft, partyReady, resolveParty, type PartyDraft } from "../components/PartyPicker"
 
 type ProjectCurrency = Settings["currency"]
 
@@ -128,7 +129,9 @@ function CreateProject({ clients, currency, onClose, onCreate }: { clients: { id
   const { money: formatMoney } = useFormats()
   const t = copy.projects.create
   const [name, setName] = useState("")
-  const [clientId, setClientId] = useState(clients[0]?.id ?? "")
+  const [clientId, setClientId] = useState(clients[0]?.id ?? NEW_PARTY)
+  const [partyDraft, setPartyDraft] = useState<PartyDraft>(emptyPartyDraft())
+  const addContact = useMizan((state) => state.addContact)
   const [budget, setBudget] = useState("")
   const [cost, setCost] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -141,7 +144,7 @@ function CreateProject({ clients, currency, onClose, onCreate }: { clients: { id
       <div className="space-y-4">
         {error && <p role="alert" className="text-sm text-serious">{error}</p>}
         <Field label={t.name}><Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t.namePlaceholder} /></Field>
-        <Field label={t.client}><Select value={clientId} onChange={(e) => setClientId(e.target.value)}>{clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select></Field>
+        <PartyPicker label={t.client} kind="client" options={clients} choice={clientId} onChoice={setClientId} draft={partyDraft} onDraft={setPartyDraft} />
         <div className="grid grid-cols-2 gap-4">
           <Field label={t.budget(currency)} hint={t.optionalZero}><Input type="number" min={0} max={MAX_AMOUNT} step="0.01" className="tnum" value={budget} onChange={(e) => setBudget(e.target.value)} /></Field>
           <Field label={t.cost(currency)} hint={t.optionalZero}><Input type="number" min={0} max={MAX_AMOUNT} step="0.01" className="tnum" value={cost} onChange={(e) => setCost(e.target.value)} /></Field>
@@ -151,10 +154,10 @@ function CreateProject({ clients, currency, onClose, onCreate }: { clients: { id
           <span className="tnum text-[15px] font-bold text-emerald-700">{margin === null ? "—" : formatMoney(margin, currency)}</span>
         </div>
         {margin === null && <p role="alert" className="text-sm text-serious">{t.amountError}</p>}
-        <Btn className="w-full" disabled={!name.trim() || !clientId || margin === null} onClick={() => {
+        <Btn className="w-full" disabled={!name.trim() || !partyReady(clientId, partyDraft) || margin === null} onClick={() => {
           if (parsedBudget === null || parsedCost === null) return
           try { onCreate({
-            name, clientId, budget: parsedBudget, cost: parsedCost, paid: 0,
+            name, clientId: resolveParty(addContact, "client", clientId, partyDraft), budget: parsedBudget, cost: parsedCost, paid: 0,
             status: "planning", progress: 0, start: todayISO(), end: addCalendarDays(todayISO(), 90),
             milestones: [{ id: uid(), label: t.firstMilestone, done: false }], equipmentIds: [],
           }) } catch (err) { setError(err instanceof Error ? err.message : t.error) }

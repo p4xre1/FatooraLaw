@@ -16,6 +16,11 @@ import Sidebar from "./components/Sidebar"
 import Topbar from "./components/Topbar"
 import LocalSaveNotice from "./components/LocalSaveNotice"
 import { Btn } from "./components/kit"
+import PlanLock from "./components/PlanLock"
+import { usePlan, usePlanStatus } from "./store/usePlan"
+import { planIncludes } from "./lib/plans"
+import { applyThemeClass, useResolvedTheme } from "./lib/theme"
+import { useToday } from "./hooks/useToday"
 import Landing, { BlogArticlePage } from "./marketing/Landing"
 import { readPrerenderedBlogPost, readPrerenderedBlogPosts } from "./lib/blogPrerender"
 import { readPrerenderedSiteCmsData } from "./lib/siteCmsPrerender"
@@ -38,6 +43,8 @@ const Projects = lazy(() => import("./modules/Projects"))
 const Contacts = lazy(() => import("./modules/Contacts"))
 const Procurement = lazy(() => import("./modules/Procurement"))
 const Inventory = lazy(() => import("./modules/Inventory"))
+const Delivery = lazy(() => import("./modules/Delivery"))
+const Verification = lazy(() => import("./modules/Verification"))
 const LegalVault = lazy(() => import("./modules/LegalVault"))
 const Reports = lazy(() => import("./modules/Reports"))
 const Calendar = lazy(() => import("./modules/Calendar"))
@@ -98,6 +105,10 @@ export default function App() {
   // Landing.tsx owns lang/dir on <html> from the URL, and a preference-driven
   // write here would fight it.
   const { t: copy } = useAppLanguage()
+  // Subscribing (not just reading) matters here: the badge and the plan gate
+  // must react the moment a code is redeemed in Paramètres.
+  const plan = usePlanStatus(useToday())
+  const resolvedTheme = useResolvedTheme()
   const { needsOnboarding, submitting: onboardingSubmitting, error: onboardingError, submit: submitOnboarding } = useOnboarding(auth?.id ?? null)
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -120,6 +131,17 @@ export default function App() {
   const initialSiteCmsData = useMemo(() => readPrerenderedSiteCmsData(path, localeRoute(path).locale), [path])
   /** A path that belongs to no screen: `/404`, a typo, an old link. */
   const unknownPath = !landingPage && !articleRoute && !authScreen && !routeModule && path !== "/"
+
+  // Appearance (Paramètres → Apparence): the `.dark` class on <html> re-bases
+  // the semantic colour tokens (see index.css), which is the whole repaint.
+  // Applied only while a private module screen is showing — the marketing
+  // pages and auth screens keep the light identity they were designed with —
+  // and removed again when the shell unmounts (e.g. on the way to /admin).
+  const privateScreen = Boolean(auth && routeModule)
+  useEffect(() => {
+    applyThemeClass(privateScreen && resolvedTheme === "dark")
+  }, [privateScreen, resolvedTheme])
+  useEffect(() => () => applyThemeClass(false), [])
 
   // Leaving a local development session must also clear its opt-in marker,
   // otherwise the next reload would sign the same tab straight back in.
@@ -155,6 +177,13 @@ export default function App() {
   })
 
   const allowed = useMemo(() => allowedModules(auth, team), [auth, team])
+
+  // The plan belongs to the account, so the store follows the session: signing
+  // in loads that account's activation (or none), signing out drops it from
+  // memory. See store/usePlan.ts.
+  useEffect(() => {
+    usePlan.getState().forAccount(auth?.id ?? null)
+  }, [auth?.id])
 
   // Redirects, never a silent swap of screen for URL: the address bar always
   // shows the page actually being rendered.
@@ -239,6 +268,10 @@ export default function App() {
     return <NoAccess onSignOut={signOutAndGoHome} />
   }
   const title = copy.shared.modules[current]
+  // The plan is checked after the role, and both must pass: a PRO account that
+  // is not allowed to see Rapports still does not see it. A locked module keeps
+  // its URL and its title — the page explains which plan unlocks it.
+  const locked = !planIncludes(plan.plan, current)
 
   function go(m: ModuleKey) {
     navigate(modulePath(m))
@@ -263,19 +296,22 @@ export default function App() {
           <NoIndexTitle title={`${title} | Fatorati`} />
           <LocalSaveNotice />
           <Suspense key={auth.id} fallback={<Fallback />}>
-            {current === "dashboard" && <Dashboard onNavigate={go} />}
-            {current === "projects" && <Projects />}
-            {current === "contacts" && <Contacts />}
-            {current === "procurement" && <Procurement />}
-            {current === "inventory" && <Inventory />}
-            {current === "legal" && <LegalVault />}
-            {current === "reports" && <Reports />}
-            {current === "calendar" && <Calendar />}
-            {current === "risk" && <Risk />}
-            {current === "tools" && <Tools />}
-            {current === "team" && <Team />}
-            {current === "audit" && <AuditLog />}
-            {current === "settings" && <Settings />}
+            {locked && <PlanLock module={current} onNavigate={go} />}
+            {!locked && current === "dashboard" && <Dashboard onNavigate={go} />}
+            {!locked && current === "projects" && <Projects />}
+            {!locked && current === "contacts" && <Contacts />}
+            {!locked && current === "procurement" && <Procurement />}
+            {!locked && current === "inventory" && <Inventory />}
+            {!locked && current === "delivery" && <Delivery />}
+            {!locked && current === "verification" && <Verification />}
+            {!locked && current === "legal" && <LegalVault />}
+            {!locked && current === "reports" && <Reports />}
+            {!locked && current === "calendar" && <Calendar />}
+            {!locked && current === "risk" && <Risk />}
+            {!locked && current === "tools" && <Tools />}
+            {!locked && current === "team" && <Team />}
+            {!locked && current === "audit" && <AuditLog />}
+            {!locked && current === "settings" && <Settings />}
           </Suspense>
         </main>
       </div>

@@ -1,12 +1,13 @@
 import { create } from "zustand"
 import { createJSONStorage, persist } from "zustand/middleware"
 import type {
-  AuditEvent, Contact, Contract, Expense, ModuleKey, Project, Settings, Severity, StockItem, TeamMember, Role, SubscriptionTool,
+  AdCampaign, AuditEvent, Contact, Contract, DeliveryOrder, Expense, ModuleKey, Project, Settings, Severity, StockItem, TeamMember, Role, SubscriptionTool,
 } from "./types"
 import { uid } from "./seed"
 import { emptyBusinessData } from "./defaults"
 
 import { MAX_QUANTITY, requireAmount, requireBalance, isTaxRate } from "../lib/businessValidation"
+import { sanitizeKeywords } from "../lib/keywords"
 import { validDateRange, calendarDay, dateFromDay } from "../lib/calendarDates"
 import { validateLogoDataURL } from "../lib/logoValidation"
 import { businessStorage } from "../lib/localSaveStatus"
@@ -21,6 +22,25 @@ export function sanitize(input: string): string {
   return out.trim().slice(0, 400)
 }
 
+/** Orders are validated once, at the store door: money is money, quantities
+ * are quantities, and a line always names what was sold. */
+function sanitizeOrder(order: DeliveryOrder): DeliveryOrder {
+  requireAmount(order.deliveryCost, "Le coût de livraison")
+  requireAmount(order.packagingCost, "Le coût d'emballage")
+  requireAmount(order.otherFees, "Les autres frais")
+  requireAmount(order.amountPaid, "Le montant encaissé")
+  if (!Number.isInteger(order.callAttempts) || order.callAttempts < 0) throw new Error("Le nombre d'appels doit être un entier positif ou nul.")
+  const items = order.items.map((item) => {
+    requireAmount(item.qty, "La quantité", MAX_QUANTITY)
+    requireAmount(item.unitPrice, "Le prix de vente")
+    requireAmount(item.unitCost, "Le coût du produit")
+    const label = sanitize(item.label)
+    if (!label) throw new Error("Chaque article doit porter un nom.")
+    return { ...item, label }
+  })
+  return { ...order, items, notes: sanitize(order.notes ?? "") }
+}
+
 export type Auth = { id: string; name: string; email: string; role: Role } | null
 
 type State = {
@@ -30,6 +50,8 @@ type State = {
   contacts: Contact[]
   expenses: Expense[]
   stock: StockItem[]
+  orders: DeliveryOrder[]
+  campaigns: AdCampaign[]
   contracts: Contract[]
   team: TeamMember[]
   tools: SubscriptionTool[]
@@ -44,7 +66,7 @@ type State = {
   updateProject: (id: string, patch: Partial<Project>) => void
   toggleMilestone: (projectId: string, milestoneId: string) => void
 
-  addContact: (c: Omit<Contact, "id">) => void
+  addContact: (c: Omit<Contact, "id">) => string
   updateContact: (id: string, patch: Partial<Contact>) => void
   removeContact: (id: string) => void
   importContacts: (rows: Omit<Contact, "id">[]) => void
@@ -56,6 +78,12 @@ type State = {
   adjustStock: (id: string, delta: number) => void
   assignStock: (id: string, projectId: string | null) => void
   addStock: (s: Omit<StockItem, "id">) => void
+
+  addCampaign: (c: Omit<AdCampaign, "id">) => void
+  addDeliveryOrder: (o: Omit<DeliveryOrder, "id" | "stockDeducted">) => void
+  /** A lead from an ad: the client and their first order, created together. */
+  addClientOrder: (client: Omit<Contact, "id">, o: Omit<DeliveryOrder, "id" | "clientId" | "stockDeducted">) => void
+  updateDeliveryOrder: (id: string, patch: Partial<DeliveryOrder>) => void
 
   addContract: (c: Omit<Contract, "id">) => void
   setContractStatus: (id: string, status: Contract["status"]) => void
@@ -71,15 +99,15 @@ type State = {
   updateSettings: (patch: Partial<Settings>) => void
 }
 
-type LocalData = Pick<State, "settings" | "projects" | "contacts" | "expenses" | "stock" | "contracts" | "team" | "tools" | "audit">
+type LocalData = Pick<State, "settings" | "projects" | "contacts" | "expenses" | "stock" | "contracts" | "team" | "tools" | "audit" | "orders" | "campaigns">
 
 function initialData(): LocalData {
   return emptyBusinessData()
 }
 
 export function businessSnapshot(state: State): LocalData {
-  const { settings, projects, contacts, expenses, stock, contracts, team, tools, audit } = state
-  return { settings, projects, contacts, expenses, stock, contracts, team, tools, audit }
+  const { settings, projects, contacts, expenses, stock, contracts, team, tools, audit, orders, campaigns } = state
+  return { settings, projects, contacts, expenses, stock, contracts, team, tools, audit, orders, campaigns }
 }
 
 const SIGNED_OUT_STORAGE = "mizan.store.v2.signed-out"
@@ -154,6 +182,7 @@ export const useMizan = create<State>()(
         const ct: Contact = { ...c, id: uid(), name: sanitize(c.name), ice: sanitize(c.ice), phone: sanitize(c.phone), email: sanitize(c.email), city: sanitize(c.city) }
         set((s) => ({ contacts: [ct, ...s.contacts] }))
         get().log("a ajouté", `${ct.type === "client" ? "Client" : "Fournisseur"} · ${ct.name}`, "contacts", "info")
+        return ct.id
       },
       updateContact: (id, patch) => {
         const current = get().contacts.find((c) => c.id === id)
@@ -177,7 +206,17 @@ export const useMizan = create<State>()(
 
       addExpense: (e) => {
         requireAmount(e.amount, "Le montant")
-        const ex: Expense = { ...e, id: uid(), note: sanitize(e.note) }
+        if (e.taxRate !== undefined && !isTaxRate(e.taxRate)) throw new Error("Le taux de TVA doit être compris entre 0 et 100 %.")
+        const items = e.items?.length
+          ? e.items.map((item) => {
+              requireAmount(item.qty, "La quantité", MAX_QUANTITY)
+              requireAmount(item.unitPrice, "Le prix unitaire")
+              const words = sanitizeKeywords(item.keywords)
+              return { label: sanitize(item.label), qty: item.qty, unitPrice: item.unitPrice, ...(words.length ? { keywords: words } : {}) }
+            })
+          : undefined
+        if (e.receiptImage) validateLogoDataURL(e.receiptImage)
+        const ex: Expense = { ...e, id: uid(), note: sanitize(e.note), items, receiptImage: e.receiptImage ?? null }
         set((s) => ({ expenses: [ex, ...s.expenses] }))
         get().log("a enregistré une dépense", `${ex.note} (${ex.amount} MAD)`, "procurement", "info")
       },
@@ -210,7 +249,77 @@ export const useMizan = create<State>()(
       addStock: (item) => {
         requireAmount(item.qty, "La quantité", MAX_QUANTITY)
         requireAmount(item.minQty, "Le seuil minimum", MAX_QUANTITY)
-        set((s) => ({ stock: [{ ...item, id: uid(), name: sanitize(item.name), sku: sanitize(item.sku), unit: sanitize(item.unit) }, ...s.stock] }))
+        if (item.costPrice !== undefined) requireAmount(item.costPrice, "Le prix d'achat")
+        set((s) => ({ stock: [{ ...item, id: uid(), name: sanitize(item.name), sku: sanitize(item.sku), unit: sanitize(item.unit), keywords: sanitizeKeywords(item.keywords).length ? sanitizeKeywords(item.keywords) : undefined }, ...s.stock] }))
+      },
+
+      addCampaign: (c) => {
+        requireAmount(c.spend, "La dépense publicitaire")
+        if (!validDateRange(c.startedAt, c.endedAt)) throw new Error("Les dates de campagne sont invalides.")
+        const campaign: AdCampaign = { ...c, id: uid(), name: sanitize(c.name), startedAt: c.startedAt ? dateFromDay(calendarDay(c.startedAt)!) : "", endedAt: c.endedAt ? dateFromDay(calendarDay(c.endedAt)!) : "" }
+        if (!campaign.name) throw new Error("Le nom de la campagne est requis.")
+        set((s) => ({ campaigns: [campaign, ...s.campaigns] }))
+        get().log("a créé la campagne", campaign.name, "verification", "info")
+      },
+      addDeliveryOrder: (o) => {
+        const client = get().contacts.find((c) => c.id === o.clientId && c.type === "client")
+        if (!client) throw new Error("Le client de la commande est introuvable.")
+        const order = sanitizeOrder({ ...o, id: uid(), stockDeducted: false })
+        set((s) => ({ orders: [order, ...s.orders] }))
+        get().log("a créé la commande", client.name, "delivery", "info")
+      },
+      addClientOrder: (clientInput, o) => {
+        requireBalance(clientInput.balance)
+        const client: Contact = { ...clientInput, id: uid(), type: "client", name: sanitize(clientInput.name), ice: sanitize(clientInput.ice), phone: sanitize(clientInput.phone), email: sanitize(clientInput.email), city: sanitize(clientInput.city) }
+        if (!client.name) throw new Error("Le nom du client est requis.")
+        const order = sanitizeOrder({ ...o, id: uid(), clientId: client.id, stockDeducted: false })
+        set((s) => ({ contacts: [client, ...s.contacts], orders: [order, ...s.orders] }))
+        get().log("a ajouté le lead", client.name, "verification", "info")
+      },
+      updateDeliveryOrder: (id, patch) => {
+        const current = get().orders.find((o) => o.id === id)
+        if (!current) return
+        const now = new Date().toISOString()
+        const updated = sanitizeOrder({ ...current, ...patch, id: current.id })
+        // Stage clocks: the first call, the verification and the payment are
+        // stamped when they happen, so waiting and convincing times are
+        // measured from the record, never re-typed by hand.
+        if (patch.verificationStatus && patch.verificationStatus !== current.verificationStatus) {
+          if (["calling", "no_answer", "verified"].includes(updated.verificationStatus) && !updated.firstCallAt) updated.firstCallAt = now
+          if (updated.verificationStatus === "verified" && !current.verifiedAt) updated.verifiedAt = now
+        }
+        if (patch.callAttempts !== undefined && patch.callAttempts > current.callAttempts && !updated.firstCallAt) updated.firstCallAt = now
+        const revenue = updated.items.reduce((sum, item) => sum + item.qty * item.unitPrice, 0)
+        if (patch.amountPaid !== undefined) {
+          if (updated.amountPaid >= revenue && revenue > 0 && !current.paidAt) updated.paidAt = now
+          if (updated.amountPaid < revenue) updated.paidAt = null
+        }
+        if (patch.deliveryStatus && patch.deliveryStatus !== current.deliveryStatus) {
+          if (updated.deliveryStatus === "shipped" && !current.shippedAt) updated.shippedAt = now
+          if (updated.deliveryStatus === "delivered" && !current.deliveredAt) updated.deliveredAt = now
+        }
+        // Stock leaves once, when the order is delivered — and comes back
+        // if that delivery is returned or cancelled afterwards.
+        let stock = get().stock
+        const entering = updated.deliveryStatus === "delivered" && current.deliveryStatus !== "delivered" && !updated.stockDeducted
+        const comingBack = current.deliveryStatus === "delivered" && updated.stockDeducted && (updated.deliveryStatus === "returned" || updated.deliveryStatus === "cancelled")
+        if (entering) {
+          stock = stock.map((item) => {
+            const sold = updated.items.filter((line) => line.stockId === item.id).reduce((sum, line) => sum + line.qty, 0)
+            return sold ? { ...item, qty: Math.max(0, item.qty - sold) } : item
+          })
+          updated.stockDeducted = true
+        }
+        if (comingBack) {
+          stock = stock.map((item) => {
+            const back = updated.items.filter((line) => line.stockId === item.id).reduce((sum, line) => sum + line.qty, 0)
+            return back ? { ...item, qty: Math.min(MAX_QUANTITY, item.qty + back) } : item
+          })
+          updated.stockDeducted = false
+        }
+        set((s) => ({ orders: s.orders.map((o) => (o.id === id ? updated : o)), stock }))
+        if (patch.verificationStatus === "verified" && current.verificationStatus !== "verified") get().log("a vérifié le client", get().contacts.find((c) => c.id === updated.clientId)?.name ?? updated.clientId, "verification", "info")
+        if (updated.deliveryStatus === "delivered" && current.deliveryStatus !== "delivered") get().log("a livré la commande", get().contacts.find((c) => c.id === updated.clientId)?.name ?? updated.clientId, "delivery", "info")
       },
 
       addContract: (c) => {
@@ -289,6 +398,8 @@ export const useMizan = create<State>()(
           tools: Array.isArray(saved?.tools) ? saved.tools : defaults.tools,
           team: Array.isArray(saved?.team) ? saved.team : defaults.team,
           audit: Array.isArray(saved?.audit) ? saved.audit : defaults.audit,
+          orders: Array.isArray(saved?.orders) ? saved.orders : defaults.orders,
+          campaigns: Array.isArray(saved?.campaigns) ? saved.campaigns : defaults.campaigns,
         }
       },
     },

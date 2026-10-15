@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from "react"
-import { Menu, Plus, ChevronDown, LogOut, ShieldCheck, FolderPlus, ReceiptText, FileSignature } from "lucide-react"
+import { Menu, Plus, ChevronDown, LogOut, ShieldCheck, FolderPlus, ReceiptText, FileSignature, Lock } from "lucide-react"
 import type { ModuleKey } from "../store/types"
 import { useMizan } from "../store/useMizan"
 import { useTranslation } from "../lib/language/store"
 import { LOCAL_DEV_USER } from "../lib/localDevMode"
+import { planIncludes, requiredPlan } from "../lib/plans"
+import { usePlanStatus } from "../store/usePlan"
+import { useToday } from "../hooks/useToday"
 
 export default function Topbar({
   title, onMenu, onNavigate, onLogout,
@@ -41,11 +44,18 @@ export default function Topbar({
     }
   }, [])
 
+  // Same plan rule as the rail: a quick action whose module the plan does not
+  // include stays clickable and lands on the plan page, but it carries the lock
+  // mark so it never reads as available.
+  const plan = usePlanStatus(useToday()).plan
   const quick = [
     { id: "project", icon: FolderPlus, label: t.newProject, to: "projects" as ModuleKey },
     { id: "expense", icon: ReceiptText, label: t.newExpense, to: "procurement" as ModuleKey },
     { id: "contract", icon: FileSignature, label: t.generateContract, to: "legal" as ModuleKey },
-  ]
+  ].map((action) => ({
+    ...action,
+    lockedBy: planIncludes(plan, action.to) ? null : requiredPlan(action.to),
+  }))
 
   const initials = auth?.name.split(" ").slice(0, 2).map((w) => w[0]).join("") ?? "U"
 
@@ -68,8 +78,17 @@ export default function Topbar({
           {qa && (
             <div id="topbar-quick-actions" role="menu" aria-label={t.quickActions} className="absolute end-0 mt-2 w-56 overflow-hidden rounded-xl border border-line bg-surface shadow-xl" style={{ animation: "mz-pop .15s ease-out" }}>
               {quick.map((a) => (
-                <button key={a.id} type="button" role="menuitem" onClick={() => { onNavigate(a.to); setQa(false) }} className="flex w-full items-center gap-2.5 px-4 py-2.5 text-start text-[13px] font-medium transition-colors hover:bg-ink/[0.04]">
-                  <a.icon className="h-4 w-4 text-brand" /> {a.label}
+                <button
+                  key={a.id}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => { onNavigate(a.to); setQa(false) }}
+                  title={a.lockedBy ? `${a.label} — ${copy.plans.unlockToUse(a.label, copy.plans.names[a.lockedBy])}` : undefined}
+                  className={`flex w-full items-center gap-2.5 px-4 py-2.5 text-start text-[13px] font-medium transition-colors hover:bg-ink/[0.04] ${a.lockedBy ? "text-muted" : ""}`}
+                >
+                  <a.icon className="h-4 w-4 text-brand" aria-hidden="true" />
+                  <span className="min-w-0 flex-1 truncate">{a.label}</span>
+                  {a.lockedBy && <Lock className="h-3.5 w-3.5 shrink-0 text-muted" aria-hidden="true" />}
                 </button>
               ))}
             </div>

@@ -69,6 +69,29 @@ it("gives every public section its own URL on desktop and mobile, and keeps the 
   expect(view.container.querySelector("#features")).not.toBeNull()
 })
 
+it("switches language from the drawer with no menu that can open off-screen", () => {
+  const view = render(<Landing onEnter={() => {}} />)
+  fireEvent.click(screen.getByRole("button", { name: "Ouvrir le menu" }))
+  const drawer = view.container.querySelector<HTMLElement>(".landing-mobile-panel")!
+  expect(drawer).not.toBeNull()
+
+  // The drawer is a `max-height`-capped scroller. A floating list opened from
+  // its lower rows was clipped by the panel's edge, and because an absolutely
+  // positioned list adds nothing to the panel's scroll height the cut-off
+  // languages could not be scrolled into reach: on a phone the tap produced a
+  // box off the bottom of the screen. So the drawer lists them in place...
+  expect(within(drawer).queryByRole("listbox")).toBeNull()
+  const languages = within(drawer).getByRole("group", { name: "Language / اللغة / Langue" })
+  expect(within(languages).getAllByRole("button")).toHaveLength(3)
+
+  // ...one tap each, wired straight to the same navigation the bar's menu uses.
+  fireEvent.click(within(languages).getByRole("button", { name: "English" }))
+  expect(window.location.pathname).toBe("/en")
+
+  // And the drawer gets out of the way of the page it just switched.
+  expect(view.container.querySelector(".landing-mobile-panel")).toBeNull()
+})
+
 it("renders one support form on a CMS-managed contact page", () => {
   window.history.replaceState({}, "", "/contact")
   const siteCms: PublicSiteCmsData = {

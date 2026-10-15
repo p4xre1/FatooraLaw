@@ -202,6 +202,84 @@
   color: var(--l-heading);
 }
 .landing-root.landing-atlas .landing-control:hover { background: var(--l-chip); }
+
+/* ---------------------------------------------------------------------------
+   Language choices.
+
+   Same control, two shapes (see `LangSwitcher` in Landing.tsx).
+
+   `.landing-lang-menu` is the wide bar's dropdown. It is capped to the viewport
+   on both axes, so however narrow or short the window is, the list stays inside
+   the screen instead of hanging off an edge.
+
+   `.landing-lang-inline` is the drawer's copy, used wherever the drawer is (i.e.
+   everything under 1360 px — phones and tablets included). The drawer panel is a
+   `max-height`-capped scroller, and a dropdown opened from its lower rows was
+   clipped by the panel's bottom edge; because an absolutely positioned list adds
+   nothing to the panel's scroll height, the cut-off languages could not be
+   scrolled into reach at all. Laid out in place, every language is one tap away
+   whatever the panel's height, and the row never leaves the panel's width.
+   --------------------------------------------------------------------------- */
+.landing-root.landing-atlas .landing-lang-menu {
+  position: absolute;
+  inset-inline-end: 0;
+  z-index: 50;
+  width: 11rem;
+  max-width: calc(100vw - 1.5rem);
+  max-height: min(19rem, calc(100dvh - 6rem));
+  margin-top: 8px;
+  padding-block: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--l-border-strong);
+  border-radius: 12px;
+  background: var(--l-panel);
+  box-shadow: 0 24px 42px -20px rgb(9 30 66 / 30%);
+}
+.landing-root.landing-atlas .landing-lang-inline {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 3px;
+  border: 1px solid var(--l-border-strong);
+  border-radius: 10px;
+  background: var(--l-chip);
+}
+.landing-root.landing-atlas .landing-lang-inline button {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 34px;
+  padding: 8px 6px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--l-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 160ms ease, color 160ms ease;
+}
+.landing-root.landing-atlas .landing-lang-inline button:hover { background: var(--l-panel); color: var(--l-heading); }
+.landing-root.landing-atlas .landing-lang-inline button[aria-pressed='true'] { background: var(--l-primary); color: #fff; }
+.landing-root.landing-atlas .landing-drawer-preferences {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding-block: 4px 14px;
+}
+/* Three native names plus the theme toggle do not fit side by side on the
+   narrowest phones (and stop fitting sooner at large text sizes), so the
+   control keeps a floor and wraps onto its own full-width line rather than
+   shrinking into a half-labelled strip or being pushed off the edge. The floor
+   is in `rem`: it grows with the reader's text size, which is exactly when the
+   labels need the room. */
+.landing-root.landing-atlas .landing-drawer-preferences .landing-lang-inline {
+  flex: 1 1 16rem;
+  min-width: 16rem;
+}
 .landing-root.landing-atlas .landing-menu-toggle {
   display: grid;
   place-items: center;
