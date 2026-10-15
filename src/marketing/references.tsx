@@ -512,7 +512,10 @@ export function ReferenceSection({ lang }: { lang: RefLang }) {
         <p className="mt-3 text-[15px] leading-relaxed text-[var(--l-text)]">{copy.howtoIntro}</p>
         <ol className="mt-4 list-decimal space-y-3 ps-5 text-[15px] leading-relaxed text-[var(--l-text)]">
           {copy.steps.map((step) => (
-            <li key={step.name}><strong className="text-[var(--l-heading)]">{step.name}.</strong> {step.text}</li>
+            <li key={step.name}>
+              <h3 className="font-display text-[15px] font-bold text-[var(--l-heading)]">{step.name}</h3>
+              <p className="mt-1">{step.text}</p>
+            </li>
           ))}
         </ol>
       </section>

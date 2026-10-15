@@ -540,7 +540,7 @@ export default function Landing({ onEnter = () => {}, initialPage, initialBlogPo
           {(home || page === "pricing") && <DownloadReleaseSection releases={currentSiteCmsData?.releases ?? []} downloads={currentSiteCmsData?.downloads ?? []} locale={lang} path={path} />}
           {(home || page === "blog") && <BlogSection copy={extra.blog} locale={lang} showAll={page === "blog"} initialPosts={initialBlogPosts} />}
           {(home || page === "faq") && <FaqSection copy={extra.faq} />}
-          {(home || page === "contact") && <ContactSection copy={extra.contact} />}
+          {(home || page === "contact") && <ContactSection copy={extra.contact} locale={lang} />}
           {page === "contact" && <SupportRequestForm locale={lang} />}
           {(page === "home" || page === "privacy" || page === "terms" || page === "cookies") && <LegalSection copy={extra.legal} active={page === "home" ? undefined : page} />}
         </>}
@@ -702,7 +702,7 @@ function GhostLink({ children, href, className = "" }: { children: React.ReactNo
   return <a href={href} onClick={onInternalLinkClick} className={`landing-secondary inline-flex items-center justify-center gap-2 ${className}`}>{children}</a>
 }
 
-function LandingBrand({ size = 34, alt = "" }: { size?: number; alt?: string }) {
+function LandingBrand({ size = 34, alt = "Fatorati" }: { size?: number; alt?: string }) {
   /**
    * The landing header and footer sit on a light surface that may become dark
    * navy when the visitor switches theme, so this is the `auto` treatment: both
@@ -710,10 +710,13 @@ function LandingBrand({ size = 34, alt = "" }: { size?: number; alt?: string }) 
    * landing.css). No script reads the theme, so the mark is already right on the
    * first painted frame.
    *
-   * `alt` is the caller's business: the header passes nothing because the link
-   * around it is labelled "Fatorati accueil", the footer passes the brand name
-   * because that mark is the only place the name appears in that column, and
-   * the dashboard mock-up keeps it decorative.
+   * `alt` is the caller's business: it defaults to the brand name so no rendered
+   * copy of the mark ever ships without descriptive alt text (SEO audits and
+   * crawlers count empty `alt` as a missing one); the dark duplicates stay
+   * `aria-hidden` inside `Brand`, so a screen reader never hears the name twice.
+   * The header link around it is labelled "Fatorati accueil" — the brand name is
+   * announced once there, and the footer keeps the alt because that mark is the
+   * only place the name appears in that column.
    */
   return <span className="landing-brand"><Brand height={size} tone="auto" alt={alt} /></span>
 }
@@ -1208,7 +1211,7 @@ function CmsFeatureCard({ feature }: { feature: PublicCmsFeature }) {
   const Icon = iconMap[feature.icon] ?? Sparkles
   return <article className="flex flex-col overflow-hidden rounded-2xl border border-[var(--l-border)] bg-[var(--l-surface)] p-5">
     <span className="grid h-10 w-10 place-items-center rounded-xl bg-blue-500/10 text-blue-400"><Icon className="h-5 w-5" /></span>
-    {feature.image_url && <img src={feature.image_url} alt="" loading="lazy" className="mt-4 max-h-48 w-full rounded-lg object-cover" />}
+    {feature.image_url && <img src={feature.image_url} alt={feature.title} loading="lazy" className="mt-4 max-h-48 w-full rounded-lg object-cover" />}
     <h3 className="font-display mt-4 text-[16px] font-bold text-[var(--l-heading)]">{feature.title}</h3>
     {feature.description && <p className="mt-2 text-[13px] leading-relaxed text-[var(--l-muted)]">{feature.description}</p>}
     {feature.details && <p className="mt-3 whitespace-pre-line text-[12px] leading-relaxed text-[var(--l-faint)]">{feature.details}</p>}
@@ -1383,7 +1386,7 @@ function Assistant({ t, onEnter, showHeading = true }: { t: Dict; onEnter: () =>
           <div className="rounded-2xl border border-[var(--l-border-strong)] bg-[var(--l-panel)] p-4 shadow-2xl backdrop-blur-xl">
             <div className="flex items-center gap-2.5 border-b border-[var(--l-border)] pb-3">
               <span className="grid h-8 w-8 place-items-center rounded-lg text-white" style={{ backgroundImage: GRAD }}><ScrollText className="h-4 w-4" /></span>
-              <div><p className="text-[12.5px] font-semibold text-[var(--l-heading)]">{t.asst.panel}</p><p className="text-[10.5px] text-[var(--l-faint)]">{t.asst.panelSub}</p></div>
+              <div><h3 className="text-[12.5px] font-semibold text-[var(--l-heading)]">{t.asst.panel}</h3><p className="text-[10.5px] text-[var(--l-faint)]">{t.asst.panelSub}</p></div>
             </div>
             <div className="mt-3 space-y-2">
               {t.asst.rules.map((r) => (
@@ -1414,8 +1417,10 @@ function AboutSection({ copy, showHeading = true }: { copy: ExtraCopy["about"]; 
         </div>}
         <div>
           <p className="text-[15px] leading-relaxed text-[var(--l-muted)]">{copy.desc}</p>
+          {/* Each commitment is an <h3> under the section <h2>: the page keeps a
+              real H1→H2→H3 outline for crawlers while staying a visual checklist. */}
           <ul className="mt-6 space-y-3">
-            {copy.points.map((point) => <li key={point} className="flex items-start gap-2.5 text-[13.5px] text-[var(--l-text)]"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />{point}</li>)}
+            {copy.points.map((point) => <li key={point} className="flex items-start gap-2.5 text-[13.5px] text-[var(--l-text)]"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" aria-hidden="true" /><h3 className="font-semibold">{point}</h3></li>)}
           </ul>
         </div>
       </div>
@@ -1637,17 +1642,24 @@ function formatMoney(amount: number, currency: string, locale: LocaleId): string
 }
 function validDate(value: string): boolean { return Number.isFinite(new Date(value).getTime()) }
 
-function ContactSection({ copy, showHeading = true }: { copy: ExtraCopy["contact"]; showHeading?: boolean }) {
+function ContactSection({ copy, locale, showHeading = true }: { copy: ExtraCopy["contact"]; locale: LocaleId; showHeading?: boolean }) {
+  /** Small heading above each contact channel: heading structure for crawlers, scannability for visitors. */
+  const channelLabels: Record<LocaleId, { email: string; phone: string; address: string }> = {
+    fr: { email: "E-mail", phone: "Téléphone", address: "Adresse" },
+    en: { email: "Email", phone: "Phone", address: "Address" },
+    ar: { email: "البريد الإلكتروني", phone: "الهاتف", address: "العنوان" },
+  }
+  const label = channelLabels[locale]
   return (
     <section id="contact" className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
       <div className="mx-auto max-w-3xl rounded-3xl border border-blue-400/20 bg-blue-500/10 p-8 sm:p-10">
         {showHeading && <><p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-blue-400">{copy.eyebrow}</p><h2 className="font-display mt-3 text-[30px] font-bold text-[var(--l-heading)] sm:text-[38px]">{copy.title}</h2></>}<p className="mt-3 max-w-xl text-[15px] leading-relaxed text-[var(--l-muted)]">{copy.sub}</p>
         <div className="mt-8 grid gap-3 sm:grid-cols-3">
-          <a href={`mailto:${copy.email}`} className="flex items-center gap-2.5 rounded-xl border border-[var(--l-border)] bg-[var(--l-panel)] p-3 text-[12px] text-[var(--l-text)] hover:border-blue-400/40"><Mail className="h-4 w-4 text-blue-400" />{copy.email}</a>
+          <a href={`mailto:${copy.email}`} className="rounded-xl border border-[var(--l-border)] bg-[var(--l-panel)] p-3 text-[12px] text-[var(--l-text)] hover:border-blue-400/40"><h3 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--l-faint)]">{label.email}</h3><span className="mt-1 flex items-center gap-2"><Mail className="h-4 w-4 shrink-0 text-blue-400" />{copy.email}</span></a>
           {copy.phone && (
-            <a href={telHref(copy.phone)} className="flex items-center gap-2.5 rounded-xl border border-[var(--l-border)] bg-[var(--l-panel)] p-3 text-[12px] text-[var(--l-text)] hover:border-blue-400/40"><Phone className="h-4 w-4 text-blue-400" />{copy.phone}</a>
+            <a href={telHref(copy.phone)} className="rounded-xl border border-[var(--l-border)] bg-[var(--l-panel)] p-3 text-[12px] text-[var(--l-text)] hover:border-blue-400/40"><h3 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--l-faint)]">{label.phone}</h3><span className="mt-1 flex items-center gap-2"><Phone className="h-4 w-4 shrink-0 text-blue-400" />{copy.phone}</span></a>
           )}
-          <span className="flex items-center gap-2.5 rounded-xl border border-[var(--l-border)] bg-[var(--l-panel)] p-3 text-[12px] text-[var(--l-text)]"><MapPin className="h-4 w-4 shrink-0 text-blue-400" />{copy.city}</span>
+          <span className="rounded-xl border border-[var(--l-border)] bg-[var(--l-panel)] p-3 text-[12px] text-[var(--l-text)]"><h3 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--l-faint)]">{label.address}</h3><span className="mt-1 flex items-center gap-2"><MapPin className="h-4 w-4 shrink-0 text-blue-400" />{copy.city}</span></span>
         </div>
         <a href={`mailto:${copy.email}`} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-500 px-5 py-3 text-[13px] font-semibold text-white hover:bg-blue-400">{copy.cta} <Mail className="h-4 w-4" /></a>
       </div>
@@ -1657,15 +1669,35 @@ function ContactSection({ copy, showHeading = true }: { copy: ExtraCopy["contact
 
 function LegalSection({ copy, active, showHeading = true }: { copy: ExtraCopy["legal"]; active?: "privacy" | "terms" | "cookies"; showHeading?: boolean }) {
   const items = [{ id: "privacy", title: copy.privacy, text: copy.privacyText }, { id: "terms", title: copy.terms, text: copy.termsText }, { id: "cookies", title: copy.cookies, text: copy.cookiesText }]
+  /**
+   * The copy is written as "Titre — texte" per paragraph. Rendering that lead-in
+   * as an <h3> (instead of the start of a wall of <p>) gives each legal clause a
+   * real heading: crawlers get a proper H1→H2→H3 outline on /privacy, /terms and
+   * /cookies, and visitors can scan the clauses. Only a short lead-in is
+   * promoted, so introductory sentences that merely contain an em dash stay
+   * paragraphs.
+   */
+  const clauseLead = (para: string): string | null => {
+    const sep = para.indexOf(" — ")
+    return sep > 2 && sep <= 60 ? para.slice(0, sep) : null
+  }
   return (
     <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
       <div className="mx-auto max-w-3xl border-t border-[var(--l-border)] pt-10">
         {items.filter((item) => !active || item.id === active).map((item) => (
           <article id={item.id} key={item.id}>
             {showHeading && <h2 className="font-display text-[24px] font-bold text-[var(--l-heading)]">{item.title}</h2>}
-            {item.text.split("\n\n").map((para, i) => (
-              <p key={i} className="mt-4 text-[14px] leading-relaxed text-[var(--l-muted)]">{para}</p>
-            ))}
+            {item.text.split("\n\n").map((para, i) => {
+              const lead = clauseLead(para)
+              return lead ? (
+                <div key={i} className="mt-6">
+                  <h3 className="font-display text-[16px] font-bold text-[var(--l-heading)]">{lead}</h3>
+                  <p className="mt-2 text-[14px] leading-relaxed text-[var(--l-muted)]">{para.slice(lead.length + 3)}</p>
+                </div>
+              ) : (
+                <p key={i} className="mt-4 text-[14px] leading-relaxed text-[var(--l-muted)]">{para}</p>
+              )
+            })}
           </article>
         ))}
       </div>

@@ -38,9 +38,10 @@ function Source({ file }: { file: string }) {
 /**
  * The horizontal lock-up: icon + "FATORATI".
  *
- * `alt` defaults to the brand name. Pass `alt=""` when the surrounding element
- * already names the brand (the header link carries `aria-label="Fatorati
- * accueil"`), so a screen reader does not hear it twice.
+ * `alt` defaults to the brand name. The theme-duplicate artwork in the `auto`
+ * treatment repeats the same `alt` but stays `aria-hidden`, so a screen reader
+ * still announces the name once while crawlers and SEO auditors never see an
+ * image without descriptive alt text.
  */
 export function Brand({ height = 34, tone = "blue", alt = "Fatorati", className = "" }: {
   height?: number
@@ -49,11 +50,12 @@ export function Brand({ height = 34, tone = "blue", alt = "Fatorati", className 
   className?: string
 }) {
   const width = Math.round(height * LOCKUP_RATIO)
+  const name = alt || "Fatorati"
   if (tone !== "auto") {
     return (
       <img
         src={Source({ file: tone })}
-        alt={alt}
+        alt={name}
         width={width}
         height={height}
         decoding="async"
@@ -63,8 +65,8 @@ export function Brand({ height = 34, tone = "blue", alt = "Fatorati", className 
   }
   return (
     <span className={`brand-mark brand-mark-auto ${className}`}>
-      <img src="/brand/fatorati-logo.png" alt={alt} width={width} height={height} decoding="async" className="brand-on-light" />
-      <img src="/brand/fatorati-logo-white.png" alt="" aria-hidden="true" width={width} height={height} decoding="async" className="brand-on-dark" />
+      <img src="/brand/fatorati-logo.png" alt={name} width={width} height={height} decoding="async" className="brand-on-light" />
+      <img src="/brand/fatorati-logo-white.png" alt={name} aria-hidden="true" width={width} height={height} decoding="async" className="brand-on-dark" />
     </span>
   )
 }

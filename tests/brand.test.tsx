@@ -114,12 +114,14 @@ it("renders one <img> per treatment, with the alt/aria contract the callers rely
   expect(white.container.querySelector("img")!.getAttribute("src")).toBe("/brand/fatorati-logo-white.png")
 
   // `auto` puts both files in the DOM and lets CSS pick — the second one must
-  // stay out of the accessibility tree, or the brand is announced twice.
+  // stay out of the accessibility tree (aria-hidden) so the brand is announced
+  // once, while still carrying descriptive alt text for crawlers: an empty alt
+  // is reported as "image missing alt text" by SEO auditors.
   const auto = render(<Brand tone="auto" />)
   const imgs = auto.container.querySelectorAll("img")
   expect(imgs).toHaveLength(2)
   expect(auto.container.querySelector(".brand-mark-auto")).not.toBeNull()
-  expect(imgs[1].getAttribute("alt")).toBe("")
+  expect(imgs[1].getAttribute("alt")).toBe("Fatorati")
   expect(imgs[1].getAttribute("aria-hidden")).toBe("true")
 
   const icon = render(<BrandIcon size={28} />)

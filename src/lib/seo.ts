@@ -69,30 +69,36 @@ export const PAGE_SEO: Record<LandingPage, PageSeo> = {
  * three languages of one page stay side by side and a translation cannot
  * silently go missing (`Record<LandingPage, …>` makes an omission a type
  * error, not a French page with an Arabic URL).
+ *
+ * Length budget (checked by `tests/seoCopy.test.tsx` and the SEO crawlers):
+ *   - `title` 40–60 characters: inside that band the whole title shows on the
+ *     Google results page instead of being cut at ~60;
+ *   - `description` 140–160 characters: long enough for the two full SERP
+ *     lines, short enough never to be truncated with "…".
  */
 export const PAGE_COPY: Record<LandingPage, Record<LocaleId, LocaleCopy>> = {
   home: {
     fr: {
-      title: "Fatorati | Gestion, factures et conformité pour les TPE marocaines",
+      title: "Gestion, factures et conformité TPE marocaines | Fatorati",
       description:
-        "Fatorati réunit tableau de bord, projets, achats, abonnements, échéances légales et conformité Loi 09-08 dans une seule application mobile-first pour artisans, freelances et PME au Maroc.",
+        "Tableau de bord, factures, achats, abonnements et échéances légales : Fatorati réunit la gestion de votre TPE dans une application mobile-first au Maroc.",
     },
     ar: {
       title: "فاتورتي | تدبير وفواتير وامتثال للمقاولات الصغرى المغربية",
       description:
-        "فاتورتي تجمع لوحة القيادة والمشاريع والمشتريات والاشتراكات والمواعيد القانونية والامتثال للقانون 09-08 في تطبيق واحد موجّه للحرفيين والمستقلين والمقاولات الصغرى بالمغرب.",
+        "فاتورتي تجمع لوحة القيادة والفواتير والمشتريات والاشتراكات والمواعيد القانونية والامتثال للقانون 09-08 في تطبيق واحد موجّه للحرفيين والمقاولات الصغرى بالمغرب.",
     },
     en: {
-      title: "Fatorati | Management, invoicing and compliance for Moroccan SMEs",
+      title: "Management, invoicing and compliance for SMEs | Fatorati",
       description:
         "Dashboard, projects, purchases, subscriptions, legal deadlines and Law 09-08 compliance in one mobile-first app for Moroccan artisans and small businesses.",
     },
   },
   features: {
     fr: {
-      title: "Fonctionnalités : calendrier, risques et trésorerie | Fatorati",
+      title: "Calendrier, risques et trésorerie des TPE | Fatorati",
       description:
-        "Découvrez les trois piliers de Fatorati : calendrier des échéances, gestion des risques et conformité marocaine, suivi des abonnements et des dépenses — avec aperçus réels de l'interface.",
+        "Découvrez les trois piliers de Fatorati : calendrier des échéances, gestion des risques et conformité marocaine, suivi des abonnements et des dépenses.",
     },
     ar: {
       title: "الوظائف: المواعيد والمخاطر والخزينة | فاتورتي",
@@ -102,22 +108,22 @@ export const PAGE_COPY: Record<LandingPage, Record<LocaleId, LocaleCopy>> = {
     en: {
       title: "Features: deadlines, risk and cash flow tracking | Fatorati",
       description:
-        "Explore the three pillars of Fatorati — a deadline calendar, risk and Moroccan compliance tracking, and subscription and expense monitoring, with real interface previews.",
+        "Explore the three pillars of Fatorati: a deadline calendar, risk and Moroccan compliance tracking, and subscription and expense monitoring, with real previews.",
     },
   },
   assistant: {
     fr: {
-      title: "Assistant juridique marocain : modèles et règles locales | Fatorati",
+      title: "Assistant juridique marocain : modèles et règles | Fatorati",
       description:
-        "L'assistant Fatorati propose des modèles de contrats et les règles juridiques marocaines applicables (DOC, Loi 09-08, mention ICE, TVA 20 %) directement dans votre espace de gestion.",
+        "Modèles de contrats et règles juridiques marocaines applicables (DOC, Loi 09-08, mention ICE, TVA 20 %) servis dans votre espace de gestion.",
     },
     ar: {
       title: "مساعد قانوني مغربي: نماذج وقواعد محلية | فاتورتي",
       description:
-        "يوفّر مساعد فاتورتي نماذج عقود والقواعد القانونية المغربية المطبَّقة (ق.ل.ع، القانون 09-08، المعرّف المشترك للمقاولة، الرسم على القيمة المضافة 20 %) داخل مساحة تدبيرك.",
+        "يوفّر مساعد فاتورتي نماذج عقود والقواعد القانونية المغربية المطبَّقة (ق.ل.ع، القانون 09-08، المعرّف المشترك للمقاولة، الرسم على القيمة المضافة 20 %) في مساحتك.",
     },
     en: {
-      title: "Moroccan legal assistant: templates and local rules | Fatorati",
+      title: "Legal assistant: Moroccan templates and rules | Fatorati",
       description:
         "The Fatorati assistant surfaces Moroccan contract templates and the local rules that apply — DOC, Law 09-08, ICE and 20% VAT — inside your management workspace.",
     },
@@ -126,15 +132,15 @@ export const PAGE_COPY: Record<LandingPage, Record<LocaleId, LocaleCopy>> = {
     fr: {
       title: "À propos de Fatorati : notre mission au Maroc",
       description:
-        "Fatorati est né d'un constat simple : les artisans, freelances et petites entreprises marocaines méritent une gestion claire, abordable et conforme, sans logiciel complexe.",
+        "Fatorati est née d'un constat simple : les artisans, freelances et petites entreprises marocaines méritent une gestion claire, abordable et vraiment conforme.",
     },
     ar: {
-      title: "عن فاتورتي: مهمتنا في المغرب",
+      title: "عن فاتورتي: مهمتنا لخدمة المقاولات الصغرى بالمغرب",
       description:
         "انطلقت فاتورتي من ملاحظة بسيطة: الحرفيون والمستقلون والمقاولات الصغرى بالمغرب يستحقون تدبيراً واضحاً وبأسعار معقولة ومطابقاً للقانون، بدون برامج معقّدة.",
     },
     en: {
-      title: "About Fatorati: our mission in Morocco",
+      title: "About Fatorati: our mission for Moroccan SMEs",
       description:
         "Fatorati started from a simple observation: Moroccan artisans, freelancers and small businesses deserve clear, affordable and compliant management software.",
     },
@@ -143,29 +149,29 @@ export const PAGE_COPY: Record<LandingPage, Record<LocaleId, LocaleCopy>> = {
     fr: {
       title: "Avantages : pourquoi choisir Fatorati pour votre TPE",
       description:
-        "Gagnez du temps sur le suivi des échéances, évitez les pénalités de retard, maîtrisez vos coûts d'outils et gardez vos documents légaux au même endroit : les bénéfices concrets de Fatorati.",
+        "Gagnez du temps sur le suivi des échéances, évitez les pénalités de retard, maîtrisez vos coûts d'outils et gardez vos documents légaux au même endroit.",
     },
     ar: {
       title: "الفوائد: لماذا تختار فاتورتي لمقاولتك الصغرى",
       description:
-        "اربح الوقت في تتبّع المواعيد، وتجنّب غرامات التأخير، وتحكّم في تكاليف الأدوات، واحفظ وثائقك القانونية في مكان واحد: فوائد فاتورتي العملية.",
+        "اربح الوقت في تتبّع المواعيد، وتجنّب غرامات التأخير، وتحكّم في تكاليف الأدوات، واحفظ وثائقك القانونية في مكان واحد: فوائد فاتورتي العملية لمقاولتك.",
     },
     en: {
       title: "Benefits: why Moroccan small businesses choose Fatorati",
       description:
-        "Save time on deadlines, avoid late-payment penalties, keep your tool costs under control and keep your legal documents in one place — the concrete benefits of Fatorati.",
+        "Save time on deadlines, avoid late-payment penalties, keep your tool costs under control and keep your legal documents in one place with Fatorati.",
     },
   },
   pricing: {
     fr: {
       title: "Tarifs Fatorati : des offres claires pour les TPE marocaines",
       description:
-        "Comparez les offres Fatorati : prix en dirhams, fonctionnalités incluses et engagement sans surprise. Sans carte bancaire pour commencer, résiliable à tout moment.",
+        "Comparez les offres Fatorati : prix en dirhams, fonctionnalités incluses et sans engagement. Sans carte bancaire pour commencer, résiliable à tout moment.",
     },
     ar: {
       title: "أسعار فاتورتي: عروض واضحة للمقاولات الصغرى بالمغرب",
       description:
-        "قارن عروض فاتورتي: الأسعار بالدرهم، والوظائف المشمولة، والتزام بدون مفاجآت. بدون بطاقة بنكية للانطلاق، ويمكن الإلغاء في أي وقت.",
+        "قارن عروض فاتورتي: الأسعار بالدرهم، والوظائف المشمولة في كل خطة، والتزام بدون مفاجآت. بدون بطاقة بنكية للانطلاق، ويمكنك إلغاء الاشتراك في أي وقت.",
     },
     en: {
       title: "Fatorati pricing: clear plans for Moroccan small businesses",
@@ -175,9 +181,9 @@ export const PAGE_COPY: Record<LandingPage, Record<LocaleId, LocaleCopy>> = {
   },
   blog: {
     fr: {
-      title: "Ressources et guides de gestion pour les TPE au Maroc | Fatorati",
+      title: "Guides de gestion pour les TPE marocaines | Fatorati",
       description:
-        "Guides pratiques sur la TVA, l'ICE, les échéances DGI, le suivi de trésorerie et la conformité CNDP, écrits pour les artisans, freelances et petites entreprises marocaines.",
+        "Guides pratiques sur la TVA, l'ICE, les échéances DGI, le suivi de trésorerie et la conformité CNDP, écrits pour les artisans, freelances et TPE marocaines.",
     },
     ar: {
       title: "أدلة ومصادر التدبير للمقاولات الصغرى بالمغرب | فاتورتي",
@@ -194,7 +200,7 @@ export const PAGE_COPY: Record<LandingPage, Record<LocaleId, LocaleCopy>> = {
     fr: {
       title: "Questions fréquentes sur Fatorati et la conformité au Maroc",
       description:
-        "Réponses aux questions les plus posées : compatibilité avec les TPE marocaines, usage sur mobile, sécurité et confidentialité des données, changement d'offre et accompagnement.",
+        "Réponses aux questions les plus posées : compatibilité avec les TPE marocaines, usage sur mobile, sécurité des données, changement d'offre et accompagnement.",
     },
     ar: {
       title: "أسئلة شائعة حول فاتورتي والامتثال بالمغرب",
@@ -204,73 +210,73 @@ export const PAGE_COPY: Record<LandingPage, Record<LocaleId, LocaleCopy>> = {
     en: {
       title: "Frequently asked questions about Fatorati and compliance",
       description:
-        "Answers to the questions we hear most: fit for Moroccan small businesses, using it on a phone, data security and privacy, changing plan, and the support you get.",
+        "Answers to the questions we hear most: fit for Moroccan small businesses, using it on a phone, data security and privacy, changing plan and support.",
     },
   },
   contact: {
     fr: {
-      title: "Contacter l'équipe Fatorati",
+      title: "Contacter le support Fatorati à Tanger, Maroc",
       description:
-        "Une question sur Fatorati, les tarifs ou la mise en route ? Écrivez-nous : l'équipe répond aux entreprises marocaines et à leurs besoins de gestion et de conformité.",
+        "Une question sur Fatorati, les tarifs ou la mise en route ? Écrivez-nous : l'équipe répond aux entreprises marocaines sur la gestion et la conformité.",
     },
     ar: {
-      title: "تواصل مع فريق فاتورتي",
+      title: "تواصل مع فريق دعم فاتورتي في طنجة، المغرب",
       description:
-        "سؤال حول فاتورتي أو الأسعار أو الانطلاق؟ راسلنا: يجيب الفريق عن المقاولات المغربية واحتياجاتها في التدبير والامتثال.",
+        "سؤال حول فاتورتي أو الأسعار أو طريقة الانطلاق؟ راسلنا من طنجة: يجيب الفريق عن المقاولات المغربية واحتياجاتها في التدبير والامتثال للقانون 09-08.",
     },
     en: {
-      title: "Contact the Fatorati team",
+      title: "Contact the Fatorati team in Tangier, Morocco",
       description:
         "A question about Fatorati, pricing or getting started? Write to us — the team answers Moroccan businesses about their management and compliance needs.",
     },
   },
   privacy: {
     fr: {
-      title: "Politique de confidentialité | Fatorati",
+      title: "Politique de confidentialité des données | Fatorati",
       description:
-        "Quelles données Fatorati collecte, pourquoi, combien de temps elles sont conservées, et comment exercer vos droits d'accès, de rectification et d'opposition (Loi 09-08 / CNDP).",
+        "Quelles données Fatorati collecte, pourquoi, combien de temps elles sont conservées, et comment exercer vos droits d'accès, de rectification et d'opposition.",
     },
     ar: {
-      title: "سياسة الخصوصية | فاتورتي",
+      title: "سياسة الخصوصية وحماية المعطيات الشخصية | فاتورتي",
       description:
         "ما هي المعطيات التي تجمعها فاتورتي، ولماذا، ومدة حفظها، وكيف تمارس حقوقك في الولوج والتصحيح والتعرض (القانون 09-08 / اللجنة الوطنية لحماية المعطيات).",
     },
     en: {
-      title: "Privacy policy | Fatorati",
+      title: "Privacy policy and data protection | Fatorati",
       description:
         "What data Fatorati collects, why, how long it is kept, and how to exercise your rights of access, correction and objection (Law 09-08 / CNDP).",
     },
   },
   terms: {
     fr: {
-      title: "Conditions d'utilisation | Fatorati",
+      title: "Conditions générales d'utilisation | Fatorati",
       description:
-        "Les règles d'utilisation du service Fatorati : usage licite, confidentialité des identifiants, évolution des fonctionnalités et responsabilités de chaque partie.",
+        "Les règles d'utilisation du service Fatorati : usage licite, confidentialité des identifiants, évolution des fonctionnalités et responsabilités de chacun.",
     },
     ar: {
-      title: "شروط الاستخدام | فاتورتي",
+      title: "شروط الاستخدام والأحكام العامة للخدمة | فاتورتي",
       description:
-        "قواعد استعمال خدمة فاتورتي: الاستعمال المشروع، والحفاظ على سرية معرّفات الدخول، وتطوّر الوظائف، ومسؤوليات كل طرف.",
+        "قواعد استعمال خدمة فاتورتي: الاستعمال المشروع، والحفاظ على سرية معرّفات الدخول، وتطوّر الوظائف، ومسؤوليات كل طرف تجاه الخدمة والبيانات الشخصية.",
     },
     en: {
-      title: "Terms of use | Fatorati",
+      title: "Terms of service for your account | Fatorati",
       description:
         "The rules for using Fatorati: lawful use, keeping your credentials confidential, how features evolve, and what each party is responsible for.",
     },
   },
   cookies: {
     fr: {
-      title: "Politique de cookies | Fatorati",
+      title: "Politique de cookies et consentement | Fatorati",
       description:
-        "Cookies strictement nécessaires et mesure d'audience Google Analytics activée uniquement après consentement : ce que Fatorati dépose, pourquoi, et comment modifier votre choix.",
+        "Cookies strictement nécessaires et mesure d'audience Google Analytics activée uniquement après consentement : ce que Fatorati dépose et comment changer d'avis.",
     },
     ar: {
-      title: "سياسة ملفات الارتباط | فاتورتي",
+      title: "سياسة ملفات الارتباط والموافقة | فاتورتي",
       description:
-        "ملفات ارتباط ضرورية بشكل صارم، وقياس الجمهور عبر Google Analytics لا يُفعّل إلا بموافقتك: ما تضعه فاتورتي، ولماذا، وكيف تغيّر اختيارك.",
+        "ملفات ارتباط ضرورية بشكل صارم، وقياس الجمهور عبر Google Analytics لا يُفعّل إلا بموافقتك: ما تضعه فاتورتي، ولماذا، وكيف تغيّر اختيارك في أي وقت.",
     },
     en: {
-      title: "Cookie policy | Fatorati",
+      title: "Cookie policy and your consent | Fatorati",
       description:
         "Strictly necessary cookies, and Google Analytics only after you consent: what Fatorati sets, why, and how to change your choice at any time.",
     },
