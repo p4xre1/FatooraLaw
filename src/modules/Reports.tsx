@@ -7,11 +7,13 @@ import { toCSV, runAsync } from "../lib/mizan"
 import { useFormats } from "../lib/language/formats"
 import { useTranslation } from "../lib/language/store"
 import { Card, SectionTitle, Btn, Badge, Table, Th, Td } from "../components/kit"
+import { MoveRight } from "lucide-react"
 import MoroccoMap from "../components/MoroccoMap"
 import { rankClients } from "../lib/clientRank"
 import { aggregateByCity, matchCity } from "../lib/cities"
 import { audienceInsights, type AudienceSegment } from "../lib/deliveryAnalytics"
-import { BarChart } from "../components/charts"
+import { moneyOverview } from "../lib/moneyOverview"
+import { BarChart, Donut, Legend } from "../components/charts"
 
 const SUMMARY_KEYS = ["budget", "collected", "expenses", "receivables"] as const
 
@@ -21,7 +23,7 @@ export default function Reports() {
   const t = copy.reports
   const dashboardCopy = copy.dashboard
   const modules = copy.shared.modules
-  const { projects, expenses, contacts, audit, stock, orders, campaigns, settings } = useMizan()
+  const { projects, expenses, contacts, audit, stock, orders, campaigns, tools, contracts, settings } = useMizan()
   const today = useToday()
   const [range, setRange] = useState<6 | 8 | 12>(8)
   const [busy, setBusy] = useState(false)
@@ -55,6 +57,12 @@ export default function Reports() {
   const avgCac = campaignVerified ? totalAdSpend / campaignVerified : null
   const campaignConversion = campaignLeads ? campaignVerified / campaignLeads : null
 
+  // Every money figure in the app, consolidated (lib/moneyOverview).
+  const money = useMemo(
+    () => moneyOverview({ projects, expenses, contacts, audit, orders, campaigns, stock, tools, contracts, today }),
+    [projects, expenses, contacts, audit, orders, campaigns, stock, tools, contracts, today],
+  )
+
   const values = {
     budget: m.budget,
     collected: m.collected,
@@ -87,6 +95,112 @@ export default function Reports() {
       {m.hiddenDemoCount > 0 && <p className="text-[12px] text-muted">{t.hiddenSamples(m.hiddenDemoCount)}</p>}
       {(m.invalidCount + m.invalidDateCount) > 0 && <p role="alert" className="text-[12px] text-warn">{t.invalidRecords(m.invalidCount + m.invalidDateCount)}</p>}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{SUMMARY_KEYS.map((key) => <Card key={key} className="p-4"><p className="text-[12px] text-muted">{t.summaries[key].label}</p><p className="tnum mt-1 text-[20px] font-bold">{decimalMoney(values[key], cur)}</p><p className="mt-1 text-[11px] text-faint">{t.allPeriods}</p></Card>)}</div>
+
+      {/* ---- Money everywhere: one diagram, one score, one infographic ---- */}
+      <div>
+        <h2 className="text-[16px] font-bold">{t.money.title}</h2>
+        <p className="mt-0.5 text-[12.5px] text-muted">{t.money.subtitle}</p>
+      </div>
+      {!money.hasData ? (
+        <Card className="border-dashed p-6 text-center"><p className="text-[13px] text-muted">{t.money.empty}</p></Card>
+      ) : (
+        <>
+          <div className="grid items-start gap-5 xl:grid-cols-2">
+            {/* 1 · The diagram */}
+            <Card className="p-5">
+              <h3 className="mb-3 text-[14px] font-bold">{t.money.diagram}</h3>
+              <Legend series={[{ name: t.money.inLabel, color: "var(--chart-1)", values: [] }, { name: t.money.outLabel, color: "var(--chart-3)", values: [] }]} />
+              <BarChart
+                labels={[t.money.sources.projects, t.money.sources.orders, t.money.sources.purchases]}
+                series={[
+                  { name: t.money.inLabel, color: "var(--chart-1)", values: [money.inProjects, money.inOrders, 0] },
+                  { name: t.money.outLabel, color: "var(--chart-3)", values: [0, money.outProducts + money.outFulfilment + money.outAds, money.outPurchases] },
+                ]}
+                format={(n) => decimalMoney(n, cur, true)}
+              />
+              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 border-t border-line pt-3 text-[12.5px]">
+                <span>{t.money.flowIn} · <span className="tnum font-bold">{decimalMoney(money.totalIn, cur)}</span></span>
+                <span>{t.money.flowOut} · <span className="tnum font-bold">{decimalMoney(money.totalOut, cur)}</span></span>
+                <span>{t.money.flowNet} · <span className={`tnum font-bold ${money.net < 0 ? "text-serious" : "text-emerald-700"}`}>{decimalMoney(money.net, cur)}</span></span>
+              </div>
+            </Card>
+
+            {/* 2 · The score */}
+            <Card className="p-5">
+              <h3 className="mb-3 text-[14px] font-bold">{t.money.score}</h3>
+              {money.score.value === null ? (
+                <p className="py-6 text-center text-[13px] text-muted">{t.money.scoreEmpty}</p>
+              ) : (
+                <>
+                  <Donut segments={[
+                    { label: t.money.score, value: money.score.value, color: "var(--chart-1)" },
+                    { label: t.money.scoreRest, value: 100 - money.score.value, color: "var(--color-line)" },
+                  ]} />
+                  <div className="mt-4 space-y-2">
+                    {money.score.parts.map((part) => (
+                      <div key={part.key} className="flex items-center gap-2 text-[12px]">
+                        <span className="w-44 shrink-0 text-muted">{t.money.scoreParts[part.key]}</span>
+                        <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-canvas">
+                          <span className="block h-full rounded-full bg-brand" style={{ width: `${(part.points / part.max) * 100}%` }} />
+                        </span>
+                        <span className="tnum w-14 text-end font-semibold text-ink">{part.points}/{part.max}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </Card>
+          </div>
+
+          {/* 3 · The infographic */}
+          <Card className="p-5">
+            <h3 className="mb-4 text-[14px] font-bold">{t.money.infographic}</h3>
+            <div className="flex flex-wrap items-stretch gap-2">
+              {[
+                { label: t.money.flowIn, value: money.totalIn, tone: "text-emerald-700" },
+                { label: t.money.flowOut, value: money.totalOut, tone: "text-serious" },
+                { label: t.money.flowNet, value: money.net, tone: money.net < 0 ? "text-serious" : "text-emerald-700" },
+              ].map((step, index) => (
+                <span key={step.label} className="flex items-center gap-2">
+                  {index > 0 && <MoveRight className="h-4 w-4 shrink-0 text-faint rtl:rotate-180" aria-hidden="true" />}
+                  <span className="rounded-xl border border-line bg-canvas px-4 py-3">
+                    <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted">{step.label}</span>
+                    <span className={`tnum mt-0.5 block text-[17px] font-bold ${step.tone}`}>{decimalMoney(step.value, cur)}</span>
+                  </span>
+                </span>
+              ))}
+            </div>
+            <div className="mt-5 grid items-start gap-6 lg:grid-cols-2">
+              {money.totalOut > 0 ? (
+                <Donut segments={[
+                  { label: t.money.segments.products, value: money.outProducts, color: "var(--chart-1)" },
+                  { label: t.money.segments.fulfilment, value: money.outFulfilment, color: "var(--chart-2)" },
+                  { label: t.money.segments.ads, value: money.outAds, color: "var(--chart-3)" },
+                  { label: t.money.segments.purchases, value: money.outPurchases, color: "var(--chart-4)" },
+                ].filter((segment) => segment.value > 0)} />
+              ) : <p className="text-[13px] text-muted">—</p>}
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+                {[
+                  { label: t.money.figures.contracted, value: decimalMoney(money.contractedTotal, cur) },
+                  { label: t.money.figures.ordersProfit, value: decimalMoney(money.ordersProfit, cur) },
+                  { label: t.money.figures.receivables, value: decimalMoney(money.receivables, cur) },
+                  { label: t.money.figures.toCollect, value: decimalMoney(money.toCollect, cur) },
+                  { label: t.money.figures.stockValue, value: decimalMoney(money.stockValue, cur) },
+                  { label: t.money.figures.contractsSigned, value: decimalMoney(money.contractsSigned, cur) },
+                  { label: t.money.figures.vat, value: decimalMoney(money.vatRecoverable, cur) },
+                  { label: t.money.figures.subscriptions, value: decimalMoney(money.subscriptionsMonthly, cur) },
+                ].map((figure) => (
+                  <div key={figure.label}>
+                    <dt className="text-[11px] leading-snug text-muted">{figure.label}</dt>
+                    <dd className="tnum mt-0.5 text-[15px] font-bold text-ink">{figure.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+            {money.stockUnknown > 0 && <p className="mt-3 text-[11.5px] text-faint">{t.money.figures.stockUnknown(money.stockUnknown)}</p>}
+          </Card>
+        </>
+      )}
 
       <Card className="border-warn/30 bg-warn-50 p-5"><div className="flex items-start gap-3"><Info className="mt-0.5 h-5 w-5 shrink-0 text-warn" /><div><h2 className="text-[14px] font-bold">{t.tax.title}</h2><p className="mt-2 text-[13px] leading-relaxed text-muted">{t.tax.body}</p><p className="mt-2 text-[13px] leading-relaxed text-muted">{t.tax.limits}</p></div></div></Card>
 

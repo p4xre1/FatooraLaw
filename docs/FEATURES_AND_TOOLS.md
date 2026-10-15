@@ -560,6 +560,20 @@ keywords — always computed from verified buyers, never estimated.
 
 ### 3.10 Rapports & Fiscalité — `/reports`
 
+**L'argent — la vue complète** (`lib/moneyOverview.ts`): every money
+figure the application reads — project budgets and collections, approved
+expenses and their recoverable VAT, order revenue / product / delivery /
+packaging costs and profit, campaign spend, client balances, stock value
+at purchase price, signed contracts, planned monthly subscriptions —
+consolidated once and shown three ways: a **diagram** (in vs out per
+source), a **financial score** out of 100 (collections 40, order
+profitability 30, cost coverage 30; parts shown, dataless parts drop out
+and the rest rescale), and an **infographic** (the in → out → remains
+flow, a donut of where the money goes, and the position figures).
+Subscriptions stay labelled planned-per-month and are never folded into
+the totals; the stock value counts only articles with a known purchase
+price and names the rest.
+
 **Clients par ville — Maroc**: a schematic Morocco map (`lib/cities.ts`,
 `components/MoroccoMap.tsx`) with one dot per city, sized by client count or
 collected money, true relative positions on a simplified drawn outline (no
