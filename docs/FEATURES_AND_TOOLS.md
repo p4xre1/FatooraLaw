@@ -519,6 +519,35 @@ register with a printable summary card.
 
 ---
 
+### 3.9b Livraisons & Vérification clients — `/delivery`, `/verification`
+
+The ad-to-delivery pipeline (PRO/BOOST, in the **Gestion** group). An
+**order** (`DeliveryOrder`) is the unit everything hangs on: its client,
+its campaign, its items (stock lines carry their purchase cost), and its
+recorded costs — delivery, packaging, other fees. **Campaigns**
+(`AdCampaign`) record platform and spend; `lib/deliveryAnalytics.ts` turns
+them into a cost per verified client (spend ÷ distinct verified clients),
+charged once per client on their first verified order — a refused lead is
+never charged product or delivery costs in the per-client totals, and a
+repeat order is never charged the acquisition twice.
+
+**Vérification clients** is the call queue: Nouveau → Appelé → Sans
+réponse → Vérifié / Refusé, then payment (derived from the amount paid).
+The store stamps `firstCallAt` / `verifiedAt` / `paidAt` when a stage
+changes, so the page measures — never asks — how long a client waited for
+the first call and how long they took to convince (first call →
+verified). Its second table is the per-client cost ledger: products,
+delivery, packaging, other fees, ads, total, profit.
+
+**Livraisons** runs fulfilment (En attente → Préparation → Expédiée →
+Livrée / Retournée / Annulée): marking delivered takes the quantities out
+of stock once, a return puts them back. It also shows stock on hand vs
+reserved by verified orders vs available, the campaigns table, and a
+compact verified-buyer audience. The same audience is reported in depth
+in Rapports (§3.10): spend, buyers, average CAC, conversion, campaign
+table, and segments by city, source, channel, age band and product
+keywords — always computed from verified buyers, never estimated.
+
 ### 3.10 Rapports & Fiscalité — `/reports`
 
 **Clients par ville — Maroc**: a schematic Morocco map (`lib/cities.ts`,

@@ -67,6 +67,8 @@ export const MODULE_PATHS: Record<ModuleKey, string> = {
   contacts: "/contacts",
   procurement: "/procurement",
   inventory: "/inventory",
+  delivery: "/delivery",
+  verification: "/verification",
   calendar: "/calendar",
   risk: "/risk",
   tools: "/tools",

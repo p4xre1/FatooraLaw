@@ -18,7 +18,7 @@ import { LANGUAGE_STORAGE_KEY, useLanguageStore } from "../src/lib/language/stor
  */
 
 const ALL = perms([
-  "dashboard", "projects", "contacts", "procurement", "inventory", "calendar",
+  "dashboard", "projects", "contacts", "procurement", "inventory", "delivery", "verification", "calendar",
   "risk", "tools", "legal", "reports", "team", "audit", "settings",
 ])
 
@@ -86,7 +86,7 @@ it("groups the rail into 'Au quotidien' then 'Gestion', with 'Plus d'outils' col
   expect(navHrefs(nav)).toEqual([
     modulePath("dashboard"), modulePath("contacts"),
     modulePath("procurement"), modulePath("calendar"),
-    modulePath("projects"), modulePath("inventory"), modulePath("reports"),
+    modulePath("projects"), modulePath("inventory"), modulePath("delivery"), modulePath("verification"), modulePath("reports"),
   ])
 
   // Collapsed by default: the three tools are not in the document at all.
@@ -111,7 +111,7 @@ it("expands 'Plus d'outils' on click and exposes the three tools", () => {
   ])
   // The rest of the rail is untouched by the expansion.
   const hrefs = navHrefs(nav)
-  for (const key of ["dashboard", "contacts", "procurement", "calendar", "projects", "inventory", "reports"] as ModuleKey[]) {
+  for (const key of ["dashboard", "contacts", "procurement", "calendar", "projects", "inventory", "delivery", "verification", "reports"] as ModuleKey[]) {
     expect(hrefs).toContain(modulePath(key))
   }
 })

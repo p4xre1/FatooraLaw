@@ -43,6 +43,8 @@ const Projects = lazy(() => import("./modules/Projects"))
 const Contacts = lazy(() => import("./modules/Contacts"))
 const Procurement = lazy(() => import("./modules/Procurement"))
 const Inventory = lazy(() => import("./modules/Inventory"))
+const Delivery = lazy(() => import("./modules/Delivery"))
+const Verification = lazy(() => import("./modules/Verification"))
 const LegalVault = lazy(() => import("./modules/LegalVault"))
 const Reports = lazy(() => import("./modules/Reports"))
 const Calendar = lazy(() => import("./modules/Calendar"))
@@ -300,6 +302,8 @@ export default function App() {
             {!locked && current === "contacts" && <Contacts />}
             {!locked && current === "procurement" && <Procurement />}
             {!locked && current === "inventory" && <Inventory />}
+            {!locked && current === "delivery" && <Delivery />}
+            {!locked && current === "verification" && <Verification />}
             {!locked && current === "legal" && <LegalVault />}
             {!locked && current === "reports" && <Reports />}
             {!locked && current === "calendar" && <Calendar />}

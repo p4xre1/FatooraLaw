@@ -10,6 +10,7 @@ import { Card, SectionTitle, Btn, Badge, Table, Th, Td } from "../components/kit
 import MoroccoMap from "../components/MoroccoMap"
 import { rankClients } from "../lib/clientRank"
 import { aggregateByCity, matchCity } from "../lib/cities"
+import { audienceInsights, type AudienceSegment } from "../lib/deliveryAnalytics"
 import { BarChart } from "../components/charts"
 
 const SUMMARY_KEYS = ["budget", "collected", "expenses", "receivables"] as const
@@ -20,7 +21,7 @@ export default function Reports() {
   const t = copy.reports
   const dashboardCopy = copy.dashboard
   const modules = copy.shared.modules
-  const { projects, expenses, contacts, audit, stock, settings } = useMizan()
+  const { projects, expenses, contacts, audit, stock, orders, campaigns, settings } = useMizan()
   const today = useToday()
   const [range, setRange] = useState<6 | 8 | 12>(8)
   const [busy, setBusy] = useState(false)
@@ -43,6 +44,17 @@ export default function Reports() {
   const selectedClients = mapCity
     ? rankedClients.filter((r) => cityLabelOf(r.contact.city) === mapCity).slice(0, 5)
     : []
+  // The audience the ads actually bought: verified buyers of orders.
+  const audience = useMemo(
+    () => audienceInsights({ contacts, orders, campaigns, stock, currentYear: Number(today.slice(0, 4)) }),
+    [contacts, orders, campaigns, stock, today],
+  )
+  const totalAdSpend = campaigns.reduce((sum, c) => sum + c.spend, 0)
+  const campaignVerified = audience.campaigns.reduce((sum, p) => sum + p.verifiedClients, 0)
+  const campaignLeads = audience.campaigns.reduce((sum, p) => sum + p.leads, 0)
+  const avgCac = campaignVerified ? totalAdSpend / campaignVerified : null
+  const campaignConversion = campaignLeads ? campaignVerified / campaignLeads : null
+
   const values = {
     budget: m.budget,
     collected: m.collected,
@@ -146,6 +158,79 @@ export default function Reports() {
           </div>
         )}
       </Card>
+
+      {/* ---- Target audience & acquisition: who the ads bought ---- */}
+      <Card className="p-5">
+        <div className="mb-3">
+          <h2 className="text-[14px] font-bold">{t.audience.title}</h2>
+          <p className="mt-0.5 text-[12px] text-muted">{t.audience.subtitle}</p>
+        </div>
+        {audience.buyers === 0 ? (
+          <p className="py-6 text-center text-[13px] text-muted">{t.audience.empty}</p>
+        ) : (
+          <>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <Card className="p-4"><p className="text-[12px] text-muted">{t.audience.spend}</p><p className="tnum mt-1 text-[20px] font-bold">{decimalMoney(totalAdSpend, cur)}</p></Card>
+              <Card className="p-4"><p className="text-[12px] text-muted">{t.audience.buyers}</p><p className="tnum mt-1 text-[20px] font-bold">{audience.buyers}</p></Card>
+              <Card className="p-4"><p className="text-[12px] text-muted">{t.audience.cac}</p><p className="tnum mt-1 text-[20px] font-bold">{avgCac !== null ? decimalMoney(avgCac, cur) : "—"}</p></Card>
+              <Card className="p-4"><p className="text-[12px] text-muted">{t.audience.conversion}</p><p className="tnum mt-1 text-[20px] font-bold">{campaignConversion !== null ? `${Math.round(campaignConversion * 100)}%` : "—"}</p></Card>
+            </div>
+
+            {audience.campaigns.length > 0 && (
+              <div className="mt-5">
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted">{t.audience.campaigns}</p>
+                <Table head={<><Th>{t.audience.campaign}</Th><Th>{t.audience.platform}</Th><Th className="text-end">{t.audience.spend}</Th><Th className="text-end">{t.audience.leads}</Th><Th className="text-end">{t.audience.verified}</Th><Th className="text-end">{t.audience.cac}</Th><Th className="text-end">{t.audience.collected}</Th></>}>
+                  {audience.campaigns.map((perf) => (
+                    <tr key={perf.campaign.id}>
+                      <Td className="font-medium text-ink">{perf.campaign.name}</Td>
+                      <Td className="text-muted">{copy.delivery.platforms[perf.campaign.platform]}</Td>
+                      <Td className="tnum text-end">{decimalMoney(perf.campaign.spend, cur)}</Td>
+                      <Td className="tnum text-end">{perf.leads}</Td>
+                      <Td className="tnum text-end">{perf.verifiedClients}</Td>
+                      <Td className="tnum text-end font-semibold">{perf.cac !== null ? decimalMoney(perf.cac, cur) : "—"}</Td>
+                      <Td className="tnum text-end">{decimalMoney(perf.collected, cur)}</Td>
+                    </tr>
+                  ))}
+                </Table>
+              </div>
+            )}
+
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+              <AudienceList title={t.audience.cities} segments={audience.byCity} label={(v) => v} money={(n) => decimalMoney(n, cur, true)} clientsLabel={t.audience.clients} />
+              <AudienceList title={t.audience.sources} segments={audience.bySource} label={(v) => (copy.contacts.rank.sources as Record<string, string>)[v] ?? copy.delivery.audience.unknown} money={(n) => decimalMoney(n, cur, true)} clientsLabel={t.audience.clients} />
+              <AudienceList title={t.audience.channels} segments={audience.byChannel} label={(v) => (copy.contacts.rank.channels as Record<string, string>)[v] ?? copy.delivery.audience.unknown} money={(n) => decimalMoney(n, cur, true)} clientsLabel={t.audience.clients} />
+              <AudienceList title={t.audience.ages} segments={audience.byAge} label={(v) => (v === "unknown" ? copy.delivery.audience.unknown : v)} money={(n) => decimalMoney(n, cur, true)} clientsLabel={t.audience.clients} />
+              <AudienceList title={t.audience.products} segments={audience.byKeyword} label={(v) => v} money={(n) => decimalMoney(n, cur, true)} clientsLabel={t.audience.clients} />
+            </div>
+          </>
+        )}
+      </Card>
+    </div>
+  )
+}
+
+function AudienceList({ title, segments, label, money, clientsLabel }: {
+  title: string
+  segments: AudienceSegment[]
+  label: (value: string) => string
+  money: (n: number) => string
+  clientsLabel: (n: number) => string
+}) {
+  return (
+    <div>
+      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">{title}</p>
+      {segments.length === 0 ? (
+        <p className="text-[12px] text-faint">—</p>
+      ) : (
+        <ul className="space-y-1.5">
+          {segments.slice(0, 5).map((segment) => (
+            <li key={segment.value} className="text-[12.5px]">
+              <span className="font-medium text-ink">{label(segment.value)}</span>
+              <span className="tnum block text-[11px] text-muted">{clientsLabel(segment.clients)} · {Math.round(segment.share * 100)}% · {money(segment.collected)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }

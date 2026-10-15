@@ -5,16 +5,18 @@ import { MAX_QUANTITY, parseAmount } from "../lib/businessValidation"
 import { formatKeywords, parseKeywords } from "../lib/keywords"
 import { useMizan } from "../store/useMizan"
 import { useTranslation } from "../lib/language/store"
+import { useFormats } from "../lib/language/formats"
 import { Card, SectionTitle, Btn, Badge, Table, Th, Td, Modal, Field, Input, Select, EmptyState, IconBtn, Progress } from "../components/kit"
 import StockScanner from "../components/StockScanner"
 
 const FILTERS: ("all" | StockItem["type"])[] = ["all", "material", "equipment"]
 
 export default function Inventory() {
+  const { decimalMoney } = useFormats()
   const { t: copy } = useTranslation()
   const t = copy.inventory
   const modules = copy.shared.modules
-  const { stock, projects, adjustStock, assignStock, addStock } = useMizan()
+  const { stock, projects, settings, adjustStock, assignStock, addStock } = useMizan()
   const [q, setQ] = useState("")
   const [kind, setKind] = useState<(typeof FILTERS)[number]>("all")
   const [creating, setCreating] = useState(false)
@@ -86,6 +88,7 @@ export default function Inventory() {
                       {i.name}
                     </span>
                     <div className="text-[11px] text-muted">{i.sku}</div>
+                    {i.costPrice !== undefined && <div className="tnum text-[11px] text-muted">{t.purchasePrice} · {decimalMoney(i.costPrice, settings.currency)}</div>}
                     {i.keywords?.length ? <div className="mt-1 flex flex-wrap gap-1">{i.keywords.map((word) => <span key={word} className="rounded-full bg-brand-50 px-1.5 py-px text-[10px] font-semibold text-brand-700">{word}</span>)}</div> : null}
                   </Td>
                   <Td><Badge tone={i.type === "equipment" ? "brand" : "neutral"}>{t.itemType[i.type]}</Badge></Td>
@@ -130,6 +133,7 @@ function CreateStock({ onClose, onCreate, initialSku }: { onClose: () => void; o
   const [f, setF] = useState<Omit<StockItem, "id">>(() => ({ name: "", sku: initialSku ?? "", qty: 0, minQty: 0, unit: t.defaultUnit, assignedProjectId: null, type: "material", keywords: [] }))
   const [keywordsText, setKeywordsText] = useState("")
   const [qty, setQty] = useState("0")
+  const [cost, setCost] = useState("")
   const [minQty, setMinQty] = useState("0")
   const [error, setError] = useState<string | null>(null)
   const quantity = parseAmount(qty, false, MAX_QUANTITY)
@@ -145,12 +149,13 @@ function CreateStock({ onClose, onCreate, initialSku }: { onClose: () => void; o
           <Field label={t.quantity}><Input type="number" min={0} max={MAX_QUANTITY} step="0.001" className="tnum" value={qty} onChange={(e) => setQty(e.target.value)} /></Field>
           <Field label={t.minimum}><Input type="number" min={0} max={MAX_QUANTITY} step="0.001" className="tnum" value={minQty} onChange={(e) => setMinQty(e.target.value)} /></Field>
           <Field label={t.unit}><Input value={f.unit} onChange={(e) => setF({ ...f, unit: e.target.value })} /></Field>
+          <Field label={t.purchasePrice}><Input type="number" min={0} step="0.01" className="tnum" value={cost} onChange={(e) => setCost(e.target.value)} /></Field>
         </div>
         <Field label={t.keywords}><Input value={keywordsText} onChange={(e) => setKeywordsText(e.target.value)} placeholder={t.keywordsPlaceholder} /></Field>
         {(quantity === null || minimum === null) && <p role="alert" className="text-sm text-serious">{t.amountError}</p>}
         <Btn className="w-full" disabled={!f.name.trim() || quantity === null || minimum === null} onClick={() => {
           if (quantity === null || minimum === null) return
-          try { onCreate({ ...f, qty: quantity, minQty: minimum, keywords: parseKeywords(keywordsText) }) }
+          try { onCreate({ ...f, qty: quantity, minQty: minimum, keywords: parseKeywords(keywordsText), costPrice: cost.trim() ? (parseAmount(cost) ?? undefined) : undefined }) }
           catch (err) { setError(err instanceof Error ? err.message : t.addError) }
         }}>{t.save}</Btn>
       </div>

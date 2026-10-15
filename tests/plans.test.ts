@@ -24,13 +24,13 @@ describe("the plan matrix", () => {
     expect(PLANS.free.modules).toEqual(["dashboard", "projects", "contacts", "procurement", "invoices", "reports", "settings"])
     for (const key of PLANS.free.modules) expect(planIncludes("free", key), key).toBe(true)
     // The rest of the product is visible in the rail but not openable.
-    for (const key of ["inventory", "calendar", "risk", "legal", "tools", "team", "audit"] as ModuleKey[])
+    for (const key of ["inventory", "delivery", "verification", "calendar", "risk", "legal", "tools", "team", "audit"] as ModuleKey[])
       expect(planIncludes("free", key), key).toBe(false)
   })
 
   it("gives BOOST everything the app has", () => {
     const all: ModuleKey[] = [
-      "dashboard", "projects", "contacts", "procurement", "inventory", "calendar",
+      "dashboard", "projects", "contacts", "procurement", "inventory", "delivery", "verification", "calendar",
       "risk", "tools", "legal", "reports", "team", "audit", "settings",
     ]
     for (const key of all) expect(planIncludes("boost", key), key).toBe(true)
@@ -52,6 +52,8 @@ describe("the plan matrix", () => {
     expect(requiredPlan("invoices")).toBe("free")
     expect(requiredPlan("procurement")).toBe("free")
     expect(requiredPlan("team")).toBe("pro")
+    expect(requiredPlan("delivery")).toBe("pro")
+    expect(requiredPlan("verification")).toBe("pro")
     expect(requiredPlan("risk")).toBe("boost")
     expect(requiredPlan("legal")).toBe("boost")
     expect(requiredPlan("tools")).toBe("boost")

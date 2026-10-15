@@ -241,7 +241,7 @@ export default function Sidebar({
   const daily = invoiceItem
     ? [...buildItems(["dashboard"]), invoiceItem, ...buildItems(["contacts", "procurement", "calendar"])]
     : buildItems(["dashboard", "contacts", "procurement", "calendar"])
-  const management = buildItems(["projects", "inventory", "reports"])
+  const management = buildItems(["projects", "inventory", "delivery", "verification", "reports"])
   const more = buildItems(MORE_MODULES)
   const accountItems = ACCOUNT_MODULES
     .filter((key) => allowed[key])

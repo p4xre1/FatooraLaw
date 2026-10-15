@@ -85,7 +85,7 @@ it("exports all current business records including subscriptions, but no auth or
   const backup = JSON.parse(await downloaded.text())
   expect(backup.format).toBe("fatorati-local-backup")
   expect(backup.data.tools[0].name).toBe("Backed up tool")
-  expect(Object.keys(backup.data).sort()).toEqual(["audit", "contacts", "contracts", "expenses", "projects", "settings", "stock", "team", "tools"])
+  expect(Object.keys(backup.data).sort()).toEqual(["audit", "campaigns", "contacts", "contracts", "expenses", "orders", "projects", "settings", "stock", "team", "tools"])
   expect(backup.auth).toBeUndefined()
   expect(backup.data.auth).toBeUndefined()
   expect(backup.data.signIn).toBeUndefined()

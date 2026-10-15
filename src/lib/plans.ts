@@ -44,7 +44,7 @@ export type Plan = {
 
 /** The rail's order, used wherever a plan's modules are listed or diffed. */
 export const PLAN_MODULE_ORDER: readonly PlanModule[] = [
-  "dashboard", "projects", "contacts", "procurement", "inventory", "calendar",
+  "dashboard", "projects", "contacts", "procurement", "inventory", "delivery", "verification", "calendar",
   "invoices", "risk", "tools", "legal", "reports", "team", "audit", "settings",
 ]
 

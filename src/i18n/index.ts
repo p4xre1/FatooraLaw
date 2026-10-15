@@ -21,6 +21,8 @@ import { onboarding } from "./onboarding.ts"
 import { localSave } from "./localSave.ts"
 import { app } from "./app.ts"
 import { plans } from "./plans.ts"
+import { delivery } from "./delivery.ts"
+import { verification } from "./verification.ts"
 
 /**
  * The application dictionary: every string the signed-in product shows, in the
@@ -59,6 +61,8 @@ const en = {
   localSave: localSave.en,
   app: app.en,
   plans: plans.en,
+  delivery: delivery.en,
+  verification: verification.en,
 }
 
 const fr: typeof en = {
@@ -84,6 +88,8 @@ const fr: typeof en = {
   localSave: localSave.fr,
   app: app.fr,
   plans: plans.fr,
+  delivery: delivery.fr,
+  verification: verification.fr,
 }
 
 const ar: typeof en = {
@@ -109,6 +115,8 @@ const ar: typeof en = {
   localSave: localSave.ar,
   app: app.ar,
   plans: plans.ar,
+  delivery: delivery.ar,
+  verification: verification.ar,
 }
 
 export type Translation = typeof en
