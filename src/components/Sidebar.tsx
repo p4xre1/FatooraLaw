@@ -396,8 +396,10 @@ export default function Sidebar({
         )}
 
         {/* ---- Module search ---- */}
+        {/* Its own top padding: with the primary-action block gone, the
+            search must not sit flush against the brand header's hairline. */}
         {!collapsed && (
-          <div className="shrink-0 px-3 pb-3">
+          <div className="shrink-0 px-3 pb-3 pt-4">
             <div className="relative">
               <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sidebar-faint" aria-hidden="true" />
               <input
