@@ -95,7 +95,7 @@ describe("the owner's hand on a record", () => {
       clientName: "Karim Benjelloun", company: "Atlas BTP", contact: "0612345678",
       source: "instagram", note: "", issuedAt: iso(now - 5 * day),
     })
-    useSubscriptions.getState().markRedeemed({ plan: "pro", period: "1M", startedAt: iso(now - 5 * day), expiresAt: iso(now + 25 * day), serial: "K7Q2", redeemedAt: iso(now - 5 * day) })
+    useSubscriptions.getState().markRedeemed({ code: "PRO-1M-K7Q2-BF6VSEZJ", plan: "pro", period: "1M", startedAt: iso(now - 5 * day), expiresAt: iso(now + 25 * day), serial: "K7Q2" })
 
     render(<SubscriptionEditor />)
     expect(screen.getAllByText(/Karim Benjelloun/).length).toBeGreaterThan(0)
