@@ -11,7 +11,7 @@ import { MoveRight } from "lucide-react"
 import MoroccoMap from "../components/MoroccoMap"
 import { rankClients } from "../lib/clientRank"
 import { aggregateByCity, matchCity } from "../lib/cities"
-import { audienceInsights, type AudienceSegment } from "../lib/deliveryAnalytics"
+import { audienceInsights, clientCosts, type AudienceSegment } from "../lib/deliveryAnalytics"
 import { moneyOverview } from "../lib/moneyOverview"
 import { BarChart, Donut, Legend } from "../components/charts"
 
@@ -38,13 +38,24 @@ export default function Reports() {
     () => rankClients(contacts, projects, stock, Number(today.slice(0, 4))),
     [contacts, projects, stock, today],
   )
+  // A client's weight on the map is everything collected from them:
+  // projects (the ranking's basis) plus their verified orders' payments.
+  const orderCollectedByClient = useMemo(
+    () => new Map(clientCosts(contacts, orders, campaigns).map((summary) => [summary.contact.id, summary.collected])),
+    [contacts, orders, campaigns],
+  )
+  const mapSpent = (clientId: string, projectSpent: number) => projectSpent + (orderCollectedByClient.get(clientId) ?? 0)
   const cityAggregates = useMemo(
-    () => aggregateByCity(rankedClients.map((r) => ({ city: r.contact.city, spent: r.spent }))),
-    [rankedClients],
+    () => aggregateByCity(rankedClients.map((r) => ({ city: r.contact.city, spent: mapSpent(r.contact.id, r.spent) }))),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rankedClients, orderCollectedByClient],
   )
   const cityLabelOf = (raw: string) => matchCity(raw)?.fr ?? raw.trim()
   const selectedClients = mapCity
-    ? rankedClients.filter((r) => cityLabelOf(r.contact.city) === mapCity).slice(0, 5)
+    ? rankedClients
+        .filter((r) => cityLabelOf(r.contact.city) === mapCity)
+        .sort((a, b) => mapSpent(b.contact.id, b.spent) - mapSpent(a.contact.id, a.spent))
+        .slice(0, 5)
     : []
   // The audience the ads actually bought: verified buyers of orders.
   const audience = useMemo(
@@ -264,7 +275,7 @@ export default function Reports() {
                 <li key={r.contact.id} className="flex flex-wrap items-center gap-2 text-[12.5px]">
                   <span className="font-semibold text-ink">{r.contact.name}</span>
                   <Badge tone={r.tier === "vip" ? "brand" : r.tier === "gold" ? "warn" : "neutral"}>{r.score}</Badge>
-                  <span className="tnum text-muted">{decimalMoney(r.spent, cur)}</span>
+                  <span className="tnum text-muted">{decimalMoney(mapSpent(r.contact.id, r.spent), cur)}</span>
                   {r.keywords.slice(0, 3).map((word) => <span key={word} className="rounded-full bg-brand-50 px-1.5 py-px text-[10px] font-semibold text-brand-700">{word}</span>)}
                 </li>
               ))}

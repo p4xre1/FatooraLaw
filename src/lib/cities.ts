@@ -25,11 +25,20 @@ export type MapCity = {
 /** Linear projection window (mainland + the southern provinces). */
 const BOUNDS = { latMin: 20.8, latMax: 36.1, lngMin: -17.4, lngMax: -0.8 }
 
-/** lat/lng → the SVG's 0–100 box. */
+/**
+ * The box the map is drawn in. Not square on purpose: at Morocco's
+ * latitude a degree of longitude is ~98 km against ~111 km for a degree
+ * of latitude, so a square box stretches the country sideways. The
+ * height below (100 × 1698 km ÷ 1624 km ≈ 104.6) keeps one unit the
+ * same number of kilometres on both axes.
+ */
+export const MAP_VIEW = { width: 100, height: 104.6 }
+
+/** lat/lng → the SVG box. */
 export function project(lat: number, lng: number): { x: number; y: number } {
   return {
-    x: ((lng - BOUNDS.lngMin) / (BOUNDS.lngMax - BOUNDS.lngMin)) * 100,
-    y: ((BOUNDS.latMax - lat) / (BOUNDS.latMax - BOUNDS.latMin)) * 100,
+    x: ((lng - BOUNDS.lngMin) / (BOUNDS.lngMax - BOUNDS.lngMin)) * MAP_VIEW.width,
+    y: ((BOUNDS.latMax - lat) / (BOUNDS.latMax - BOUNDS.latMin)) * MAP_VIEW.height,
   }
 }
 
@@ -75,14 +84,30 @@ export const MAP_CITIES: (MapCity & { x: number; y: number })[] = SEEDS.map(([fr
   return { id: normalizeCityName(fr), fr, ar, lat, lng, aliases, x, y }
 })
 
-/** The simplified country outline, as a projected polygon (stylized). */
+/** The country outline, as a projected polygon.
+ *
+ * Traced clockwise from Cap Spartel along the real coastline, the
+ * Algeria and Mauritania borders, and back up the Atlantic — simplified,
+ * but every coastal anchor sits seaward of the city it neighbours, so no
+ * city dot ever floats in the ocean (the old outline cut Tanger, El
+ * Jadida, Safi and Essaouira off into the Atlantic). The geometry test
+ * in tests/cities.test.ts keeps every city strictly inside.
+ */
 export const MAP_OUTLINE: string = (
   [
-    [35.9, -5.4], [35.85, -3.6], [35.3, -2.2], [34.9, -1.85], [33.8, -2.1], [32.2, -3.4],
-    [30.5, -5.6], [28.6, -8.3], [27.7, -8.6], [26.2, -11.8], [24.9, -14.75], [23.9, -16.25],
-    [22.9, -16.5], [23.4, -15.9], [25.2, -14.6], [27.1, -13.3], [28.4, -11.1], [29.4, -10.2],
-    [30.4, -9.62], [31.5, -9.75], [32.3, -9.22], [33.23, -8.5], [33.6, -7.62], [34.02, -6.85],
-    [35.19, -6.16], [35.6, -5.95],
+    // The Mediterranean coast, west → east.
+    [35.86, -5.92], [35.93, -5.45], [35.75, -5.30], [35.45, -4.85], [35.28, -3.98],
+    [35.42, -2.98], [35.10, -2.22], [34.93, -1.86],
+    // The Algeria border, south to the Mauritanian tripoint.
+    [34.30, -1.62], [33.20, -1.35], [32.15, -1.20], [31.00, -3.10],
+    [29.90, -5.30], [28.70, -7.90], [27.72, -8.58],
+    // The Mauritania border: south-east, then west to Cap Blanc.
+    [26.20, -10.10], [24.40, -11.90], [22.90, -13.60], [21.60, -15.60], [20.88, -17.02],
+    // The Atlantic coast, back north.
+    [21.70, -16.85], [23.00, -16.20], [23.95, -16.05], [24.70, -15.30], [26.12, -14.48],
+    [27.20, -13.28], [28.45, -11.15], [29.55, -10.15], [30.45, -9.68], [31.55, -9.82],
+    [32.33, -9.30], [33.26, -8.56], [33.62, -7.58], [34.08, -6.95], [34.30, -6.62],
+    [35.25, -6.20], [35.50, -6.02],
   ] as [number, number][]
 )
   .map(([lat, lng]) => {

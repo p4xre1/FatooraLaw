@@ -1,4 +1,4 @@
-import { MAP_CITIES, MAP_OUTLINE, type CityAggregate } from "../lib/cities"
+import { MAP_CITIES, MAP_OUTLINE, MAP_VIEW, type CityAggregate } from "../lib/cities"
 
 /**
  * The schematic Morocco map: one dot per city, sized by what the owner is
@@ -27,8 +27,23 @@ export default function MoroccoMap({
   const max = Math.max(1, ...plotted.map((a) => (metric === "clients" ? a.clients : a.spent)))
   const value = (a: CityAggregate) => (metric === "clients" ? a.clients : a.spent)
 
+  // Labels sit above their dot — except where the previous label is
+  // already there (Rabat/Salé, Casablanca/Mohammedia share a coastline),
+  // in which case the label goes below instead of on top of it.
+  const labelBelow = new Set<string>()
+  const placed: { x: number; y: number }[] = []
+  for (const a of [...plotted].sort((p, q) => p.city!.y - q.city!.y || p.city!.x - q.city!.x)) {
+    const city = a.city!
+    if (placed.some((point) => Math.abs(point.x - city.x) < 9 && Math.abs(point.y - city.y) < 3.4)) {
+      labelBelow.add(city.id)
+      placed.push({ x: city.x, y: city.y + 4.6 })
+    } else {
+      placed.push({ x: city.x, y: city.y - 3.4 })
+    }
+  }
+
   return (
-    <svg viewBox="0 0 100 100" className="h-auto w-full" role="img" aria-label="Maroc">
+    <svg viewBox={`0 0 ${MAP_VIEW.width} ${MAP_VIEW.height}`} className="h-auto w-full" role="img" aria-label="Maroc">
       <polygon points={MAP_OUTLINE} className="fill-brand-50 stroke-line-strong" strokeWidth={0.5} strokeLinejoin="round" />
       {plotted.map((a) => {
         const city = a.city!
@@ -51,10 +66,10 @@ export default function MoroccoMap({
               strokeWidth={isSelected ? 0.7 : 0.4}
             />
             <text
-              y={-r - 1.2}
+              y={labelBelow.has(city.id) ? r + 3.4 : -r - 1.2}
               textAnchor="middle"
               className="fill-ink font-semibold"
-              style={{ fontSize: 3.1 }}
+              style={{ fontSize: 3, paintOrder: "stroke", stroke: "var(--color-surface)", strokeWidth: 1 }}
             >
               {city.fr}
             </text>
