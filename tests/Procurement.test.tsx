@@ -106,3 +106,19 @@ describe("the receipt photo", () => {
     expect(useMizan.getState().expenses).toHaveLength(0)
   })
 })
+
+describe("keywords on expense lines", () => {
+  it("an article line keeps the keywords it was bought under", () => {
+    openForm()
+    fireEvent.click(screen.getByRole("button", { name: /Ajouter un article/ }))
+    fireEvent.change(screen.getByLabelText("Article 1"), { target: { value: "Ciment 25kg" } })
+    fireEvent.change(screen.getByLabelText("Qté 1"), { target: { value: "10" } })
+    fireEvent.change(screen.getByLabelText("Prix unitaire 1"), { target: { value: "60" } })
+    fireEvent.change(screen.getByLabelText(/Mots-clés \(ciment, promo…\) 1/), { target: { value: "Ciment, Promo" } })
+    fireEvent.click(screen.getByRole("button", { name: "Enregistrer" }))
+
+    const [saved] = useMizan.getState().expenses
+    expect(saved.items?.[0].keywords).toEqual(["ciment", "promo"])
+    expect(screen.getByText("ciment, promo")).toBeTruthy()
+  })
+})

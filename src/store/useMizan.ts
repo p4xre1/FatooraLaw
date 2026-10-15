@@ -7,6 +7,7 @@ import { uid } from "./seed"
 import { emptyBusinessData } from "./defaults"
 
 import { MAX_QUANTITY, requireAmount, requireBalance, isTaxRate } from "../lib/businessValidation"
+import { sanitizeKeywords } from "../lib/keywords"
 import { validDateRange, calendarDay, dateFromDay } from "../lib/calendarDates"
 import { validateLogoDataURL } from "../lib/logoValidation"
 import { businessStorage } from "../lib/localSaveStatus"
@@ -182,7 +183,8 @@ export const useMizan = create<State>()(
           ? e.items.map((item) => {
               requireAmount(item.qty, "La quantité", MAX_QUANTITY)
               requireAmount(item.unitPrice, "Le prix unitaire")
-              return { label: sanitize(item.label), qty: item.qty, unitPrice: item.unitPrice }
+              const words = sanitizeKeywords(item.keywords)
+              return { label: sanitize(item.label), qty: item.qty, unitPrice: item.unitPrice, ...(words.length ? { keywords: words } : {}) }
             })
           : undefined
         if (e.receiptImage) validateLogoDataURL(e.receiptImage)
@@ -219,7 +221,7 @@ export const useMizan = create<State>()(
       addStock: (item) => {
         requireAmount(item.qty, "La quantité", MAX_QUANTITY)
         requireAmount(item.minQty, "Le seuil minimum", MAX_QUANTITY)
-        set((s) => ({ stock: [{ ...item, id: uid(), name: sanitize(item.name), sku: sanitize(item.sku), unit: sanitize(item.unit) }, ...s.stock] }))
+        set((s) => ({ stock: [{ ...item, id: uid(), name: sanitize(item.name), sku: sanitize(item.sku), unit: sanitize(item.unit), keywords: sanitizeKeywords(item.keywords).length ? sanitizeKeywords(item.keywords) : undefined }, ...s.stock] }))
       },
 
       addContract: (c) => {

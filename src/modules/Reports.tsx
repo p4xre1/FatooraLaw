@@ -6,7 +6,10 @@ import { useToday } from "../hooks/useToday"
 import { toCSV, runAsync } from "../lib/mizan"
 import { useFormats } from "../lib/language/formats"
 import { useTranslation } from "../lib/language/store"
-import { Card, SectionTitle, Btn, Table, Th, Td } from "../components/kit"
+import { Card, SectionTitle, Btn, Badge, Table, Th, Td } from "../components/kit"
+import MoroccoMap from "../components/MoroccoMap"
+import { rankClients } from "../lib/clientRank"
+import { aggregateByCity, matchCity } from "../lib/cities"
 import { BarChart } from "../components/charts"
 
 const SUMMARY_KEYS = ["budget", "collected", "expenses", "receivables"] as const
@@ -17,13 +20,29 @@ export default function Reports() {
   const t = copy.reports
   const dashboardCopy = copy.dashboard
   const modules = copy.shared.modules
-  const { projects, expenses, contacts, audit, settings } = useMizan()
+  const { projects, expenses, contacts, audit, stock, settings } = useMizan()
   const today = useToday()
   const [range, setRange] = useState<6 | 8 | 12>(8)
   const [busy, setBusy] = useState(false)
+  const [mapMetric, setMapMetric] = useState<"clients" | "spent">("spent")
+  const [mapCity, setMapCity] = useState<string | null>(null)
   const [exportError, setExportError] = useState<string | null>(null)
   const m = useMemo(() => dashboardData({ projects, expenses, contacts, audit }, range, today, dashboardCopy.months), [projects, expenses, contacts, audit, range, today, dashboardCopy.months])
   const cur = settings.currency
+
+  // Clients on the map: ranked once (score order), rolled up per city.
+  const rankedClients = useMemo(
+    () => rankClients(contacts, projects, stock, Number(today.slice(0, 4))),
+    [contacts, projects, stock, today],
+  )
+  const cityAggregates = useMemo(
+    () => aggregateByCity(rankedClients.map((r) => ({ city: r.contact.city, spent: r.spent }))),
+    [rankedClients],
+  )
+  const cityLabelOf = (raw: string) => matchCity(raw)?.fr ?? raw.trim()
+  const selectedClients = mapCity
+    ? rankedClients.filter((r) => cityLabelOf(r.contact.city) === mapCity).slice(0, 5)
+    : []
   const values = {
     budget: m.budget,
     collected: m.collected,
@@ -65,6 +84,68 @@ export default function Reports() {
       <Card><header className="flex items-center gap-2 border-b border-line px-5 py-3.5"><FileSpreadsheet className="h-4 w-4 text-brand" /><h2 className="text-[14px] font-bold">{t.totals}</h2></header><Table head={<><Th>{t.table.line}</Th><Th>{t.table.source}</Th><Th className="text-end">{t.table.amount}</Th></>}>
         {SUMMARY_KEYS.map((key) => <tr key={key}><Td className="font-medium text-ink">{t.summaries[key].label}</Td><Td className="text-muted">{t.summaries[key].source}</Td><Td className="tnum text-end font-semibold">{decimalMoney(values[key], cur)}</Td></tr>)}
       </Table></Card>
+
+      {/* ---- Clients by city: every client a point on the map ---- */}
+      <Card className="p-5">
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h2 className="text-[14px] font-bold">{t.clientsMap.title}</h2>
+            <p className="mt-0.5 text-[12px] text-muted">{t.clientsMap.subtitle}</p>
+          </div>
+          <div className="inline-flex rounded-lg border border-line-strong bg-surface p-1" role="group" aria-label={t.clientsMap.title}>
+            {(["clients", "spent"] as const).map((key) => (
+              <button key={key} type="button" aria-pressed={mapMetric === key} onClick={() => setMapMetric(key)} className={`rounded-md px-3 py-1.5 text-[12.5px] font-semibold transition-colors ${mapMetric === key ? "bg-brand text-white" : "text-muted hover:text-ink"}`}>
+                {key === "clients" ? t.clientsMap.byClients : t.clientsMap.bySpent}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {rankedClients.length === 0 ? (
+          <p className="py-6 text-center text-[13px] text-muted">{t.clientsMap.noClients}</p>
+        ) : (
+          <div className="grid items-start gap-5 lg:grid-cols-[1fr_230px]">
+            <div>
+              <MoroccoMap aggregates={cityAggregates} metric={mapMetric} selected={mapCity} onSelect={setMapCity} />
+              <p className="mt-1 text-[10.5px] text-faint">{t.clientsMap.schematic}</p>
+            </div>
+            <div>
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted">{t.clientsMap.topCities}</p>
+              <ul className="space-y-1">
+                {cityAggregates.map((a) => (
+                  <li key={a.label}>
+                    <button
+                      type="button"
+                      aria-pressed={mapCity === a.label}
+                      onClick={() => setMapCity(mapCity === a.label ? null : a.label)}
+                      className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-start text-[12.5px] transition-colors ${mapCity === a.label ? "bg-brand-50 font-bold text-ink" : "hover:bg-canvas"}`}
+                    >
+                      <span className="min-w-0 truncate">{a.city ? a.label : `${a.label} · ${t.clientsMap.otherPlaces}`}</span>
+                      <span className="tnum shrink-0 text-muted">{a.clients} · {decimalMoney(a.spent, cur, true)}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {mapCity && selectedClients.length > 0 && (
+          <div className="mt-4 border-t border-line pt-3">
+            <p className="mb-2 text-[12.5px] font-bold">{t.clientsMap.bestIn(mapCity)}</p>
+            <ul className="space-y-1.5">
+              {selectedClients.map((r) => (
+                <li key={r.contact.id} className="flex flex-wrap items-center gap-2 text-[12.5px]">
+                  <span className="font-semibold text-ink">{r.contact.name}</span>
+                  <Badge tone={r.tier === "vip" ? "brand" : r.tier === "gold" ? "warn" : "neutral"}>{r.score}</Badge>
+                  <span className="tnum text-muted">{decimalMoney(r.spent, cur)}</span>
+                  {r.keywords.slice(0, 3).map((word) => <span key={word} className="rounded-full bg-brand-50 px-1.5 py-px text-[10px] font-semibold text-brand-700">{word}</span>)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </Card>
     </div>
   )
 }

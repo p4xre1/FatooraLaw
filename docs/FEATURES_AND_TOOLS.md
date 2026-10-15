@@ -228,6 +228,16 @@ account's data.
 
 ---
 
+**Classement des clients** (`lib/clientRank.ts`, clients only): every client
+carries a score out of 100 — collected money 50 (log-scaled), projects 15,
+clear balance 15, age 10 from the birth year — and a tier (VIP ≥ 75, Or ≥ 55,
+Argent ≥ 35, Bronze below), relative to the client base. City, acquisition
+source ("nous a connus via"), sales channel ("achète via") and item keywords
+are *segments* that slice the ranked list, never points. The keyword profile
+of a client is inherited from the stock their projects consumed. The ledger
+detail shows the point-by-point breakdown, spend vs contracted, and the
+client's product words.
+
 ### 3.4 Achats & Dépenses — `/procurement`
 
 **Détail d'une dépense** (`lib/expenseCalc.ts`): an expense can be itemised —
@@ -278,6 +288,9 @@ receipt exists; it does not store or read one.
 status translated to Approuvé / En attente.
 
 ---
+
+Expense lines and stock articles both carry free **keywords**
+(`lib/keywords.ts`) — the vocabulary the client ranking analyses by.
 
 ### 3.5 Stock & Matériel — `/inventory`
 **File:** `src/modules/Inventory.tsx` (130 lines)**File:** `src/modules/Inventory.tsx` (130 lines)
@@ -507,6 +520,15 @@ register with a printable summary card.
 ---
 
 ### 3.10 Rapports & Fiscalité — `/reports`
+
+**Clients par ville — Maroc**: a schematic Morocco map (`lib/cities.ts`,
+`components/MoroccoMap.tsx`) with one dot per city, sized by client count or
+collected money, true relative positions on a simplified drawn outline (no
+tiles, no fetch — the app stays offline-capable). City names are matched by
+normalization plus FR/EN/AR aliases; a place the map does not know is listed
+beside it, never dropped. Selecting a city names its best clients (score
+order) with their product keywords.
+
 **File:** `src/modules/Reports.tsx` (57 lines)
 
 **What it does.** The same `dashboardData()` engine as the dashboard, presented

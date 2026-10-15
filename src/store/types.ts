@@ -32,6 +32,12 @@ export type Project = {
   equipmentIds: string[]
 }
 
+/** Where a client first heard of Fatorati — the acquisition source. */
+export type ContactSource = "whatsapp" | "instagram" | "facebook" | "google" | "referral" | "other"
+
+/** The channel the sale itself happens through. */
+export type SalesChannel = "direct" | "whatsapp" | "instagram" | "facebook" | "reseller" | "other"
+
 export type Contact = {
   id: string
   type: "client" | "supplier"
@@ -41,6 +47,12 @@ export type Contact = {
   email: string
   city: string
   balance: number // positive = they owe us (receivable), negative = we owe them
+  /** Birth year, when known — the ranking's age signal (never a full date). */
+  birthYear?: number | null
+  /** How this client found Fatorati. */
+  source?: ContactSource | null
+  /** How this client usually buys. */
+  channel?: SalesChannel | null
 }
 
 /** One bought article on an expense: what, how many, at what unit price. */
@@ -50,6 +62,8 @@ export type ExpenseItem = {
   qty: number
   /** Unit price excluding tax (HT). */
   unitPrice: number
+  /** Free keywords (ciment, promo, chantier…) for purchase analysis. */
+  keywords?: string[]
 }
 
 export type Expense = {
@@ -81,6 +95,8 @@ export type StockItem = {
   unit: string
   assignedProjectId: string | null
   type: "material" | "equipment"
+  /** Free keywords (ciment, plomberie…) — the categories clients are ranked by. */
+  keywords?: string[]
 }
 
 export type Contract = {

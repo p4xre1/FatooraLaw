@@ -4,6 +4,7 @@ import type { Expense, ExpenseItem, Settings } from "../store/types"
 import { useMizan } from "../store/useMizan"
 import { MAX_AMOUNT, MAX_QUANTITY, isTaxRate, parseAmount } from "../lib/businessValidation"
 import { expenseBreakdown, roundMoney } from "../lib/expenseCalc"
+import { formatKeywords, parseKeywords } from "../lib/keywords"
 import { LOGO_TYPES, validateLogoDataURL, validateLogoFile } from "../lib/logoValidation"
 import { todayISO } from "../lib/calendarDates"
 import { toExcel } from "../lib/mizan"
@@ -104,7 +105,8 @@ export default function Procurement() {
               return (
                 <tr key={e.id} className="transition-colors hover:bg-canvas/60">
                   <Td className="text-muted">{date(e.date)}</Td>
-                  <Td><span className="font-semibold text-ink">{vendorName(e.vendorId)}</span><div className="text-[11px] text-muted">{e.note}</div>{e.items?.length ? <div className="text-[11px] font-medium text-brand">{t.create.itemsLine(e.items.length, expenseBreakdown(e).quantity)}</div> : null}</Td>
+                  <Td><span className="font-semibold text-ink">{vendorName(e.vendorId)}</span><div className="text-[11px] text-muted">{e.note}</div>{e.items?.length ? <div className="text-[11px] font-medium text-brand">{t.create.itemsLine(e.items.length, expenseBreakdown(e).quantity)}</div> : null}
+                  {e.items?.some((i) => i.keywords?.length) ? <div className="text-[10.5px] text-faint">{formatKeywords([...new Set(e.items.flatMap((i) => i.keywords ?? []))])}</div> : null}</Td>
                   <Td className="text-muted">{t.categories[e.category as ExpenseCategory] ?? e.category}</Td>
                   <Td><span className="inline-flex items-center gap-1.5 text-muted"><MethodIcon className="h-3.5 w-3.5" /> {t.method[e.method]}</span></Td>
                   <Td>{e.receiptImage ? (
@@ -165,7 +167,7 @@ function CreateExpense({ suppliers, currency, defaultTaxRate, onClose, onCreate 
 
   // Itemised detail: rows stay strings while typed; they become articles
   // only when complete (name, qty > 0, unit price), as one block.
-  const [rows, setRows] = useState<{ label: string; qty: string; price: string }[]>([])
+  const [rows, setRows] = useState<{ label: string; qty: string; price: string; keywords: string }[]>([])
   const [taxRate, setTaxRate] = useState(String(defaultTaxRate))
   const [photo, setPhoto] = useState<string | null>(null)
   const [photoError, setPhotoError] = useState<string | null>(null)
@@ -183,7 +185,7 @@ function CreateExpense({ suppliers, currency, defaultTaxRate, onClose, onCreate 
     const qty = parseAmount(row.qty, false, MAX_QUANTITY)
     const price = parseAmount(row.price)
     if (!row.label.trim() || qty === null || qty <= 0 || price === null) { itemsInvalid = true; break }
-    lines.push({ label: row.label.trim(), qty, unitPrice: price })
+    lines.push({ label: row.label.trim(), qty, unitPrice: price, keywords: parseKeywords(row.keywords) })
   }
   const hasItems = rows.length > 0
   const breakdown = expenseBreakdown({
@@ -197,7 +199,7 @@ function CreateExpense({ suppliers, currency, defaultTaxRate, onClose, onCreate 
   const finalAmount = hasItems ? itemsTotal : parsedAmount
   const canSave = Boolean(vendorId) && finalAmount !== null && !itemsInvalid && rateValid
 
-  function setRow(index: number, patch: Partial<{ label: string; qty: string; price: string }>) {
+  function setRow(index: number, patch: Partial<{ label: string; qty: string; price: string; keywords: string }>) {
     setRows((current) => current.map((row, i) => (i === index ? { ...row, ...patch } : row)))
   }
 
@@ -239,7 +241,7 @@ function CreateExpense({ suppliers, currency, defaultTaxRate, onClose, onCreate 
         <div className="rounded-xl border border-line p-3">
           <div className="mb-2 flex items-center justify-between gap-2">
             <p className="text-[12px] font-bold text-ink">{c.itemsTitle}</p>
-            <Btn variant="outline" size="sm" onClick={() => setRows((current) => [...current, { label: "", qty: "1", price: "" }])}>
+            <Btn variant="outline" size="sm" onClick={() => setRows((current) => [...current, { label: "", qty: "1", price: "", keywords: "" }])}>
               <Plus className="h-3.5 w-3.5" /> {c.addItem}
             </Btn>
           </div>
@@ -254,6 +256,9 @@ function CreateExpense({ suppliers, currency, defaultTaxRate, onClose, onCreate 
                 <Field label={index === 0 ? c.itemPrice : "\u00A0"}><Input aria-label={`${c.itemPrice} ${index + 1}`} type="number" min={0} step="0.01" className="tnum" value={row.price} onChange={(e) => setRow(index, { price: e.target.value })} /></Field>
                 <p className="tnum pb-2 text-end text-[12.5px] font-semibold text-ink">{lineTotal !== null ? formatMoney(lineTotal, currency) : "—"}</p>
                 <IconBtn title={c.removeItem} aria-label={`${c.removeItem} ${index + 1}`} onClick={() => setRows((current) => current.filter((_, i) => i !== index))} className="mb-1 hover:bg-serious-50 hover:text-serious"><Trash2 className="h-4 w-4" /></IconBtn>
+                <div className="col-span-5 -mt-1">
+                  <Input aria-label={`${c.itemKeywords} ${index + 1}`} value={row.keywords} onChange={(e) => setRow(index, { keywords: e.target.value })} placeholder={c.itemKeywords} className="py-1 text-[11.5px]" />
+                </div>
               </div>
             )
           })}
