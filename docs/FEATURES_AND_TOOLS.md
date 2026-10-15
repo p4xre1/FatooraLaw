@@ -228,6 +228,16 @@ account's data.
 
 ---
 
+**The one-form rule** (`components/PartyPicker.tsx`): no dashboard form
+may demand a party that does not exist yet, and no client is typed twice.
+Wherever a form picks a client — a project, a contract, an order/lead —
+the select ends with "＋ Nouveau client…" and unfolds name / phone /
+city inline; expenses do the same for suppliers. Submitting creates the
+contact and saves with its id in the same gesture (`addContact` returns
+the new id), so the party is registered in Clients & Fournisseurs —
+ranked, mapped, verified and analysed like any other — from the single
+form. Contracts keep their explicit "Client non renseigné" choice.
+
 **Classement des clients** (`lib/clientRank.ts`, clients only): every client
 carries a score out of 100 — collected money 50 (log-scaled), projects 15,
 clear balance 15, age 10 from the birth year — and a tier (VIP ≥ 75, Or ≥ 55,

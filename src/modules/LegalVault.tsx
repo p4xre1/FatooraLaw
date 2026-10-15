@@ -8,6 +8,7 @@ import { contractDate, legalCompany, legalData } from "../lib/legalData"
 import { useTranslation } from "../lib/language/store"
 import { useFormats } from "../lib/language/formats"
 import { Card, SectionTitle, Btn, Badge, Modal, Field, Input, Select } from "../components/kit"
+import PartyPicker, { NEW_PARTY, emptyPartyDraft, partyReady, resolveParty, type PartyDraft } from "../components/PartyPicker"
 
 type ContractType = Contract["type"]
 type ContractStatus = Contract["status"]
@@ -101,6 +102,8 @@ function CreateContract({ type, clients, currency, onClose, onCreate }: { type: 
   const common = copy.common
   const [title, setTitle] = useState("")
   const [clientId, setClientId] = useState(clients[0]?.id ?? "")
+  const [partyDraft, setPartyDraft] = useState<PartyDraft>(emptyPartyDraft())
+  const addContact = useMizan((state) => state.addContact)
   const [value, setValue] = useState("")
   const [error, setError] = useState<string | null>(null)
   const parsed = parseAmount(value)
@@ -109,12 +112,12 @@ function CreateContract({ type, clients, currency, onClose, onCreate }: { type: 
       <p className="rounded-lg bg-brand-50 px-3 py-2 text-[12px] text-brand-700">{t.create.draftNote}</p>
       {error && <p role="alert" className="text-sm text-serious">{error}</p>}
       <Field label={t.create.title}><Input value={title} onChange={(event) => setTitle(event.target.value)} /></Field>
-      <Field label={t.create.client}><Select value={clientId} onChange={(event) => setClientId(event.target.value)}><option value="">{t.create.unknownClientOption}</option>{clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}</Select></Field>
+      <PartyPicker label={t.create.client} kind="client" options={clients} choice={clientId} onChoice={setClientId} draft={partyDraft} onDraft={setPartyDraft} unknownLabel={t.create.unknownClientOption} />
       <Field label={t.create.value(currency)} hint={t.create.zeroValueHint}><Input type="number" min={0} max={MAX_AMOUNT} step="0.01" className="tnum" value={value} onChange={(event) => setValue(event.target.value)} /></Field>
       {value && parsed === null && <p role="alert" className="text-sm text-serious">{t.create.invalidValue}</p>}
-      <Btn className="w-full" disabled={!title.trim() || parsed === null} onClick={() => {
+      <Btn className="w-full" disabled={!title.trim() || parsed === null || (clientId === NEW_PARTY && !partyReady(clientId, partyDraft))} onClick={() => {
         if (parsed === null) return
-        try { onCreate({ type, title, clientId, value: parsed, date: todayISO(), status: "draft" }) } catch (reason) { setError(reason instanceof Error ? reason.message : t.create.error) }
+        try { onCreate({ type, title, clientId: resolveParty(addContact, "client", clientId, partyDraft), value: parsed, date: todayISO(), status: "draft" }) } catch (reason) { setError(reason instanceof Error ? reason.message : t.create.error) }
       }}><FileSignature className="h-4 w-4" />{t.create.save}</Btn>
     </div>
   </Modal>

@@ -12,6 +12,7 @@ import { useFormats } from "../lib/language/formats"
 import { useTranslation } from "../lib/language/store"
 import type { ExpenseCategory } from "../i18n/procurement"
 import { Card, SectionTitle, Btn, Badge, Table, Th, Td, Modal, Field, Input, Select, EmptyState, IconBtn, Toggle } from "../components/kit"
+import PartyPicker, { NEW_PARTY, emptyPartyDraft, partyReady, resolveParty, type PartyDraft } from "../components/PartyPicker"
 
 const METHODS: Expense["method"][] = ["transfer", "check", "cash"]
 const STATUSES: Expense["status"][] = ["pending", "approved"]
@@ -157,7 +158,9 @@ function CreateExpense({ suppliers, currency, defaultTaxRate, onClose, onCreate 
   const t = copy.procurement
   const c = t.create
   const { money: formatMoney } = useFormats()
-  const [vendorId, setVendorId] = useState(suppliers[0]?.id ?? "")
+  const [vendorId, setVendorId] = useState(suppliers[0]?.id ?? NEW_PARTY)
+  const [partyDraft, setPartyDraft] = useState<PartyDraft>(emptyPartyDraft())
+  const addContact = useMizan((state) => state.addContact)
   const [category, setCategory] = useState(CATEGORIES[0])
   const [method, setMethod] = useState<Expense["method"]>("transfer")
   const [amount, setAmount] = useState("")
@@ -197,7 +200,7 @@ function CreateExpense({ suppliers, currency, defaultTaxRate, onClose, onCreate 
     ? roundMoney((breakdown.subtotalHt ?? 0) + (breakdown.taxAmount ?? 0))
     : null
   const finalAmount = hasItems ? itemsTotal : parsedAmount
-  const canSave = Boolean(vendorId) && finalAmount !== null && !itemsInvalid && rateValid
+  const canSave = partyReady(vendorId, partyDraft) && finalAmount !== null && !itemsInvalid && rateValid
 
   function setRow(index: number, patch: Partial<{ label: string; qty: string; price: string; keywords: string }>) {
     setRows((current) => current.map((row, i) => (i === index ? { ...row, ...patch } : row)))
@@ -230,7 +233,7 @@ function CreateExpense({ suppliers, currency, defaultTaxRate, onClose, onCreate 
     <Modal title={c.title} onClose={onClose} wide>
       <div className="space-y-4">
         {error && <p role="alert" className="text-sm text-serious">{error}</p>}
-        <Field label={c.supplier}><Select value={vendorId} onChange={(e) => setVendorId(e.target.value)}>{suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</Select></Field>
+        <PartyPicker label={c.supplier} kind="supplier" options={suppliers} choice={vendorId} onChoice={setVendorId} draft={partyDraft} onDraft={setPartyDraft} />
         <div className="grid grid-cols-2 gap-4">
           <Field label={c.category}><Select value={category} onChange={(e) => setCategory(e.target.value as ExpenseCategory)}>{CATEGORIES.map((key) => <option key={key} value={key}>{t.categories[key]}</option>)}</Select></Field>
           <Field label={c.method}><Select value={method} onChange={(e) => setMethod(e.target.value as Expense["method"])}>{METHODS.map((key) => <option key={key} value={key}>{t.method[key]}</option>)}</Select></Field>
@@ -310,7 +313,7 @@ function CreateExpense({ suppliers, currency, defaultTaxRate, onClose, onCreate 
           if (finalAmount === null || !rateValid) return
           try {
             onCreate({
-              vendorId, category, method, amount: finalAmount, note,
+              vendorId: resolveParty(addContact, "supplier", vendorId, partyDraft), category, method, amount: finalAmount, note,
               receipt: receipt || Boolean(photo), status: "pending", date: todayISO(),
               items: hasItems ? lines : undefined,
               taxRate: rate,

@@ -57,6 +57,7 @@ const en = {
   create: {
     title: "New expense",
     supplier: "Supplier",
+    newSupplier: "＋ New supplier…",
     category: "Category",
     method: "Payment method",
     amount: (currency: string) => `Amount (${currency})`,
@@ -142,6 +143,7 @@ const fr: ProcurementCopy = {
   create: {
     title: "Nouvelle dépense",
     supplier: "Fournisseur",
+    newSupplier: "＋ Nouveau fournisseur…",
     category: "Catégorie",
     method: "Mode de paiement",
     amount: (currency: string) => `Montant (${currency})`,
@@ -225,6 +227,7 @@ const ar: ProcurementCopy = {
   create: {
     title: "مصروف جديد",
     supplier: "المورد",
+    newSupplier: "＋ مورد جديد…",
     category: "الفئة",
     method: "طريقة الدفع",
     amount: (currency: string) => `المبلغ (${currency})`,

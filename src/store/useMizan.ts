@@ -66,7 +66,7 @@ type State = {
   updateProject: (id: string, patch: Partial<Project>) => void
   toggleMilestone: (projectId: string, milestoneId: string) => void
 
-  addContact: (c: Omit<Contact, "id">) => void
+  addContact: (c: Omit<Contact, "id">) => string
   updateContact: (id: string, patch: Partial<Contact>) => void
   removeContact: (id: string) => void
   importContacts: (rows: Omit<Contact, "id">[]) => void
@@ -182,6 +182,7 @@ export const useMizan = create<State>()(
         const ct: Contact = { ...c, id: uid(), name: sanitize(c.name), ice: sanitize(c.ice), phone: sanitize(c.phone), email: sanitize(c.email), city: sanitize(c.city) }
         set((s) => ({ contacts: [ct, ...s.contacts] }))
         get().log("a ajouté", `${ct.type === "client" ? "Client" : "Fournisseur"} · ${ct.name}`, "contacts", "info")
+        return ct.id
       },
       updateContact: (id, patch) => {
         const current = get().contacts.find((c) => c.id === id)
