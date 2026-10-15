@@ -20,6 +20,7 @@ import { topbar } from "./topbar.ts"
 import { onboarding } from "./onboarding.ts"
 import { localSave } from "./localSave.ts"
 import { app } from "./app.ts"
+import { plans } from "./plans.ts"
 
 /**
  * The application dictionary: every string the signed-in product shows, in the
@@ -57,6 +58,7 @@ const en = {
   onboarding: onboarding.en,
   localSave: localSave.en,
   app: app.en,
+  plans: plans.en,
 }
 
 const fr: typeof en = {
@@ -81,6 +83,7 @@ const fr: typeof en = {
   onboarding: onboarding.fr,
   localSave: localSave.fr,
   app: app.fr,
+  plans: plans.fr,
 }
 
 const ar: typeof en = {
@@ -105,6 +108,7 @@ const ar: typeof en = {
   onboarding: onboarding.ar,
   localSave: localSave.ar,
   app: app.ar,
+  plans: plans.ar,
 }
 
 export type Translation = typeof en

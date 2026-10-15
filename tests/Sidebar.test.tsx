@@ -464,3 +464,65 @@ it("styles the rail from the brand palette, and keeps that palette to the rail",
     expect(readFileSync(file, "utf8"), file).not.toMatch(/\b(?:bg|text|border|ring|decoration)-sidebar(?:-[a-z]+)?\b/)
   }
 })
+
+/* ------------------------------ plan locks ------------------------------ */
+
+import { usePlan } from "../src/store/usePlan"
+import { codeFor } from "../src/lib/planCodes"
+
+/**
+ * The plan is a second filter on top of the role's `allowed` map: a locked row
+ * stays visible (that is the upsell) but announces the plan that opens it.
+ * These run on a signed-out plan store, which is FREE — see plans.ts.
+ */
+
+async function activate(plan: "pro" | "boost") {
+  usePlan.getState().forAccount("user-1")
+  await usePlan.getState().redeem(await codeFor(plan, "1Y"))
+}
+
+it("keeps locked modules visible on FREE, with the plan named in the tooltip", async () => {
+  usePlan.getState().forAccount("user-1")
+  renderSidebar()
+
+  // FREE modules are untouched: no lock hint on the rows it includes.
+  expect(screen.getByRole("link", { name: "Clients & Fournisseurs" }).getAttribute("title")).toBeNull()
+  expect(screen.getByRole("link", { name: "Projets" }).getAttribute("title")).toBeNull()
+  expect(screen.getByRole("link", { name: "Rapports & Fiscalité" }).getAttribute("title")).toBeNull()
+
+  // A PRO module says PRO; the row still links to its own page, where the
+  // lock screen replaces the module.
+  const calendar = screen.getByRole("link", { name: "Calendrier" })
+  expect(calendar.getAttribute("href")).toBe(modulePath("calendar"))
+  expect(calendar.getAttribute("title")).toContain("PRO")
+  expect(screen.getByRole("link", { name: "Achats & Dépenses" }).getAttribute("title")).toContain("PRO")
+
+  // The advanced group names BOOST, not PRO.
+  fireEvent.click(screen.getByRole("button", { name: /Plus d'outils/ }))
+  expect(screen.getByRole("link", { name: "Gestion des Risques" }).getAttribute("title")).toContain("BOOST")
+})
+
+it("unlocks in step with the plan: PRO opens the middle, BOOST opens the rest", async () => {
+  await activate("pro")
+  renderSidebar()
+  expect(screen.getByRole("link", { name: "Calendrier" }).getAttribute("title")).toBeNull()
+  fireEvent.click(screen.getByRole("button", { name: /Plus d'outils/ }))
+  expect(screen.getByRole("link", { name: "Coffre juridique" }).getAttribute("title")).toContain("BOOST")
+})
+
+it("leaves nothing locked on BOOST", async () => {
+  await activate("boost")
+  const { nav } = renderSidebar()
+  fireEvent.click(screen.getByRole("button", { name: /Plus d'outils/ }))
+  for (const link of within(nav).getAllByRole("link")) {
+    expect(link.getAttribute("title") ?? "").not.toMatch(/PRO|BOOST/)
+  }
+})
+
+it("still navigates from a locked row — the lock screen is the destination, not a dead end", () => {
+  usePlan.getState().forAccount("user-1")
+  const onNavigate = vi.fn()
+  renderSidebar({ onNavigate })
+  fireEvent.click(screen.getByRole("link", { name: "Calendrier" }))
+  expect(onNavigate).toHaveBeenCalledWith("calendar")
+})

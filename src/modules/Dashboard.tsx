@@ -6,6 +6,7 @@ import { toCSV, toExcel, runAsync } from "../lib/mizan"
 import { dashboardData, dashboardMoney } from "../lib/dashboardData"
 import { useToday } from "../hooks/useToday"
 import { Card, SectionTitle, Btn, Badge, Toggle } from "../components/kit"
+import { PlanStrip } from "../components/PlanStatus"
 import { AreaChart, BarChart, Donut, Legend } from "../components/charts"
 import { useTranslation } from "../lib/language/store"
 
@@ -70,6 +71,10 @@ export default function Dashboard({ onNavigate }: { onNavigate: (m: ModuleKey) =
         <Btn variant="outline" size="sm" onClick={() => doExport("pdf")} disabled={!!busy || !m.hasRecords}>{busy === "pdf" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />} PDF</Btn>
         <Btn variant="ghost" size="sm" onClick={() => setShowCustomize((value) => !value)}><SlidersHorizontal className="h-4 w-4" />{t.widgets}</Btn>
       </div>} />
+
+      {/* How long this account's plan runs — always visible, never a widget the
+          client has to switch on. */}
+      <PlanStrip onNavigate={() => onNavigate("settings")} />
 
       {showCustomize && <Card className="flex flex-wrap items-center gap-6 px-5 py-3.5">
         <span className="text-[12px] font-semibold uppercase tracking-wide text-muted">{t.show}</span>

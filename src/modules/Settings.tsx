@@ -8,6 +8,7 @@ import { LOGO_TYPES, validateLogoDataURL, validateLogoFile } from "../lib/logoVa
 import { useLocalSaveStatus } from "../lib/localSaveStatus"
 import { useTranslation } from "../lib/language/store"
 import { Card, SectionTitle, Btn, Field, Input, Textarea, Select } from "../components/kit"
+import { PlanActivationCard } from "../components/PlanStatus"
 
 export default function Settings() {
   const { t: copy } = useTranslation()
@@ -133,6 +134,11 @@ export default function Settings() {
         </>}
         {backupError && <p role="alert" className="text-sm text-serious">{backupError}</p>}
       </Card>
+
+      {/* Which plan this account is on, and where the code that changes it is
+          typed in. Full width, above the settings cards: it is the one card on
+          this screen a client comes here for. */}
+      <PlanActivationCard />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="p-5">

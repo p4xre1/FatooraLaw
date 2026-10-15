@@ -81,6 +81,14 @@ const LANGUAGE_NEUTRAL = new Set([
   "procurement.export",
   "reports.pdf",
   "settings.identity.ice",
+  // The three account tiers are product labels: FREE / PRO / BOOST read the
+  // same in every language (see lib/plans.ts).
+  "plans.names.free",
+  "plans.names.pro",
+  "plans.names.boost",
+  // The code placeholder is a format, not copy: the sample code is the same
+  // characters in every language by design.
+  "plans.codePlaceholder",
 ])
 /** Scripts that have no business in any of the three languages we publish. */
 const FOREIGN =

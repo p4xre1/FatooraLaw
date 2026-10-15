@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from "react"
 import {
   Search, PanelLeftClose, PanelLeftOpen, Plus, ChevronDown, LogOut, Languages,
-  FolderPlus, ReceiptText, FileSignature, HardDrive, FileText,
+  FolderPlus, ReceiptText, FileSignature, HardDrive, FileText, Lock,
 } from "lucide-react"
 import type { ModuleKey } from "../store/types"
+import { planIncludes, requiredPlan, type PlanCode } from "../lib/plans"
+import { usePlanStatus } from "../store/usePlan"
+import { useToday } from "../hooks/useToday"
 import { NAV, Logo } from "./nav"
 import { BrandIcon } from "./Brand"
 import { modulePath } from "../lib/routes"
@@ -88,13 +91,21 @@ function readMoreOpen(): boolean {
  * toggle, Paramètres and the account block all use it, so the rail reads as one
  * grid instead of five slightly different ones.
  */
-const ITEM = "flex w-full items-center gap-3 rounded-[10px] px-3 h-11 lg:h-10 text-[14px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active"
+const ITEM = "relative flex w-full items-center gap-3 rounded-[10px] px-3 h-11 lg:h-10 text-[14px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active"
 /** Rows inside the popovers: one deliberate step down (36 px, 13 px label). */
 const POPOVER_ITEM = "flex h-9 w-full items-center gap-2.5 rounded-lg px-3 text-start text-[13px] font-medium text-sidebar-ink transition-colors hover:bg-sidebar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active focus-visible:ring-inset"
-/** The selected row is the brand blue; hover darkens it to the mark's fold blue. */
-const ITEM_TONE = (on: boolean) => on
+/**
+ * The selected row is the brand blue; hover darkens it to the mark's fold blue.
+ *
+ * A row the plan does not include keeps the same geometry and stays clickable —
+ * it leads to the plan page — but drops to the faint ink and carries the lock
+ * mark, so "not in your plan" reads differently from "not in this list".
+ */
+const ITEM_TONE = (on: boolean, locked = false) => on
   ? "bg-sidebar-active text-white shadow-sm hover:bg-sidebar-active-deep"
-  : "text-sidebar-ink hover:bg-sidebar-hover"
+  : locked
+    ? "text-sidebar-faint hover:bg-sidebar-hover"
+    : "text-sidebar-ink hover:bg-sidebar-hover"
 const GROUP_LABEL = "px-3 pb-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-sidebar-faint"
 /** Every popover in the rail: a white card cut out of the rail by a hairline. */
 const POPOVER = "absolute z-20 overflow-hidden rounded-xl border border-sidebar-line bg-sidebar p-1 shadow-lg"
@@ -136,6 +147,9 @@ export default function Sidebar({
   // to <html>, so the rest of the document follows the rail.
   const { language, setLanguage, dir, t: copy } = useTranslation()
   const t = copy.sidebar
+  // The account's plan decides which rows open. It is read here, not passed in,
+  // so a code redeemed in Paramètres unlocks the rail in the same tick.
+  const plan = usePlanStatus(useToday()).plan
 
   /* Preferences ---------------------------------------------------------- */
 
@@ -182,7 +196,19 @@ export default function Sidebar({
   const label = (key: ModuleKey) => copy.shared.modules[key] ?? key
 
   /** A rail row: a real module, or the invoice placeholder when it ships. */
-  type Item = { id: string; href: string; icon: typeof Search; label: string; on: boolean; moduleKey: ModuleKey | null }
+  type Item = {
+    id: string
+    href: string
+    icon: typeof Search
+    label: string
+    on: boolean
+    moduleKey: ModuleKey | null
+    /** The plan that opens it, or null when the current plan already does. */
+    lockedBy: PlanCode | null
+  }
+
+  /** The plan a module needs, or null when the account's plan includes it. */
+  const lockedBy = (key: ModuleKey): PlanCode | null => (planIncludes(plan, key) ? null : requiredPlan(key))
 
   const query = q.trim().toLowerCase()
   const matches = (key: ModuleKey, text: string) =>
@@ -197,15 +223,17 @@ export default function Sidebar({
     .map((key) => {
       const entry = NAV_BY_KEY.get(key)!
       const text = label(key)
-      return { id: key, href: modulePath(key), icon: entry.icon, label: text, on: active === key, moduleKey: key }
+      return { id: key, href: modulePath(key), icon: entry.icon, label: text, on: active === key, moduleKey: key, lockedBy: lockedBy(key) }
     })
 
   /** Rows inside the searchable rail: permission-filtered, then query-filtered. */
   const buildItems = (keys: ModuleKey[]): Item[] =>
     rows(keys).filter((item) => matches(item.moduleKey!, item.label))
 
+  // The invoice placeholder is never locked: facturation is in FREE (see
+  // lib/plans), so when `/invoices` ships it opens for everyone.
   const invoiceItem: Item | null = INVOICE_ROUTE_ENABLED && (!query || t.invoices.toLowerCase().includes(query))
-    ? { id: "invoices", href: "/invoices", icon: FileText, label: t.invoices, on: false, moduleKey: null }
+    ? { id: "invoices", href: "/invoices", icon: FileText, label: t.invoices, on: false, moduleKey: null, lockedBy: null }
     : null
 
   // 13 rows total — plain computation is cheaper and less error-prone than
@@ -217,7 +245,7 @@ export default function Sidebar({
   const more = buildItems(MORE_MODULES)
   const accountItems = ACCOUNT_MODULES
     .filter((key) => allowed[key])
-    .map((key) => ({ key, icon: NAV_BY_KEY.get(key)!.icon, label: label(key) }))
+    .map((key) => ({ key, icon: NAV_BY_KEY.get(key)!.icon, label: label(key), lockedBy: lockedBy(key) }))
   const settingsItem = rows(["settings"])[0] ?? null
 
   const quickActions = [
@@ -254,6 +282,23 @@ export default function Sidebar({
 
   /* Renderers ------------------------------------------------------------ */
 
+  /**
+   * The 🔒 on a row the plan does not include.
+   *
+   * Decoration, and deliberately so: the row keeps its own href and its own
+   * accessible name, because what it opens is a page that explains the plan and
+   * offers the upgrade — not a dead end. So the mark adds no text and stays out
+   * of the accessibility tree; a screen reader hears the module, as before.
+   * Expanded it sits at the trailing edge of the row; in the icon-only rail
+   * there is no room for a second icon, so it pins to the row's corner.
+   */
+  function PlanLockMark({ item }: { item: Item }) {
+    if (!item.lockedBy) return null
+    return collapsed
+      ? <Lock className="absolute end-1.5 top-1.5 h-3 w-3 text-sidebar-faint" aria-hidden="true" />
+      : <Lock className="ms-auto h-[15px] w-[15px] shrink-0 text-sidebar-faint" aria-hidden="true" />
+  }
+
   function renderGroup(id: string, title: string, items: Item[]) {
     if (!items.length) return null
     return (
@@ -266,7 +311,15 @@ export default function Sidebar({
                 href={item.href}
                 aria-current={item.on ? "page" : undefined}
                 aria-label={collapsed ? item.label : undefined}
-                title={collapsed ? item.label : undefined}
+                // A locked row says which plan opens it in the tooltip. In the
+                // icon-only rail the name stays exactly the module name: there
+                // the tooltip *is* the accessible name, and the 🔒 already
+                // carries the rest.
+                title={collapsed
+                  ? item.label
+                  : item.lockedBy
+                    ? `${item.label} — ${copy.plans.unlockToUse(item.label, copy.plans.names[item.lockedBy])}`
+                    : undefined}
                 onClick={(event) => {
                   // Real hrefs keep middle-click, "open in new tab" and
                   // copy-link working; in-app routing still avoids a reload.
@@ -274,10 +327,11 @@ export default function Sidebar({
                   event.preventDefault()
                   go(item.moduleKey)
                 }}
-                className={`${ITEM} ${ITEM_TONE(item.on)} ${collapsed ? "lg:justify-center lg:px-0" : ""}`}
+                className={`${ITEM} ${ITEM_TONE(item.on, !!item.lockedBy)} ${collapsed ? "lg:justify-center lg:px-0" : ""}`}
               >
                 <item.icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
                 {!collapsed && <span className="truncate">{item.label}</span>}
+                <PlanLockMark item={item} />
               </a>
             </li>
           ))}
@@ -445,10 +499,12 @@ export default function Sidebar({
                           event.preventDefault()
                           go(item.moduleKey!)
                         }}
-                        className={`${ITEM} ${ITEM_TONE(item.on)} ps-6`}
+                        title={item.lockedBy ? `${item.label} — ${copy.plans.unlockToUse(item.label, copy.plans.names[item.lockedBy])}` : undefined}
+                        className={`${ITEM} ${ITEM_TONE(item.on, !!item.lockedBy)} ps-6`}
                       >
                         <item.icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
                         <span className="truncate">{item.label}</span>
+                        <PlanLockMark item={item} />
                       </a>
                     </li>
                   ))}
@@ -469,9 +525,10 @@ export default function Sidebar({
                           event.preventDefault()
                           go(item.moduleKey!)
                         }}
-                        className={`${ITEM} ${ITEM_TONE(item.on)} lg:justify-center lg:px-0`}
+                        className={`${ITEM} ${ITEM_TONE(item.on, !!item.lockedBy)} lg:justify-center lg:px-0`}
                       >
                         <item.icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+                        <PlanLockMark item={item} />
                       </a>
                     </li>
                   ))}
@@ -573,9 +630,17 @@ export default function Sidebar({
                 )}
 
                 {accountItems.map((item) => (
-                  <button key={item.key} type="button" onClick={() => go(item.key)} aria-current={active === item.key ? "page" : undefined} className={POPOVER_ITEM}>
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => go(item.key)}
+                    aria-current={active === item.key ? "page" : undefined}
+                    title={item.lockedBy ? `${item.label} — ${copy.plans.unlockToUse(item.label, copy.plans.names[item.lockedBy])}` : undefined}
+                    className={`${POPOVER_ITEM} ${item.lockedBy ? "text-sidebar-faint" : ""}`}
+                  >
                     <item.icon className="h-4 w-4 shrink-0 text-sidebar-faint" aria-hidden="true" />
                     <span className="truncate">{item.label}</span>
+                    {item.lockedBy && <Lock className="ms-auto h-3.5 w-3.5 shrink-0 text-sidebar-faint" aria-hidden="true" />}
                   </button>
                 ))}
 

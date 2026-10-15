@@ -560,7 +560,7 @@ rendered at all.
 ⚠️ **This is UX, not security.** The function's own doc comment says it plainly:
 *"Module visibility only. Database RLS, not this function, is access control."*
 Because the team array lives in `localStorage`, a user can edit their own
-permissions in devtools. The same caveat applies to `PlanGate` (§6.3).
+permissions in devtools. The same caveat applies to plan codes (§6.2).
 
 ---
 
@@ -862,35 +862,55 @@ particulier) plus a notifications opt-in — and writes an
 `onboarding_responses` row. Its doc comment: *"A response row, not account
 creation, marks completion. Always scoped to the current user."*
 
-### 6.2 Plan gating
-**Files:** `src/lib/planLimits.ts`, `src/components/PlanGate.tsx`
+### 6.2 Plan gating — FREE / PRO / BOOST
+**Files:** `src/lib/plans.ts` (the matrix), `src/lib/planCodes.ts` (activation
+codes), `src/store/usePlan.ts` (per-account store), `src/components/PlanLock.tsx`
+(lock screen), `src/components/PlanStatus.tsx` (dashboard strip + Paramètres
+card), `scripts/plan-code.mjs` (the owner's code generator).
 
-Four tiers — `none`, `essential`, `pro`, `pro_max` — and fifteen gateable
-features:
+Three account types, defined as **module lists** — the rail, the router and the
+top bar all ask "can this account open X?", so the matrix names modules rather
+than abstract features:
 
-| Feature | none | essential | pro | pro_max |
-|---|:-:|:-:|:-:|:-:|
-| dashboard, contacts | ✅ | ✅ | ✅ | ✅ |
-| calendar, calendar_deadlines | — | ✅ | ✅ | ✅ |
-| contracts, legal_vault, reports, exports, roles_permissions, blog_cms | — | — | ✅ | ✅ |
-| multi_user, advanced_audit, priority_support, monitor_site, content_improvement | — | — | — | ✅ |
+| Module | FREE | PRO | BOOST |
+|---|:-:|:-:|:-:|
+| Tableau de bord, Projets, Clients, Factures*, Rapports (lecture), Paramètres | ✅ | ✅ | ✅ |
+| Achats & Dépenses, Stock, Calendrier, Équipe, Journal d'audit | — | ✅ | ✅ |
+| Risques, Coffre juridique, Abonnements & Outils (« Plus d'outils ») | — | — | ✅ |
 
-`getUserPlan()` reads `localStorage.user_plan`, and falls back to inferring a
-tier from the local `subscriptions` array (any active sub containing "max"/
-"équipe" or ≥ 400 → `pro_max`; "pro" or ≥ 100 → `pro`; any active → `essential`).
-`hasFeature()` treats unknown feature names as **locked** — a typo fails closed.
+*Factures has no route yet (`INVOICE_ROUTE_ENABLED` is off); the entitlement is
+already in FREE so the module is covered the day it ships. Prices: PRO 199 MAD/mo
+(1 990/yr), BOOST 499 MAD/mo (4 990/yr), in `PLANS` — the one place prices live.
 
-`<PlanGate feature="…" fallback={…}>` renders children when allowed, otherwise
-the fallback or a default upgrade panel.
+**How it presents.** The plan is a second filter after the role's permissions.
+A locked module stays visible in the rail with a 🔒 and a tooltip naming the plan
+(`Aucun` = FREE row untouched), and clicking it keeps its URL: the shell renders
+`PlanLock` instead of the module, with one card per plan generated **from the
+same table** that unlocks the rail (so a card cannot advertise a module the app
+would refuse). The top bar's quick actions carry the same lock mark. The
+dashboard shows a plan strip (plan, end date, days left); Paramètres has the
+"Plan & activation" card.
 
-⚠️ **Two caveats.** (1) The tier is read from `localStorage`, so it is
-user-editable — this is merchandising, not entitlement enforcement; real
-entitlement would need the ☁️ `account_subscriptions` / `plan_catalog` tables
-that already exist in the migrations. (2) The default panel mixes Arabic and
-English (*"مقفول — Locked"*), hardcodes the 199/499 MAD prices, and routes
-payment to a **WhatsApp link** (`wa.me/212772966980`) with *"Send receipt / RIP —
-then I activate your plan manually"*. That is a manual fulfilment process, not a
-payment integration, and it is inconsistent with the otherwise all-French UI.
+**How a code is sold and redeemed.** There is no payment gateway: the client
+messages WhatsApp (`212772966980`, pre-filled with plan + prices), pays by
+transfer (RIB), and receives a code like `PRO-1M-XXXXXXXX` minted offline with
+`node scripts/plan-code.mjs pro 1m`. The client types it into Paramètres; the
+window runs **from the redemption day** for a calendar month or year (month-end
+clamped: 31 Jan + 1M → 28 Feb). Redeeming the same plan again **extends** the
+running window from its own end; a different plan starts fresh today. An
+expired activation is kept so the dashboard can say "votre PRO a pris fin le …".
+Redemptions and refused attempts are written to the audit log. The activation
+record is stored per account (`mizan.plan.v1.<userId>`), exactly like the
+business data: another account on the same browser starts on FREE.
+
+⚠️ **Caveats.** (1) The code check is an HMAC whose key ships in the bundle —
+it stops typos, sharing and guessing, not a determined user who reads the
+bundle. Real entitlement is the ☁️ `account_subscriptions` / `plan_catalog`
+tables in the migrations; this is the merchandising layer in front of them.
+(2) Older code (`lib/planLimits.ts`, `components/PlanGate.tsx`, the
+`user_plan` localStorage key and its "Pro Max" copy) was removed; the admin
+monitor's audit card is now an ungated capability note, because operator
+tooling was never the customer's plan to gate.
 
 ### 6.3 Formatting utilities — `src/lib/mizan.ts`
 
@@ -1217,7 +1237,7 @@ webhooks.
 | `Team` invite modal | "Une invitation **sera envoyée** à cette adresse" | No email is sent |
 | `Procurement` receipt toggle | "Reçu / facture joint (**prêt OCR**)" | Boolean flag only; no file, no OCR |
 | `/assistant` panel | "Facture conforme ICE + TVA 20 %" | No invoice or TVA feature exists |
-| `PlanGate` default panel | Mixed Arabic/English, WhatsApp payment | Manual fulfilment, inconsistent with the all-French UI |
+| Plan activation codes | HMAC key ships in the bundle (§6.2) | Stops typos/sharing/guessing, not a determined user; real entitlement is `account_subscriptions` |
 
 ---
 
