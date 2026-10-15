@@ -134,9 +134,10 @@ it("renders one <img> per treatment, with the alt/aria contract the callers rely
   expect(onBlueImg.getAttribute("width")).toBe("32")
 })
 
-it("keeps the dashboard wordmark on the white artwork", () => {
-  // `Logo light` is the sidebar/auth treatment: the navy surfaces need the
-  // white file, and passing the wrong one is invisible until it is on screen.
+it("puts the wordmark on the artwork each surface needs", () => {
+  // `Logo light` is for the navy surfaces (the auth brand panel); the left menu
+  // is a white rail, so it — like the landing header — takes the blue file.
+  // Passing the wrong one is invisible until it is on screen.
   expect(render(<Logo light />).container.querySelector("img")!.getAttribute("src")).toBe("/brand/fatorati-logo-white.png")
   expect(render(<Logo />).container.querySelector("img")!.getAttribute("src")).toBe("/brand/fatorati-logo.png")
   expect(render(<Logo size={38} />).container.querySelector("img")!.getAttribute("height")).toBe("40")

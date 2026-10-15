@@ -30,12 +30,34 @@
   --color-emerald-50: #e7f9f1;
   --color-emerald-700: #047857;
 
-  /* Sidebar (dark) */
-  --color-sidebar: #0f172a;
-  --color-sidebar-hover: #1e293b;
-  --color-sidebar-active: #2563eb;
-  --color-sidebar-ink: #cbd5e1;
+  /* ---------------------------------------------------------------------------
+     Left menu (the dashboard rail).
+
+     These six tokens are used by `components/Sidebar.tsx` and nothing else, so
+     the menu is restyled here without touching a single other surface of the
+     dashboard. The rail is white — the canvas the brand mark is drawn on — and
+     its blue is the brand blue itself, not the generic `brand` token: the
+     artwork's two colours live in `scripts/brand-assets.py` as
+     `BRAND_BLUE = (58, 136, 234)` and `BRAND_NAVY = (43, 104, 191)`, i.e.
+     #3a88ea and #2b68bf, and the manifest's `theme_color` is #3a88ea.
+
+       sidebar             rail surface (white)
+       sidebar-hover       row hover, search field, soft cards
+       sidebar-active      Fatorati blue — the selected row and the primary action
+       sidebar-active-deep the mark's fold blue — hover/pressed, and small blue text
+       sidebar-ink         row labels (10:1 on white)
+       sidebar-faint       group labels, secondary icons (4.8:1 on white)
+       sidebar-line        hairlines and popover borders — deliberately the same
+                           value as the dashboard's `line`, so the rail's first
+                           divider meets the top bar's as one line
+     --------------------------------------------------------------------------- */
+  --color-sidebar: #ffffff;
+  --color-sidebar-hover: #f1f5f9;
+  --color-sidebar-active: #3a88ea;
+  --color-sidebar-active-deep: #2b68bf;
+  --color-sidebar-ink: #334155;
   --color-sidebar-faint: #64748b;
+  --color-sidebar-line: #e5e8ee;
 
   /* Status */
   --color-good: #10b981;
@@ -121,11 +143,6 @@ body {
 }
 *:hover::-webkit-scrollbar-thumb {
   background: #cbd5e1;
-  background-clip: content-box;
-}
-/* Dark scrollbar inside sidebar */
-.dark-scroll:hover::-webkit-scrollbar-thumb {
-  background: #334155;
   background-clip: content-box;
 }
 

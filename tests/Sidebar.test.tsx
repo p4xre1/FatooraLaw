@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs"
+import { readFileSync, readdirSync } from "node:fs"
 import { resolve } from "node:path"
 import { act, fireEvent, render, screen, within } from "@testing-library/react"
 import { beforeEach, expect, it, vi } from "vitest"
@@ -58,6 +58,14 @@ function renderSidebar(overrides: Partial<Props> = {}) {
 /** The hrefs of every module row in the scrollable nav, in DOM order. */
 function navHrefs(nav: HTMLElement) {
   return within(nav).getAllByRole("link").map((link) => link.getAttribute("href"))
+}
+
+/** Every source file under `src/`, so a token's reach can be asserted. */
+function walk(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = resolve(dir, entry.name)
+    return entry.isDirectory() ? walk(path) : [path]
+  })
 }
 
 beforeEach(() => {
@@ -389,31 +397,70 @@ it("drops quick actions the account cannot open", () => {
 
 /* --------------------------- colour contract ---------------------------- */
 
-it("introduces no colour of its own: every token it names was already in the dark sidebar", () => {
+it("takes every colour from the left menu's own tokens", () => {
   const source = readFileSync(resolve(process.cwd(), "src/components/Sidebar.tsx"), "utf8")
 
-  // No literal colour anywhere in the component.
+  // No literal colour anywhere in the component: the palette lives in
+  // `src/index.css` as the `--color-sidebar-*` tokens, which is what lets the
+  // menu be restyled (white rail, Fatorati blue) without editing this file.
   expect(source).not.toMatch(/#[0-9a-fA-F]{3,8}\b/)
   expect(source).not.toMatch(/\brgba?\(/)
 
-  // Every colour-bearing utility must resolve to one of the tokens the sidebar
-  // already used before the redesign (plus `brand`/`navy`/`white`, also already
-  // present). Anything outside this list is a colour change.
-  const allowed = new Set([
-    "bg-sidebar", "bg-sidebar-hover", "bg-sidebar-active", "bg-brand", "bg-navy/50",
-    "text-sidebar-ink", "text-sidebar-faint", "text-white",
-    "border-sidebar-hover", "placeholder:text-sidebar-faint", "decoration-sidebar-faint",
-    "ring-brand",
-  ])
-  const used = new Set(
-    [...source.matchAll(/\b(?:bg|text|border|ring|decoration|from|via|to|fill|stroke|shadow|placeholder:text)-[a-z0-9]+(?:-[a-z0-9]+)*(?:\/\d+)?/g)]
-      .map((match) => match[0])
-      // Width/position/alignment utilities share these prefixes but name no colour.
-      .filter((token) => !["border-t", "border-b", "ring-1", "ring-2", "ring-inset", "text-start", "text-end", "text-center", "shadow-sm"].includes(token)),
-  )
-  expect([...used].filter((token) => !allowed.has(token))).toEqual([])
+  // Width/position utilities share the colour prefixes but name no colour.
+  const notColour = /^(?:border-[tbles](?:-\d)?|ring-\d|ring-inset|text-(?:start|end|center))$/
+  const used = [...source.matchAll(/\b(?:bg|text|border|ring|decoration|placeholder:text|from|via|to|fill|stroke|shadow)-[a-z0-9]+(?:-[a-z0-9]+)*(?:\/\d+)?/g)]
+    .map((match) => match[0])
+    .filter((token) => !notColour.test(token))
 
-  // No gradients, and the only shadow is the pre-existing one on the active row.
+  // Everything the rail paints with is either one of the menu's own `sidebar-*`
+  // tokens, white (text on the blue row), or the scrim behind the mobile drawer.
+  const allowed = (token: string) =>
+    /^(?:bg|text|border|ring|decoration|placeholder:text)-sidebar(?:-[a-z]+)*(?:\/\d+)?$/.test(token) ||
+    ["text-white", "bg-navy/50"].includes(token)
+  expect(used.filter((token) => !token.startsWith("shadow-") && !allowed(token))).toEqual([])
+
+  // No gradients. The only shadows are the two the rail legitimately owns: the
+  // selected row and the popovers that float above it.
   expect(source).not.toMatch(/bg-gradient|from-|via-|to-\[/)
-  expect(source.match(/shadow-(?!sm)\w+/g) ?? []).toEqual([])
+  expect(new Set(used.filter((token) => token.startsWith("shadow-")))).toEqual(new Set(["shadow-sm", "shadow-lg"]))
+})
+
+it("sizes the whole menu from one scale", () => {
+  const source = readFileSync(resolve(process.cwd(), "src/components/Sidebar.tsx"), "utf8")
+
+  // One row geometry: 44 px touch target below `lg`, 40 px on desktop, a single
+  // 14 px label size, 12 px gaps, 10 px radius.
+  const item = source.match(/const ITEM = "([^"]+)"/)?.[1] ?? ""
+  expect(item).toContain("h-11 lg:h-10")
+  expect(item).toContain("gap-3")
+  expect(item).toContain("text-[14px]")
+  expect(item).toContain("rounded-[10px]")
+
+  // Popover rows are the one deliberate step down.
+  const row = source.match(/const POPOVER_ITEM = "([^"]+)"/)?.[1] ?? ""
+  expect(row).toContain("h-9")
+  expect(row).toContain("text-[13px]")
+
+  // Every row icon is 18 px at one stroke weight — no row picks its own.
+  expect(source).toMatch(/<item\.icon className="h-\[18px\] w-\[18px\] shrink-0"/)
+  expect(source).not.toMatch(/strokeWidth=/)
+})
+
+it("styles the rail from the brand palette, and keeps that palette to the rail", () => {
+  const css = readFileSync(resolve(process.cwd(), "src/index.css"), "utf8")
+  // White rail, the brand's own blue for the selected row, the mark's fold blue
+  // for hover and small blue text (see `BRAND_BLUE`/`BRAND_NAVY` in
+  // scripts/brand-assets.py), and the hairlines the menu is drawn with.
+  expect(css).toMatch(/--color-sidebar:\s*#ffffff/)
+  expect(css).toMatch(/--color-sidebar-active:\s*#3a88ea/)
+  expect(css).toMatch(/--color-sidebar-active-deep:\s*#2b68bf/)
+  expect(css).toMatch(/--color-sidebar-line:\s*#e5e8ee/)
+
+  // The menu was restyled on its own: no other file may consume these tokens,
+  // or the rail stops being re-themable without dragging the dashboard along.
+  const root = resolve(process.cwd(), "src")
+  for (const file of walk(root)) {
+    if (file.endsWith("Sidebar.tsx") || file.endsWith("index.css")) continue
+    expect(readFileSync(file, "utf8"), file).not.toMatch(/\b(?:bg|text|border|ring|decoration)-sidebar(?:-[a-z]+)?\b/)
+  }
 })

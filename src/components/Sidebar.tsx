@@ -13,13 +13,20 @@ import { useTranslation, type Language } from "../lib/language/store"
 import { useMizan } from "../store/useMizan"
 
 /**
- * The left navigation rail — structure, spacing and behaviour only.
+ * The left menu — structure, spacing and behaviour.
  *
- * Colour contract: this file uses nothing but the tokens the sidebar already
- * used (`sidebar`, `sidebar-hover`, `sidebar-active`, `sidebar-ink`,
- * `sidebar-faint`, `brand`, `navy`, `white`). No new colour, gradient or
- * shadow is introduced. The focus ring is the `ring-brand` already present on
- * the module search, at the `ring-2` width `components/kit.tsx` uses.
+ * Colour contract: every colour in this file comes from the `sidebar-*` tokens
+ * (the left menu's own palette in `src/index.css`), plus `white` for text on
+ * the brand blue and `navy/50` for the mobile scrim. No other component reads
+ * those tokens, so the rail can be restyled — white surface, the artwork's own
+ * blue on the selected row — without dragging the rest of the dashboard along.
+ * The blue is the brand's, taken from `BRAND_BLUE`/`BRAND_NAVY` in
+ * `scripts/brand-assets.py`, not the generic `brand` token.
+ *
+ * Size contract: one row geometry for the whole menu — 44 px touch target below
+ * `lg`, 40 px on desktop, 14 px labels, 18 px icons, 10 px radius — and one
+ * smaller step for the popovers (36 px rows, 13 px labels). Section labels are
+ * 11 px. Nothing in the rail picks its own height or type size.
  *
  * Direction contract: every offset is a logical property (`start-*`, `end-*`,
  * `ps-*`, `pe-*`, `ms-*`, `me-*`) so the rail mirrors correctly when `dir` is
@@ -75,12 +82,26 @@ function readMoreOpen(): boolean {
 
 /* ------------------------------ primitives ------------------------------ */
 
-/** 40px on desktop, 44px touch target below `lg`. */
-const ITEM = "flex w-full items-center gap-3 rounded-[10px] px-3 h-11 lg:h-10 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+/**
+ * One row geometry for the whole menu: 44 px touch target below `lg`, 40 px on
+ * desktop, a single 14 px label size, 10 px radius. Module rows, the group
+ * toggle, Paramètres and the account block all use it, so the rail reads as one
+ * grid instead of five slightly different ones.
+ */
+const ITEM = "flex w-full items-center gap-3 rounded-[10px] px-3 h-11 lg:h-10 text-[14px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active"
+/** Rows inside the popovers: one deliberate step down (36 px, 13 px label). */
+const POPOVER_ITEM = "flex h-9 w-full items-center gap-2.5 rounded-lg px-3 text-start text-[13px] font-medium text-sidebar-ink transition-colors hover:bg-sidebar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active focus-visible:ring-inset"
+/** The selected row is the brand blue; hover darkens it to the mark's fold blue. */
 const ITEM_TONE = (on: boolean) => on
-  ? "bg-sidebar-active text-white shadow-sm"
-  : "text-sidebar-ink hover:bg-sidebar-hover hover:text-white"
-const GROUP_LABEL = "px-3 pb-1.5 pt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-sidebar-faint"
+  ? "bg-sidebar-active text-white shadow-sm hover:bg-sidebar-active-deep"
+  : "text-sidebar-ink hover:bg-sidebar-hover"
+const GROUP_LABEL = "px-3 pb-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-sidebar-faint"
+/** Every popover in the rail: a white card cut out of the rail by a hairline. */
+const POPOVER = "absolute z-20 overflow-hidden rounded-xl border border-sidebar-line bg-sidebar p-1 shadow-lg"
+/** Square icon control — the collapse toggle. */
+const ICON_BUTTON = "grid h-8 w-8 shrink-0 place-items-center rounded-lg text-sidebar-faint transition-colors hover:bg-sidebar-hover hover:text-sidebar-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active"
+/** Section separator: the rail is one column of labelled blocks, not a list. */
+const SECTION = "mt-4 border-t border-sidebar-line pt-3 first:mt-0 first:border-t-0 first:pt-0"
 
 export default function Sidebar({
   active, onNavigate, collapsed, setCollapsed, allowed, mobileOpen, setMobileOpen, onLogout,
@@ -236,9 +257,9 @@ export default function Sidebar({
   function renderGroup(id: string, title: string, items: Item[]) {
     if (!items.length) return null
     return (
-      <div key={id} className="mt-5 first:mt-0">
+      <div key={id} className={SECTION}>
         {!collapsed && <p className={GROUP_LABEL}>{title}</p>}
-        <ul className="space-y-1">
+        <ul className="space-y-0.5">
           {items.map((item) => (
             <li key={item.id}>
               <a
@@ -255,7 +276,7 @@ export default function Sidebar({
                 }}
                 className={`${ITEM} ${ITEM_TONE(item.on)} ${collapsed ? "lg:justify-center lg:px-0" : ""}`}
               >
-                <item.icon className="h-[18px] w-[18px] shrink-0" strokeWidth={item.on ? 2.4 : 2} aria-hidden="true" />
+                <item.icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
                 {!collapsed && <span className="truncate">{item.label}</span>}
               </a>
             </li>
@@ -278,14 +299,17 @@ export default function Sidebar({
         dir={dir}
         lang={language}
         aria-label="Fatorati"
-        className={`dark-scroll fixed inset-y-0 start-0 z-50 flex w-64 flex-col bg-sidebar text-sidebar-ink transition-all duration-200 lg:sticky lg:top-0 lg:start-auto lg:z-20 lg:h-screen ${collapsed ? "lg:w-[76px]" : "lg:w-64"} ${mobileOpen ? "" : "max-lg:-translate-x-full max-lg:rtl:translate-x-full"}`}
+        className={`fixed inset-y-0 start-0 z-50 flex w-64 flex-col border-e border-sidebar-line bg-sidebar text-sidebar-ink transition-all duration-200 lg:sticky lg:top-0 lg:start-auto lg:z-20 lg:h-screen ${collapsed ? "lg:w-[76px]" : "lg:w-64"} ${mobileOpen ? "" : "max-lg:-translate-x-full max-lg:rtl:translate-x-full"}`}
       >
-        {/* ---- Brand + collapse ---- */}
-        <div className={`flex h-16 shrink-0 items-center gap-2 px-3 ${collapsed ? "lg:justify-center lg:px-0" : "justify-between"}`}>
+        {/* ---- Brand ---- */}
+        {/* The rail is white, so the mark is the blue artwork — and its header
+            band is exactly one top bar tall, hairline included, so the rail's
+            first divider lines up with the bar's. */}
+        <div className={`flex h-16 shrink-0 items-center gap-2 border-b border-sidebar-line px-3 ${collapsed ? "lg:justify-center lg:px-0" : "justify-between"}`}>
           {collapsed ? (
-            <span className="mx-auto grid h-8 w-8 shrink-0 place-items-center rounded-[9px] bg-brand text-[16px] font-extrabold leading-none text-white lg:mx-0">F</span>
+            <BrandIcon className="mx-auto lg:mx-0" size={32} tone="onBlue" />
           ) : (
-            <Logo light />
+            <Logo />
           )}
           <button
             type="button"
@@ -293,20 +317,20 @@ export default function Sidebar({
             aria-expanded={!collapsed}
             aria-label={collapsed ? t.expand : t.collapse}
             title={collapsed ? t.expand : t.collapse}
-            className="hidden shrink-0 rounded-[10px] p-2 text-sidebar-faint transition-colors hover:bg-sidebar-hover hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand lg:block"
+            className={`hidden lg:grid ${ICON_BUTTON}`}
           >
             {collapsed ? <PanelLeftOpen className="h-4 w-4" aria-hidden="true" /> : <PanelLeftClose className="h-4 w-4" aria-hidden="true" />}
           </button>
         </div>
 
         {/* ---- Primary action ---- */}
-        <div className={`shrink-0 px-3 pb-3 ${collapsed ? "lg:px-2" : ""}`} ref={quickRef}>
+        <div className={`shrink-0 px-3 pb-2 pt-3 ${collapsed ? "lg:px-2" : ""}`} ref={quickRef}>
           {INVOICE_ROUTE_ENABLED ? (
             <a
               href="/invoices"
               aria-label={collapsed ? t.newInvoice : undefined}
               title={collapsed ? t.newInvoice : undefined}
-              className={`${ITEM} justify-center bg-brand text-white hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${collapsed ? "lg:h-10 lg:w-10 lg:px-0" : ""}`}
+              className={`${ITEM} justify-center bg-sidebar-active font-semibold text-white hover:bg-sidebar-active-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active ${collapsed ? "lg:h-10 lg:w-10 lg:px-0" : ""}`}
             >
               {collapsed ? <Plus className="h-[18px] w-[18px]" aria-hidden="true" /> : (
                 <>
@@ -331,7 +355,7 @@ export default function Sidebar({
                 aria-controls={collapsed ? undefined : "sidebar-quick-actions"}
                 aria-label={collapsed ? (quickActions[0]?.label ?? t.quickActions) : t.quickActions}
                 title={collapsed ? (quickActions[0]?.label ?? t.quickActions) : undefined}
-                className={`${ITEM} justify-center bg-brand text-white hover:brightness-95 ${collapsed ? "lg:h-10 lg:w-full lg:px-0" : ""}`}
+                className={`${ITEM} justify-center bg-sidebar-active font-semibold text-white hover:bg-sidebar-active-deep ${collapsed ? "lg:h-10 lg:w-full lg:px-0" : ""}`}
               >
                 {collapsed ? <Plus className="h-[18px] w-[18px]" aria-hidden="true" /> : (
                   <>
@@ -345,22 +369,17 @@ export default function Sidebar({
               {quickOpen && !collapsed && (
                 <div
                   id="sidebar-quick-actions"
-                  className="absolute top-full z-10 mt-1.5 min-w-[220px] overflow-hidden rounded-[10px] border border-sidebar-hover bg-sidebar-hover"
+                  className={`${POPOVER} top-full start-0 mt-1.5 w-full min-w-[228px]`}
                   style={{ animation: "mz-pop .15s ease-out" }}
                 >
                   {quickActions.map((action) => (
-                    <button
-                      key={action.to}
-                      type="button"
-                      onClick={() => go(action.to)}
-                      className="flex w-full items-center gap-3 px-3 py-2.5 text-start text-[13px] font-medium text-sidebar-ink transition-colors hover:bg-sidebar hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset"
-                    >
-                      <action.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    <button key={action.to} type="button" onClick={() => go(action.to)} className={POPOVER_ITEM}>
+                      <action.icon className="h-4 w-4 shrink-0 text-sidebar-faint" aria-hidden="true" />
                       <span className="truncate">{action.label}</span>
                     </button>
                   ))}
                   {!quickActions.length && (
-                    <p className="px-3 py-2.5 text-[12.5px] text-sidebar-faint">{t.noResults}</p>
+                    <p className="px-3 py-2 text-[12.5px] text-sidebar-faint">{t.noResults}</p>
                   )}
                 </div>
               )}
@@ -372,48 +391,51 @@ export default function Sidebar({
         {!collapsed && (
           <div className="shrink-0 px-3 pb-3">
             <div className="relative">
-              <Search className="pointer-events-none absolute start-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-sidebar-faint" aria-hidden="true" />
+              <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sidebar-faint" aria-hidden="true" />
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder={t.search}
                 aria-label={t.searchLabel}
-                className="w-full rounded-[10px] bg-sidebar-hover py-2 ps-9 pe-3 text-[12.5px] text-white outline-none placeholder:text-sidebar-faint focus:ring-1 focus:ring-brand"
+                className="h-10 w-full rounded-[10px] border border-sidebar-line bg-sidebar-hover ps-9 pe-3 text-[13px] text-sidebar-ink outline-none transition-colors placeholder:text-sidebar-faint focus:border-sidebar-active focus:bg-sidebar focus:ring-2 focus:ring-sidebar-active/25"
               />
             </div>
           </div>
         )}
 
         {/* ---- Navigation ---- */}
-        <nav className="dark-scroll min-h-0 flex-1 overflow-y-auto px-3 pb-4" aria-label={t.navLabel}>
+        <nav className="min-h-0 flex-1 overflow-y-auto px-3 pb-3" aria-label={t.navLabel}>
           {renderGroup("daily", t.groups.daily, daily)}
           {renderGroup("management", t.groups.management, management)}
 
           {moreCount > 0 && (
-            <div className="mt-5">
+            <div className={SECTION}>
+              {/* The third group is titled like the other two rather than being
+                  a row of its own: same label, same size, the chevron and the
+                  count on the trailing edge. */}
               {!collapsed && (
                 <button
                   type="button"
                   onClick={() => setMoreOpen((open) => !open)}
                   aria-expanded={moreExpanded}
                   aria-controls="sidebar-more-tools"
-                  className={`${ITEM} ${ITEM_TONE(false)} justify-between`}
+                  className="flex w-full items-center justify-between gap-2 rounded-lg px-3 pb-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-sidebar-faint transition-colors hover:text-sidebar-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active"
                 >
-                  <span className="flex min-w-0 items-center gap-3">
+                  <span className="truncate">{t.groups.more}</span>
+                  <span className="flex shrink-0 items-center gap-1.5">
+                    <span className="tnum rounded-full bg-sidebar-active/10 px-1.5 text-[10.5px] font-bold leading-[17px] text-sidebar-active-deep">
+                      {moreCount}
+                    </span>
                     <ChevronDown
-                      className={`h-4 w-4 shrink-0 transition-transform ${moreExpanded ? "rotate-180" : ""}`}
+                      className={`h-3.5 w-3.5 transition-transform ${moreExpanded ? "rotate-180" : ""}`}
                       aria-hidden="true"
                     />
-                    <span className="truncate">{t.groups.more}</span>
-                  </span>
-                  <span className="tnum shrink-0 rounded-full border border-sidebar-hover px-1.5 py-px text-[10.5px] font-semibold text-sidebar-faint">
-                    {moreCount}
                   </span>
                 </button>
               )}
 
               {moreExpanded && (
-                <ul id="sidebar-more-tools" className="space-y-1 pt-1">
+                <ul id="sidebar-more-tools" className="space-y-0.5">
                   {more.map((item) => (
                     <li key={item.id}>
                       <a
@@ -425,7 +447,7 @@ export default function Sidebar({
                         }}
                         className={`${ITEM} ${ITEM_TONE(item.on)} ps-6`}
                       >
-                        <item.icon className="h-[18px] w-[18px] shrink-0" strokeWidth={item.on ? 2.4 : 2} aria-hidden="true" />
+                        <item.icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
                         <span className="truncate">{item.label}</span>
                       </a>
                     </li>
@@ -435,7 +457,7 @@ export default function Sidebar({
 
               {/* Collapsed rail: no group row, the three tools stay reachable. */}
               {collapsed && (
-                <ul className="space-y-1">
+                <ul className="space-y-0.5">
                   {more.map((item) => (
                     <li key={item.id}>
                       <a
@@ -449,7 +471,7 @@ export default function Sidebar({
                         }}
                         className={`${ITEM} ${ITEM_TONE(item.on)} lg:justify-center lg:px-0`}
                       >
-                        <item.icon className="h-[18px] w-[18px] shrink-0" strokeWidth={item.on ? 2.4 : 2} aria-hidden="true" />
+                        <item.icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
                       </a>
                     </li>
                   ))}
@@ -459,12 +481,12 @@ export default function Sidebar({
           )}
 
           {!collapsed && noResults && (
-            <p className="mt-5 px-3 text-[12.5px] text-sidebar-faint">{t.noResults}</p>
+            <p className="mt-4 px-3 text-[12.5px] text-sidebar-faint">{t.noResults}</p>
           )}
         </nav>
 
         {/* ---- Pinned footer ---- */}
-        <div className="shrink-0 space-y-2 border-t border-sidebar-hover px-3 py-3">
+        <div className="shrink-0 space-y-1.5 border-t border-sidebar-line px-3 py-3">
           {/* Local-storage notice + the existing export action in Paramètres. */}
           {collapsed ? (
             <button
@@ -473,21 +495,21 @@ export default function Sidebar({
               disabled={!allowed.settings}
               aria-label={allowed.settings ? `${t.localNotice} ${t.exportBackup}` : t.localNotice}
               title={allowed.settings ? `${t.localNotice} ${t.exportBackup}` : t.localNotice}
-              className={`${ITEM} justify-center px-0 text-sidebar-faint hover:bg-sidebar-hover hover:text-white disabled:pointer-events-none disabled:opacity-60`}
+              className={`${ITEM} justify-center px-0 text-sidebar-faint hover:bg-sidebar-hover hover:text-sidebar-ink disabled:pointer-events-none disabled:opacity-60`}
             >
               <HardDrive className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
             </button>
           ) : (
             <div className="rounded-[10px] bg-sidebar-hover px-3 py-2.5">
-              <p className="flex items-start gap-2 text-[11px] leading-relaxed text-sidebar-faint">
-                <HardDrive className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <p className="flex items-start gap-2 text-[11.5px] leading-relaxed text-sidebar-ink">
+                <HardDrive className="mt-px h-4 w-4 shrink-0 text-sidebar-faint" aria-hidden="true" />
                 <span>{t.localNotice}</span>
               </p>
               {allowed.settings && (
                 <button
                   type="button"
                   onClick={() => go("settings")}
-                  className="ms-5 mt-1 text-[11.5px] font-semibold text-sidebar-ink underline decoration-sidebar-faint underline-offset-2 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  className="ms-6 mt-1.5 text-[12px] font-semibold text-sidebar-active-deep underline decoration-sidebar-active/40 underline-offset-2 transition-colors hover:decoration-sidebar-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active"
                 >
                   {t.exportBackup}
                 </button>
@@ -507,7 +529,7 @@ export default function Sidebar({
               }}
               className={`${ITEM} ${ITEM_TONE(settingsItem.on)} ${collapsed ? "lg:justify-center lg:px-0" : ""}`}
             >
-              <settingsItem.icon className="h-[18px] w-[18px] shrink-0" strokeWidth={settingsItem.on ? 2.4 : 2} aria-hidden="true" />
+              <settingsItem.icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
               {!collapsed && <span className="truncate">{settingsItem.label}</span>}
             </a>
           )}
@@ -521,7 +543,7 @@ export default function Sidebar({
               aria-controls="sidebar-account-menu"
               aria-label={t.account}
               title={collapsed ? `${auth?.name ?? ""} — ${t.account}` : undefined}
-              className={`${ITEM} ${ITEM_TONE(false)} ${collapsed ? "lg:justify-center lg:px-0" : ""}`}
+              className={`${ITEM} ${ITEM_TONE(false)} ${accountOpen ? "bg-sidebar-hover" : ""} ${collapsed ? "lg:justify-center lg:px-0" : ""}`}
             >
               <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-sidebar-active text-[11px] font-bold text-white">
                 {initials}
@@ -529,10 +551,10 @@ export default function Sidebar({
               {!collapsed && (
                 <>
                   <span className="min-w-0 flex-1 text-start">
-                    <span className="block truncate text-[13px] font-semibold text-white">{auth?.name}</span>
-                    <span className="block truncate text-[11px] text-sidebar-faint">{auth?.email}</span>
+                    <span className="block truncate text-[13px] font-semibold text-sidebar-ink">{auth?.name}</span>
+                    <span className="block truncate text-[11.5px] text-sidebar-faint">{auth?.email}</span>
                   </span>
-                  <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${accountOpen ? "rotate-180" : ""}`} aria-hidden="true" />
+                  <ChevronDown className={`h-4 w-4 shrink-0 text-sidebar-faint transition-transform ${accountOpen ? "rotate-180" : ""}`} aria-hidden="true" />
                 </>
               )}
             </button>
@@ -540,36 +562,30 @@ export default function Sidebar({
             {accountOpen && (
               <div
                 id="sidebar-account-menu"
-                className="absolute bottom-full z-10 mb-1.5 min-w-[220px] overflow-hidden rounded-[10px] border border-sidebar-hover bg-sidebar-hover"
+                className={`${POPOVER} bottom-full start-0 mb-2 w-full min-w-[228px]`}
                 style={{ animation: "mz-pop .15s ease-out" }}
               >
                 {!collapsed && (
-                  <div className="border-b border-sidebar-hover px-3 py-2.5">
-                    <p className="truncate text-[13px] font-semibold text-white">{auth?.name}</p>
+                  <div className="mb-1 border-b border-sidebar-line px-3 py-2.5">
+                    <p className="truncate text-[13px] font-semibold text-sidebar-ink">{auth?.name}</p>
                     <p className="truncate text-[11.5px] text-sidebar-faint">{auth?.email}</p>
                   </div>
                 )}
 
                 {accountItems.map((item) => (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => go(item.key)}
-                    aria-current={active === item.key ? "page" : undefined}
-                    className="flex w-full items-center gap-3 px-3 py-2.5 text-start text-[13px] font-medium text-sidebar-ink transition-colors hover:bg-sidebar hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset"
-                  >
-                    <item.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  <button key={item.key} type="button" onClick={() => go(item.key)} aria-current={active === item.key ? "page" : undefined} className={POPOVER_ITEM}>
+                    <item.icon className="h-4 w-4 shrink-0 text-sidebar-faint" aria-hidden="true" />
                     <span className="truncate">{item.label}</span>
                   </button>
                 ))}
 
                 {/* Language switch — the three locales the site publishes. */}
-                <div className="border-t border-sidebar-hover px-3 py-2">
-                  <p className="flex items-center gap-2 pb-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-sidebar-faint">
+                <div className="mt-1 border-t border-sidebar-line px-3 pb-2 pt-2.5">
+                  <p className="flex items-center gap-1.5 pb-2 text-[10.5px] font-bold uppercase tracking-[0.12em] text-sidebar-faint">
                     <Languages className="h-3.5 w-3.5" aria-hidden="true" />
                     {t.language}
                   </p>
-                  <div className="flex gap-1">
+                  <div className="flex gap-0.5 rounded-lg bg-sidebar-hover p-0.5">
                     {LOCALES.map((locale) => {
                       const on = locale.id === language
                       return (
@@ -580,7 +596,7 @@ export default function Sidebar({
                           aria-pressed={on}
                           lang={locale.lang}
                           title={locale.label}
-                          className={`h-8 flex-1 rounded-[8px] px-2 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${on ? "bg-sidebar-active text-white" : "text-sidebar-ink hover:bg-sidebar hover:text-white"}`}
+                          className={`h-8 flex-1 rounded-[7px] text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active ${on ? "bg-sidebar-active text-white shadow-sm" : "text-sidebar-ink hover:bg-sidebar"}`}
                         >
                           {locale.id.toUpperCase()}
                         </button>
@@ -592,9 +608,9 @@ export default function Sidebar({
                 <button
                   type="button"
                   onClick={signOut}
-                  className="flex w-full items-center gap-3 border-t border-sidebar-hover px-3 py-2.5 text-start text-[13px] font-medium text-sidebar-ink transition-colors hover:bg-sidebar hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset"
+                  className="mt-1 flex h-10 w-full items-center gap-2.5 rounded-b-xl border-t border-sidebar-line px-3 text-start text-[13px] font-medium text-sidebar-ink transition-colors hover:bg-sidebar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active focus-visible:ring-inset"
                 >
-                  <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  <LogOut className="h-4 w-4 shrink-0 text-sidebar-faint" aria-hidden="true" />
                   <span className="truncate">{t.signOut}</span>
                 </button>
               </div>
