@@ -103,13 +103,35 @@ export type PlanActivation = {
   startedAt: string
   /** ISO date it ends — inclusive, in Morocco's local day. */
   expiresAt: string
+  /**
+   * The serial of a per-client code (`PRO-1M-K7Q2-…`), or null for a generic
+   * code. This is the thread back to the CMS ledger: with a serial, the owner
+   * can freeze or stop this exact subscription (see lib/subscriptionLedger.ts).
+   */
+  serial: string | null
+}
+
+/**
+ * The owner's hand on one subscription, as recorded in the CMS ledger.
+ *
+ * `endsAt` wins over the activation's own end date when it is set: unfreezing
+ * shifts it, and that shift — not the date computed at redemption — is the
+ * window the client actually has.
+ */
+export type PlanControl = {
+  status: "active" | "frozen" | "stopped"
+  endsAt: string | null
+  frozenAt: string | null
 }
 
 export type PlanStatus = {
   /** The plan in force today: a paid plan while its window is open, else FREE. */
   plan: PlanCode
-  /** `free` = never activated, `active` = paid window open, `expired` = it closed. */
-  state: "free" | "active" | "expired"
+  /**
+   * `free` = never activated, `active` = paid window open, `expired` = it
+   * closed; `frozen`/`stopped` = the owner paused or ended it from the CMS.
+   */
+  state: "free" | "active" | "expired" | "frozen" | "stopped"
   activation: PlanActivation | null
   /** Whole days left, 0 on the last day, null when nothing is active. */
   daysLeft: number | null
@@ -142,9 +164,18 @@ export function periodEnd(start: string, period: PlanPeriod): string {
  * dashboard can say "your PRO ended on 15 October" instead of pretending the
  * account never had one.
  */
-export function planStatus(activation: PlanActivation | null, today = todayISO()): PlanStatus {
+export function planStatus(activation: PlanActivation | null, today = todayISO(), control?: PlanControl | null): PlanStatus {
   if (!activation) return { plan: "free", state: "free", activation: null, daysLeft: null }
-  const left = daysUntil(activation.expiresAt, today)
+  const endsAt = control?.endsAt ?? activation.expiresAt
+  // Stopped is terminal in a way expiry is not: the plan name is kept on the
+  // activation so the UI can say *what* was stopped.
+  if (control?.status === "stopped") return { plan: "free", state: "stopped", activation, daysLeft: 0 }
+  if (control?.status === "frozen") {
+    // The clock is paused: what remains is what remained on the freeze day.
+    const left = daysUntil(endsAt, control.frozenAt ?? today)
+    return { plan: "free", state: "frozen", activation, daysLeft: left === null ? null : Math.max(0, left) }
+  }
+  const left = daysUntil(endsAt, today)
   if (left === null) return { plan: "free", state: "free", activation: null, daysLeft: null }
   if (left < 0) return { plan: "free", state: "expired", activation, daysLeft: 0 }
   return { plan: activation.plan, state: "active", activation, daysLeft: left }
@@ -159,7 +190,7 @@ export function planStatus(activation: PlanActivation | null, today = todayISO()
  * (that is an upgrade, not a renewal), and an expired one always starts today.
  */
 export function activationFor(
-  input: { code: string; plan: Exclude<PlanCode, "free">; period: PlanPeriod },
+  input: { code: string; plan: Exclude<PlanCode, "free">; period: PlanPeriod; serial?: string | null },
   current: PlanActivation | null,
   today = todayISO(),
 ): PlanActivation {
@@ -172,6 +203,10 @@ export function activationFor(
     period: input.period,
     startedAt: extendsWindow && status.activation ? status.activation.startedAt : today,
     expiresAt: periodEnd(from, input.period),
+    // Extending keeps the serial of the running subscription; a fresh window
+    // takes the serial of the code that opened it.
+    // (`?? null`: activations stored before serials existed have no key at all.)
+    serial: extendsWindow && status.activation ? status.activation.serial ?? null : input.serial ?? null,
   }
 }
 
@@ -192,8 +227,13 @@ export const PLAN_SALES_WHATSAPP = "212772966980"
  * the lock page shows — so the conversation starts from the published prices
  * and a price can never be changed in one place and quoted from another.
  */
-export function planPurchaseLink(plan: Exclude<PlanCode, "free">, company: string): string {
-  const { monthlyPrice, yearlyPrice } = PLANS[plan]
+export function planPurchaseLink(
+  plan: Exclude<PlanCode, "free">,
+  company: string,
+  prices?: { monthly: number; yearly: number },
+): string {
+  const monthlyPrice = prices?.monthly ?? PLANS[plan].monthlyPrice
+  const yearlyPrice = prices?.yearly ?? PLANS[plan].yearlyPrice
   const message = `Bonjour Fatorati, je souhaite activer ${plan.toUpperCase()} pour ${company || "mon compte"} — `
     + `1 mois (${monthlyPrice} MAD) ou 1 an (${yearlyPrice} MAD).`
   return `https://wa.me/${PLAN_SALES_WHATSAPP}?text=${encodeURIComponent(message)}`

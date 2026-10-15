@@ -4,7 +4,9 @@ import { Badge, Btn, Card, Field, Input } from "./kit"
 import { useTranslation } from "../lib/language/store"
 import { useFormats } from "../lib/language/formats"
 import { planPurchaseLink, type PlanActivation } from "../lib/plans"
+import { effectivePrices } from "../lib/planCatalog"
 import { usePlan, usePlanStatus } from "../store/usePlan"
+import { usePlanCatalog } from "../store/usePlanCatalog"
 import { useMizan } from "../store/useMizan"
 import { useToday } from "../hooks/useToday"
 
@@ -23,24 +25,42 @@ import { useToday } from "../hooks/useToday"
  */
 
 /** How the account's plan reads right now, in one line. */
-export function usePlanLine(): { tone: "neutral" | "good" | "warn"; text: string; activation: PlanActivation | null } {
+export function usePlanLine(): {
+  tone: "neutral" | "good" | "warn"
+  text: string
+  activation: PlanActivation | null
+  /** The plan name to badge: the paid plan's own, even once it stops running. */
+  label: string
+} {
   const { t: copy } = useTranslation()
   const t = copy.plans
   const { date } = useFormats()
   const status = usePlanStatus(useToday())
-  const name = t.names[status.plan]
 
-  if (status.state === "free" || !status.activation) return { tone: "neutral", text: t.never, activation: null }
+  if (status.state === "free" || !status.activation) {
+    return { tone: "neutral", text: t.never, activation: null, label: t.names.free }
+  }
+  const name = t.names[status.activation.plan]
+  // Frozen: the clock is paused, so the message is the days in waiting, not a date.
+  if (status.state === "frozen") {
+    return { tone: "warn", text: t.frozen(name, status.daysLeft ?? 0), activation: status.activation, label: name }
+  }
+  if (status.state === "stopped") {
+    return { tone: "warn", text: t.stopped(name), activation: status.activation, label: name }
+  }
   const until = date(status.activation.expiresAt)
   const left = status.daysLeft
-  if (left === null) return { tone: "good", text: t.active(name, until), activation: status.activation }
-  if (left < 0) return { tone: "warn", text: t.expired(name, until), activation: status.activation }
-  if (left === 0) return { tone: "warn", text: t.lastDay(name), activation: status.activation }
+  if (status.state === "expired" || (left !== null && left < 0)) {
+    return { tone: "warn", text: t.expired(name, until), activation: status.activation, label: name }
+  }
+  if (left === null) return { tone: "good", text: t.active(name, until), activation: status.activation, label: name }
+  if (left === 0) return { tone: "warn", text: t.lastDay(name), activation: status.activation, label: name }
   return {
     // The last week is the moment to renew, so it stops looking healthy then.
     tone: left <= 7 ? "warn" : "good",
     text: `${t.active(name, until)} · ${t.daysLeft(left)}`,
     activation: status.activation,
+    label: name,
   }
 }
 
@@ -53,17 +73,18 @@ function nextPlan(plan: PlanActivation["plan"] | "free") {
 export function PlanStrip({ onNavigate }: { onNavigate?: () => void }) {
   const { t: copy } = useTranslation()
   const t = copy.plans
-  const { tone, text } = usePlanLine()
+  const { tone, text, label } = usePlanLine()
   const company = useMizan((state) => state.settings.company)
+  const catalog = usePlanCatalog((state) => state.catalog)
   const plan = usePlanStatus(useToday()).plan
   const next = nextPlan(plan)
 
   return (
     <Card className="flex flex-wrap items-center gap-3 px-4 py-3">
-      <Badge tone={tone} dot>{t.names[plan]}</Badge>
+      <Badge tone={tone} dot>{label}</Badge>
       <p className="min-w-0 flex-1 text-[13px] text-muted">{text}</p>
       <a
-        href={planPurchaseLink(next, company)}
+        href={planPurchaseLink(next, company, effectivePrices(catalog, next))}
         target="_blank"
         rel="noopener noreferrer"
         className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-700"
@@ -95,6 +116,7 @@ export function PlanActivationCard() {
   const { date } = useFormats()
   const status = usePlanStatus(useToday())
   const line = usePlanLine()
+  const catalog = usePlanCatalog((state) => state.catalog)
   const company = useMizan((state) => state.settings.company)
   const log = useMizan((state) => state.log)
   const [code, setCode] = useState("")
@@ -176,7 +198,7 @@ export function PlanActivationCard() {
 
       <p className="text-[12px] text-faint">
         {t.buyHint}{" "}
-        <a href={planPurchaseLink(next, company)} target="_blank" rel="noopener noreferrer" className="font-semibold text-brand hover:underline">
+        <a href={planPurchaseLink(next, company, effectivePrices(catalog, next))} target="_blank" rel="noopener noreferrer" className="font-semibold text-brand hover:underline">
           {t.buyOnWhatsApp}
         </a>
       </p>

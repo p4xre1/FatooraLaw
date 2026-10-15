@@ -912,6 +912,48 @@ tables in the migrations; this is the merchandising layer in front of them.
 monitor's audit card is now an ungated capability note, because operator
 tooling was never the customer's plan to gate.
 
+### 6.2.1 Codes per client, freeze and stop (CMS) — built
+
+The CMS page **الرموز والأسعار** (`/admin/subscription-editor`) is the subscription
+console:
+
+- **Code builder.** Each paying client gets a unique per-client code —
+  `PRO-1M-K7Q2-BF6VSEZJ` — where `K7Q2` is a random 4-character serial and the last
+  segment is an HMAC checksum over the *serial-bound* payload
+  (`fatorati:plan:v2:…`, `src/lib/planCodes.ts`). The builder records the client's
+  name, company, phone, how they found Fatorati (WhatsApp, Instagram, Facebook,
+  Google, referral, other) and a note, then offers copy + one-tap WhatsApp send.
+  Generic codes (`PRO-1M-BF6VSEZJ`, `scripts/plan-code.mjs`) keep working for the
+  owner; only serial codes are tracked per client.
+- **Registry.** Every issued code with its real start and end — written back by the
+  app itself when the code is redeemed (`markRedeemed`), so the dates are facts,
+  not estimates — the days left, and the status (pending, active, frozen, stopped,
+  expired). Persisted locally as `fatorati.subscriptions.v1`.
+- **Freeze (تجميد).** Pauses the client's clock: on resume the end date shifts by
+  the whole frozen stretch, so the client keeps exactly the days they paid for.
+  While frozen, remaining days are read as of the freeze day.
+- **Stop (إيقاف).** Terminal: the plan falls back to FREE immediately, named as
+  stopped in the app. Reactivating in the CMS turns the record back into an
+  unsent code the same serial can redeem again.
+- The app folds the record for the activation's serial into `planStatus`, so a
+  freeze or stop made in the CMS applies in the signed-in app in the same browser,
+  in the same tick — the honest local-first boundary until the records map onto
+  Supabase `account_subscriptions` and enforcement becomes server-side.
+
+### 6.2.2 Prices and plan paragraphs are CMS-editable — built
+
+Prices (MAD monthly/yearly per paid plan) and the selling paragraphs (tagline +
+value sentence, per plan per language) live in an editable catalog
+(`fatorati.plan-catalog.v1`, `src/lib/planCatalog.ts`) layered over the shipped
+defaults in `lib/plans.ts`. The CMS edits them and every in-app surface reads the
+effective values — the black plan cards on the lock page, the dashboard strip,
+Paramètres, and the pre-filled WhatsApp buy message — so one edit re-prices and
+re-words the whole app. Reset returns to the shipped defaults. The plan cards
+also carry a Mensuel/Annuel toggle, a computed yearly saving ("Économisez 398 MAD
+par an ≈ 2 mois offerts" for PRO), badges (PRO "Le plus choisi", BOOST "Meilleure
+valeur"), staggered entrance animation, and three promises the product actually
+keeps (activation immédiate, virement sans carte, support WhatsApp FR/AR).
+
 ### 6.3 Formatting utilities — `src/lib/mizan.ts`
 
 | Function | Behaviour |

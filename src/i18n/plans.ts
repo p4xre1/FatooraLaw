@@ -22,6 +22,22 @@ const en = {
   perMonth: "/ month",
   perYear: "/ year",
   period: { "1M": "1 month", "1Y": "1 year" } as Record<PlanPeriod, string>,
+  /** The value sentence on each card — what the plan is worth, not what it has. */
+  value: {
+    free: "Zero commitment: clients, projects and invoicing to start today — you pay only when you grow.",
+    pro: "The full cockpit of a growing business: spending, stock, deadlines, team and reports in one place.",
+    boost: "The firm-grade tier: risks, legal vault and subscriptions — the compliance that keeps penalties away.",
+  } as Record<PlanCode, string>,
+  popular: "Most chosen",
+  bestValue: "Best value",
+  saveYear: (amount: string) => `Save ${amount} a year`,
+  twoMonthsFree: "≈ 2 months free",
+  /** The three promises printed under the cards — all of them kept by design. */
+  trust: {
+    immediate: "Immediate activation once your code arrives",
+    noCard: "Bank transfer — no card required",
+    support: "WhatsApp support, in French and Arabic",
+  },
 
   /** Status, wherever the account's own plan is shown. */
   statusTitle: "Your plan",
@@ -30,6 +46,8 @@ const en = {
   daysLeft: (days: number) => (days === 1 ? "1 day left" : `${days} days left`),
   expired: (plan: string, date: string) => `Your ${plan} ended on ${date}`,
   never: "No code activated yet — the account is on FREE.",
+  frozen: (plan: string, days: number) => `${plan} is frozen — ${days === 1 ? "1 day" : `${days} days`} waiting when it resumes.`,
+  stopped: (plan: string) => `${plan} was stopped. Contact Fatorati on WhatsApp to restart it.`,
   lockedModules: (count: number) => (count === 1 ? "1 module is locked" : `${count} modules are locked`),
   lockedTitle: (plan: string) => `${plan} plan required`,
   lockedBody: (module: string, plan: string) => `“${module}” is part of the ${plan} plan.`,
@@ -77,6 +95,20 @@ const fr: PlansCopy = {
   perMonth: "/ mois",
   perYear: "/ an",
   period: { "1M": "1 mois", "1Y": "1 an" },
+  value: {
+    free: "Zéro engagement : clients, projets et facturation pour démarrer aujourd'hui — vous payez quand vous grandissez.",
+    pro: "Le pilotage complet d'une activité qui grandit : dépenses, stock, échéances, équipe et rapports au même endroit.",
+    boost: "Le niveau cabinet : risques, coffre juridique et abonnements — la conformité qui tient les pénalités à distance.",
+  },
+  popular: "Le plus choisi",
+  bestValue: "Meilleure valeur",
+  saveYear: (amount) => `Économisez ${amount} par an`,
+  twoMonthsFree: "≈ 2 mois offerts",
+  trust: {
+    immediate: "Activation immédiate dès réception du code",
+    noCard: "Paiement par virement — aucune carte requise",
+    support: "Support WhatsApp, en français et en arabe",
+  },
 
   statusTitle: "Votre plan",
   active: (plan, date) => `${plan} est actif jusqu'au ${date}`,
@@ -84,6 +116,8 @@ const fr: PlansCopy = {
   daysLeft: (days) => (days === 1 ? "1 jour restant" : `${days} jours restants`),
   expired: (plan, date) => `Votre ${plan} a pris fin le ${date}`,
   never: "Aucun code activé — le compte est en FREE.",
+  frozen: (plan, days) => `${plan} est gelé — ${days === 1 ? "1 jour" : `${days} jours`} en attente à la reprise.`,
+  stopped: (plan) => `${plan} a été arrêté. Contactez Fatorati sur WhatsApp pour le redémarrer.`,
   lockedModules: (count) => (count === 1 ? "1 module est verrouillé" : `${count} modules sont verrouillés`),
   lockedTitle: (plan) => `Plan ${plan} requis`,
   lockedBody: (module, plan) => `« ${module} » fait partie du plan ${plan}.`,
@@ -125,6 +159,20 @@ const ar: PlansCopy = {
   perMonth: "/ شهر",
   perYear: "/ سنة",
   period: { "1M": "شهر واحد", "1Y": "سنة واحدة" },
+  value: {
+    free: "دون أي التزام: العملاء والمشاريع والفواتير لتبدأ اليوم — تدفع فقط عندما يكبر نشاطك.",
+    pro: "القيادة الكاملة لنشاط في نمو: المصاريف والمخزون والآجال والفريق والتقارير في مكان واحد.",
+    boost: "مستوى المكاتب: المخاطر والخزنة القانونية والاشتراكات — الامتثال الذي يبعد عنك الغرامات.",
+  },
+  popular: "الأكثر اختياراً",
+  bestValue: "أفضل قيمة",
+  saveYear: (amount) => `وفّر ${amount} في السنة`,
+  twoMonthsFree: "≈ شهران مجاناً",
+  trust: {
+    immediate: "تنشيط فوري فور وصول الرمز إليك",
+    noCard: "الدفع بالتحويل البنكي — دون بطاقة",
+    support: "دعم عبر واتساب، بالفرنسية والعربية",
+  },
 
   statusTitle: "خطتك",
   active: (plan, date) => `${plan} نشطة حتى ${date}`,
@@ -132,6 +180,8 @@ const ar: PlansCopy = {
   daysLeft: (days) => (days === 1 ? "يوم واحد متبقٍ" : `${days} يوماً متبقياً`),
   expired: (plan, date) => `انتهت ${plan} في ${date}`,
   never: "لم يتم تنشيط أي رمز — الحساب على FREE.",
+  frozen: (plan, days) => `${plan} مجمّدة — ${days === 1 ? "يوم واحد" : `${days} يوماً`} في الانتظار عند الاستئناف.`,
+  stopped: (plan) => `تم إيقاف ${plan}. تواصل مع فاتورتي على واتساب لإعادة تشغيلها.`,
   lockedModules: (count) => (count === 1 ? "وحدة واحدة مقفلة" : `${count} وحدات مقفلة`),
   lockedTitle: (plan) => `مطلوب خطة ${plan}`,
   lockedBody: (module, plan) => `«${module}» جزء من خطة ${plan}.`,

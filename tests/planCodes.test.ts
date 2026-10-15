@@ -147,3 +147,40 @@ describe("buying", () => {
     expect(decodeURIComponent(link)).toContain(`${PLANS.pro.yearlyPrice} MAD`)
   })
 })
+
+describe("per-client codes (what the CMS mints)", () => {
+  it("carries the serial between the period and the checksum", async () => {
+    const { codeForSerial, randomSerial } = await import("../src/lib/planCodes")
+    const code = await codeForSerial("pro", "1M", "K7Q2")
+
+    expect(code).toMatch(/^PRO-1M-K7Q2-[0-9A-Z]{8}$/)
+    expect(await checkPlanCode(code)).toMatchObject({ ok: true, plan: "pro", period: "1M", serial: "K7Q2" })
+    expect(await checkPlanCode(code.toLowerCase())).toMatchObject({ ok: true, serial: "K7Q2" })
+
+    // A different serial is a different code — and the first one does not
+    // verify for the second client.
+    const other = await codeForSerial("pro", "1M", "M4X8")
+    expect(other).not.toBe(code)
+    expect(await checkPlanCode(`PRO-1M-M4X8-${code.split("-")[3]}`)).toMatchObject({ ok: false, reason: "checksum" })
+
+    expect(randomSerial()).toMatch(/^[0-9A-Z]{4}$/)
+    const drawn = new Set(Array.from({ length: 50 }, () => randomSerial()))
+    expect(drawn.size).toBeGreaterThan(45)
+  })
+
+  it("puts the serial on the activation it redeems into", async () => {
+    const { codeForSerial } = await import("../src/lib/planCodes")
+    const result = await redeemPlanCode(await codeForSerial("boost", "1Y", "Z3N6"), null, "2026-03-10")
+    expect(result).toMatchObject({ ok: true, activation: { plan: "boost", serial: "Z3N6", expiresAt: "2027-03-10" } })
+
+    // A generic code has no serial: nothing for the CMS to hold on to.
+    const generic = await redeemPlanCode(await codeFor("pro", "1M"), null, "2026-03-10")
+    expect(generic).toMatchObject({ ok: true, activation: { serial: null } })
+  })
+
+  it("refuses a malformed serial instead of guessing at it", async () => {
+    expect(normalizeCode("PRO-1M-K7Q-BF6VSEZJ")).toBeNull() // 3-char serial
+    expect(normalizeCode("PRO-1M-K7Q2")).toBeNull() // checksum missing
+    expect(await checkPlanCode("PRO-1M-K7Q2-AAAAAAAA")).toMatchObject({ ok: false, reason: "checksum" })
+  })
+})

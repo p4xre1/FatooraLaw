@@ -1,10 +1,17 @@
 import { fireEvent, render, screen } from "@testing-library/react"
-import { beforeEach, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import PlanLock from "../src/components/PlanLock"
 import { PlanActivationCard, PlanStrip } from "../src/components/PlanStatus"
 import { useMizan } from "../src/store/useMizan"
 import { usePlan } from "../src/store/usePlan"
-import { codeFor } from "../src/lib/planCodes"
+import { codeFor, codeForSerial } from "../src/lib/planCodes"
+import { useSubscriptions } from "../src/store/useSubscriptions"
+import { usePlanCatalog } from "../src/store/usePlanCatalog"
+import { translations } from "../src/i18n"
+
+const plans = translations.fr.plans
+/** Same rendering the card uses for a whole MAD amount in French. */
+const MAD = (n: number) => `${n.toLocaleString("fr-MA")} MAD`
 
 /**
  * The three surfaces a client actually meets: the dashboard strip, the code box
@@ -19,6 +26,8 @@ beforeEach(() => {
   useMizan.getState().signIn("Karim Benjelloun", "karim@atlas.ma", "owner", "user-1")
   usePlan.getState().forAccount(null)
   usePlan.getState().clear()
+  useSubscriptions.setState({ records: [] })
+  usePlanCatalog.getState().reset()
   localStorage.clear()
   usePlan.getState().forAccount("user-1")
 })
@@ -88,4 +97,74 @@ it("sends a client who already has a code to Paramètres", () => {
   render(<PlanLock module="procurement" onNavigate={onNavigate} />)
   fireEvent.click(screen.getByRole("button", { name: "Paramètres" }))
   expect(onNavigate).toHaveBeenCalledWith("settings")
+})
+
+describe("the black plan cards", () => {
+  it("sells value, not features: every card carries its value sentence", () => {
+    render(<PlanLock module="risk" onNavigate={vi.fn()} />)
+    expect(screen.getByText(plans.value.free)).toBeTruthy()
+    expect(screen.getByText(plans.value.pro)).toBeTruthy()
+    expect(screen.getByText(plans.value.boost)).toBeTruthy()
+  })
+
+  it("marks the choice and the value: most chosen, best value", () => {
+    render(<PlanLock module="risk" onNavigate={vi.fn()} />)
+    expect(screen.getByText(plans.popular)).toBeTruthy()
+    expect(screen.getByText(plans.bestValue)).toBeTruthy()
+  })
+
+  it("defaults to the year and shows what the year saves", () => {
+    render(<PlanLock module="tools" onNavigate={vi.fn()} />)
+    // 12 × 199 − 1 990 = 398 MAD saved on PRO, computed not invented.
+    expect(screen.getByText(plans.saveYear(MAD(398)))).toBeTruthy()
+    expect(screen.getAllByText(plans.twoMonthsFree).length).toBeGreaterThan(0)
+    // The monthly toggle still prices by the month.
+    fireEvent.click(screen.getByRole("button", { name: plans.period["1M"] }))
+    expect(screen.getAllByText(plans.perMonth).length).toBeGreaterThan(0)
+  })
+
+  it("prints the three promises it actually keeps", () => {
+    render(<PlanLock module="risk" onNavigate={vi.fn()} />)
+    expect(screen.getByText(plans.trust.immediate)).toBeTruthy()
+    expect(screen.getByText(plans.trust.noCard)).toBeTruthy()
+    expect(screen.getByText(plans.trust.support)).toBeTruthy()
+  })
+
+  it("quotes the CMS price once the owner edits it", () => {
+    usePlanCatalog.getState().setPrice("pro", "monthly", 149)
+    render(<PlanLock module="risk" onNavigate={vi.fn()} />)
+    fireEvent.click(screen.getByRole("button", { name: plans.period["1M"] }))
+    expect(screen.getByText(MAD(149))).toBeTruthy()
+  })
+})
+
+describe("frozen and stopped in the app", () => {
+  const today = new Date().toISOString().slice(0, 10)
+  const daysBetween = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 86_400_000)
+
+  const issue = (serial: string, plan: "pro" | "boost", period: "1M" | "1Y") =>
+    useSubscriptions.getState().issue({
+      code: `PENDING-${serial}`, serial, plan, period,
+      clientName: "Karim Benjelloun", company: "", contact: "", source: "whatsapp", note: "", issuedAt: today,
+    })
+
+  it("the dashboard line says frozen, with the days in waiting", async () => {
+    const issued = issue("K7Q2", "pro", "1M")
+    await usePlan.getState().redeem(await codeForSerial("pro", "1M", "K7Q2"))
+    const activation = usePlan.getState().activation!
+    useSubscriptions.getState().freeze(issued.id, today)
+
+    render(<PlanStrip />)
+    const waiting = daysBetween(today, activation.expiresAt)
+    expect(screen.getByText(plans.frozen("PRO", waiting))).toBeTruthy()
+  })
+
+  it("and stopped, naming the plan that was stopped", async () => {
+    const issued = issue("Z3N6", "boost", "1Y")
+    await usePlan.getState().redeem(await codeForSerial("boost", "1Y", "Z3N6"))
+    useSubscriptions.getState().stop(issued.id)
+
+    render(<PlanStrip />)
+    expect(screen.getByText(plans.stopped("BOOST"))).toBeTruthy()
+  })
 })

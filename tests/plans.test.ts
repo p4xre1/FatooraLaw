@@ -173,3 +173,33 @@ describe("a second code", () => {
     expect(extended.code).toBe("PRO-1Y-Y")
   })
 })
+
+describe("the owner's hand on a subscription (CMS freeze / stop)", () => {
+  const live = redeemed("pro", "1M", "2026-03-10") // runs to 2026-04-10
+
+  it("freezes the clock: the days left are the days left on the freeze day", () => {
+    const control = { status: "frozen" as const, endsAt: null, frozenAt: "2026-03-20" }
+    // Frozen on the 20th with 21 days left — still 21 days left a month later.
+    expect(planStatus(live, "2026-03-20", control)).toMatchObject({ plan: "free", state: "frozen", daysLeft: 21 })
+    expect(planStatus(live, "2026-04-25", control)).toMatchObject({ state: "frozen", daysLeft: 21 })
+  })
+
+  it("stops it outright, whatever the calendar says", () => {
+    const control = { status: "stopped" as const, endsAt: null, frozenAt: null }
+    expect(planStatus(live, "2026-03-15", control)).toMatchObject({ plan: "free", state: "stopped" })
+    // The activation keeps its plan so the UI can say what was stopped.
+    expect(planStatus(live, "2026-03-15", control).activation?.plan).toBe("pro")
+  })
+
+  it("lets the ledger's end date win over the redemption date", () => {
+    // Unfreezing shifted the end from 2026-04-10 to 2026-04-25.
+    const control = { status: "active" as const, endsAt: "2026-04-25", frozenAt: null }
+    expect(planStatus(live, "2026-04-20", control)).toMatchObject({ plan: "pro", state: "active", daysLeft: 5 })
+    expect(planStatus(live, "2026-04-26", control)).toMatchObject({ state: "expired" })
+  })
+
+  it("changes nothing when there is no record for the serial", () => {
+    expect(planStatus(live, "2026-03-15", null)).toMatchObject({ plan: "pro", state: "active", daysLeft: 26 })
+    expect(planStatus(live, "2026-03-15")).toMatchObject({ plan: "pro", state: "active", daysLeft: 26 })
+  })
+})

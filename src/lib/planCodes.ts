@@ -85,6 +85,57 @@ export async function codeFor(plan: CodedPlan, period: PlanPeriod): Promise<stri
   return `${plan.toUpperCase()}-${period}-${await checksumFor(plan, period)}`
 }
 
+/* --------------------------- per-client codes ---------------------------- */
+
+/** Serials are 4 characters: about a million per plan/period, short to dictate. */
+export const SERIAL_LENGTH = 4
+
+/** A fresh serial. Minting happens in the CMS; verification never needs this. */
+export function randomSerial(): string {
+  const bytes = new Uint8Array(SERIAL_LENGTH)
+  crypto.getRandomValues(bytes)
+  // 256 is not a multiple of 32, so the last few letters are slightly favoured.
+  // For a million-code space handed out one client at a time, that bias is
+  // irrelevant; uniqueness is checked against the ledger, not hoped for.
+  return [...bytes].map((byte) => ALPHABET[byte % ALPHABET.length]).join("")
+}
+
+const SERIAL_PATTERN = new RegExp(`^[${ALPHABET}]{${SERIAL_LENGTH}}$`)
+
+/**
+ * The payload a per-client code checksums. Versioned (`v2`) so a code minted
+ * before serials existed can never collide with one minted after.
+ */
+function serialPayloadFor(plan: CodedPlan, period: PlanPeriod, serial: string): string {
+  return `fatorati:plan:v2:${plan.toUpperCase()}:${period}:${serial}`
+}
+
+async function serialChecksumFor(plan: CodedPlan, period: PlanPeriod, serial: string): Promise<string> {
+  const encoder = new TextEncoder()
+  const key = await crypto.subtle.importKey(
+    "raw", encoder.encode(CODE_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
+  )
+  const signature = new Uint8Array(await crypto.subtle.sign("HMAC", key, encoder.encode(serialPayloadFor(plan, period, serial))))
+  let bits = 0
+  let value = 0
+  let out = ""
+  for (const byte of signature) {
+    value = (value << 8) | byte
+    bits += 8
+    while (bits >= 5) {
+      out += ALPHABET[(value >>> (bits - 5)) & 31]
+      bits -= 5
+      if (out.length === CHECK_LENGTH) return out
+    }
+  }
+  return out.padEnd(CHECK_LENGTH, ALPHABET[0])
+}
+
+/** A per-client code: `PRO-1M-K7Q2-BF6VSEZJ`. What the CMS builder hands out. */
+export async function codeForSerial(plan: CodedPlan, period: PlanPeriod, serial: string): Promise<string> {
+  return `${plan.toUpperCase()}-${period}-${serial}-${await serialChecksumFor(plan, period, serial)}`
+}
+
 /**
  * What the client typed → the canonical code, or null when it cannot be one.
  *
@@ -96,30 +147,40 @@ export async function codeFor(plan: CodedPlan, period: PlanPeriod): Promise<stri
 export function normalizeCode(input: string): string | null {
   const cleaned = input.trim().toUpperCase().replace(/[\s._]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "")
   const parts = cleaned.split("-")
-  if (parts.length !== 3) return null
-  const [plan, period, check] = parts
+  // Three segments: a generic code. Four: a per-client code with its serial.
+  if (parts.length !== 3 && parts.length !== 4) return null
+  const [plan, period] = parts
+  const serial = parts.length === 4 ? parts[2] : null
+  const check = parts[parts.length - 1]
   if (!isCodedPlan(plan.toLowerCase())) return null
   if (!(CODED_PERIODS as readonly string[]).includes(period)) return null
+  if (serial !== null && !SERIAL_PATTERN.test(serial)) return null
   if (check.length !== CHECK_LENGTH || ![...check].every((char) => ALPHABET.includes(char))) return null
-  return `${plan}-${period}-${check}`
+  return serial ? `${plan}-${period}-${serial}-${check}` : `${plan}-${period}-${check}`
 }
 
 export type CodeCheck =
-  | { ok: true; code: string; plan: CodedPlan; period: PlanPeriod }
+  | { ok: true; code: string; plan: CodedPlan; period: PlanPeriod; serial: string | null }
   | { ok: false; reason: "format" | "checksum" }
 
 /** Verify a code without activating it: format first, then the checksum. */
 export async function checkPlanCode(input: string): Promise<CodeCheck> {
   const code = normalizeCode(input)
   if (!code) return { ok: false, reason: "format" }
-  const [printedPlan, printedPeriod, check] = code.split("-")
+  const parts = code.split("-")
+  const [printedPlan, printedPeriod] = parts
+  const serial = parts.length === 4 ? parts[2] : null
+  const check = parts[parts.length - 1]
   // `code` is what is printed (`PRO-1M-…`); `plan` is the vocabulary the rest
   // of the app uses (`pro`). Keeping the two apart here is what lets the payload
   // be built from either side of the round trip.
   const plan = printedPlan.toLowerCase() as CodedPlan
   const period = printedPeriod as PlanPeriod
-  if (check !== (await checksumFor(plan, period))) return { ok: false, reason: "checksum" }
-  return { ok: true, code, plan, period }
+  const expected = serial === null
+    ? await checksumFor(plan, period)
+    : await serialChecksumFor(plan, period, serial)
+  if (check !== expected) return { ok: false, reason: "checksum" }
+  return { ok: true, code, plan, period, serial }
 }
 
 export type RedeemResult =
@@ -136,7 +197,11 @@ export async function redeemPlanCode(
   if (!check.ok) return { ok: false, reason: check.reason }
   return {
     ok: true,
-    activation: activationFor({ code: check.code, plan: check.plan, period: check.period }, current, today),
+    activation: activationFor(
+      { code: check.code, plan: check.plan, period: check.period, serial: check.serial },
+      current,
+      today,
+    ),
   }
 }
 

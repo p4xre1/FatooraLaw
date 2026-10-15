@@ -2,6 +2,7 @@ import { create } from "zustand"
 import { createJSONStorage, persist } from "zustand/middleware"
 import { planStatus, type PlanActivation, type PlanStatus } from "../lib/plans"
 import { redeemPlanCode } from "../lib/planCodes"
+import { controlForSerial, useSubscriptions } from "./useSubscriptions"
 import { todayISO } from "../lib/calendarDates"
 
 /**
@@ -62,7 +63,12 @@ export const usePlan = create<State>()(
 
       redeem: async (code, today) => {
         const result = await redeemPlanCode(code, get().activation, today)
-        if (result.ok) set({ activation: result.activation })
+        if (result.ok) {
+          set({ activation: result.activation })
+          // Tell the CMS ledger: this serial is live, and these are the real
+          // start/end dates the owner asked to see.
+          useSubscriptions.getState().markRedeemed(result.activation)
+        }
         return result
       },
 
@@ -78,8 +84,15 @@ export const usePlan = create<State>()(
   ),
 )
 
-/** The plan in force for the signed-in account, today. */
+/**
+ * The plan in force for the signed-in account, today — including the owner's
+ * hand on it. Subscribing to the ledger makes a freeze or stop made in the CMS
+ * apply here in the same tick.
+ */
 export function usePlanStatus(today = todayISO()): PlanStatus {
   const activation = usePlan((state) => state.activation)
-  return planStatus(activation, today)
+  // Subscribed for reactivity (a CMS freeze/stop re-renders the app at once);
+  // the lookup itself goes through the store's getter.
+  useSubscriptions((state) => state.records)
+  return planStatus(activation, today, controlForSerial(activation?.serial ?? null))
 }
