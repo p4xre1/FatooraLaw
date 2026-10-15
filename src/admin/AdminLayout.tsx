@@ -2,10 +2,11 @@ import { useEffect } from "react"
 import { NavLink, Outlet, useNavigate, useOutletContext } from "react-router"
 import {
   Activity, BarChart3, Bell, BookOpenText, CreditCard, DatabaseBackup, FileText, Globe2, Headset, LayoutDashboard,
-  KeyRound, LogOut, Mail, MessageSquareWarning, ShieldCheck, SlidersHorizontal,
+  KeyRound, LogOut, Mail, MessageSquareWarning, Moon, ShieldCheck, SlidersHorizontal, Sun,
 } from "lucide-react"
 import { supabase } from "../lib/supabase"
 import { IconBtn } from "../components/kit"
+import { applyThemeClass, useResolvedTheme, useThemeStore } from "../lib/theme"
 import type { AdminAccess } from "./lib/adminAuth"
 
 type AdminLink = { to: string; label: string; icon: typeof BookOpenText }
@@ -13,6 +14,8 @@ type AdminLink = { to: string; label: string; icon: typeof BookOpenText }
 export default function AdminLayout() {
   const navigate = useNavigate()
   const access = useOutletContext<AdminAccess>()
+  const resolved = useResolvedTheme()
+  const setMode = useThemeStore((state) => state.setMode)
 
   useEffect(() => {
     const meta = document.createElement("meta")
@@ -21,6 +24,19 @@ export default function AdminLayout() {
     document.head.appendChild(meta)
     return () => { document.head.removeChild(meta) }
   }, [])
+
+  /**
+   * The CMS shares the device theme preference with the dashboard (the same
+   * `fatorati.theme.v1` store), but applies it itself: `<App/>` — which owns
+   * the private-screen repaint for the modules — is not mounted on /admin
+   * paths (separate route trees in main.tsx). Dark re-bases the semantic
+   * tokens (canvas #0D1117); on the way out the cleanup hands the decision
+   * back, and <App/>'s own effect re-applies whatever the next screen needs.
+   */
+  useEffect(() => {
+    applyThemeClass(resolved === "dark")
+    return () => applyThemeClass(false)
+  }, [resolved])
 
   async function handleLogout() {
     await supabase.auth.signOut({ scope: "local" })
@@ -70,6 +86,13 @@ export default function AdminLayout() {
           </nav>
           <div className="flex shrink-0 items-center gap-2">
             <a href="/" className="hidden rounded-lg px-3 py-2 text-[12px] font-semibold text-muted hover:bg-canvas hover:text-ink sm:inline-flex">عرض الموقع</a>
+            <IconBtn
+              onClick={() => setMode(resolved === "dark" ? "light" : "dark")}
+              aria-label={resolved === "dark" ? "الوضع الفاتح" : "الوضع الداكن"}
+              title={resolved === "dark" ? "الوضع الفاتح" : "الوضع الداكن"}
+            >
+              {resolved === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </IconBtn>
             <IconBtn onClick={handleLogout} aria-label="تسجيل الخروج" title="تسجيل الخروج"><LogOut className="h-4 w-4" /></IconBtn>
           </div>
         </div>

@@ -46,7 +46,7 @@ export default function ViralChecklist({ post }: { post: AuditInput }) {
           </div>
 
           {/* Google preview */}
-          <div className="rounded-xl border border-line bg-white p-4">
+          <div className="rounded-xl border border-line bg-surface p-4">
             <div className="mb-3 flex items-center justify-between">
               <p className="text-[12px] font-bold text-ink">معاينة النتيجة في Google</p>
               <div className="flex gap-1" role="tablist" aria-label="جهاز المعاينة">
@@ -54,7 +54,7 @@ export default function ViralChecklist({ post }: { post: AuditInput }) {
                 <button type="button" role="tab" aria-selected={device === "mobile"} onClick={() => setDevice("mobile")} className={`rounded-md border px-2 py-1 ${device === "mobile" ? "border-brand bg-brand-50 text-brand-700" : "border-line text-muted"}`}><Smartphone className="h-3.5 w-3.5" aria-hidden="true" /></button>
               </div>
             </div>
-            <div dir="ltr" className={`mx-auto rounded-lg border border-line/60 bg-white p-3 ${device === "mobile" ? "max-w-[360px]" : ""}`} style={{ fontFamily: "Arial, sans-serif" }}>
+            <div dir="ltr" className={`mx-auto rounded-lg border border-line/60 bg-surface p-3 ${device === "mobile" ? "max-w-[360px]" : ""}`} style={{ fontFamily: "Arial, sans-serif" }}>
               <div className="flex items-center gap-2">
                 <span className="grid h-6 w-6 place-items-center rounded-full bg-blue-600 text-[11px] font-bold text-white">F</span>
                 <div className="text-[12px] leading-tight text-[#202124]">
@@ -72,7 +72,7 @@ export default function ViralChecklist({ post }: { post: AuditInput }) {
             <p className="mb-2 text-[12px] font-bold text-ink">تصفية النتائج: الكل ({result.checks.length}) · تنبيهات ({failing}) · ناجح ({result.checks.length - failing})</p>
             <ul className="space-y-2">
               {result.checks.map((check) => (
-                <li key={check.id} className={`rounded-lg border px-3 py-2.5 ${check.pass ? "border-emerald-500/20 bg-emerald-500/5" : "border-amber-500/30 bg-amber-500/5"}`}>
+                <li key={check.id} className={`rounded-lg border px-3 py-2.5 ${check.pass ? "border-emerald-500/20 bg-emerald-500/5" : "border-amber-500/30 bg-warn-500/5"}`}>
                   <div className="flex items-start gap-2 text-[13px]">
                     {check.pass ? <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" /> : <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />}
                     <div className="min-w-0 flex-1">

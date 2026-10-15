@@ -53,7 +53,7 @@ export default function AlgorithmsView() {
       {loading ? <div className="min-h-40 animate-pulse rounded-xl bg-canvas" /> : <>
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand/15 bg-brand-50/60 p-4">
           <div className="flex items-start gap-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-brand text-white"><SlidersHorizontal className="h-4 w-4" /></span><div><p className="text-[13px] font-bold text-ink">نطاق التحكم الآمن</p><p className="mt-1 max-w-3xl text-[11px] leading-relaxed text-muted">هذه المفاتيح تتحكم في نشر المقالات وقياس الزيارات فقط. وحدة المخاطر الحالية تعرض سجلات تجريبية ثابتة ولا تحتوي على نموذج تقييم قابل للضبط؛ لذلك لا نعرض مفاتيح تغيّر حسابات المخاطر قبل تعريف قواعدها ومالكها.</p></div></div>
-          <span className="rounded-full bg-white/70 px-3 py-1 text-[10px] font-semibold text-muted">آخر تحديث: {updatedAt ? new Intl.DateTimeFormat("ar-MA", { dateStyle: "short", timeStyle: "short" }).format(new Date(updatedAt)) : "—"}</span>
+          <span className="rounded-full bg-surface/70 px-3 py-1 text-[10px] font-semibold text-muted">آخر تحديث: {updatedAt ? new Intl.DateTimeFormat("ar-MA", { dateStyle: "short", timeStyle: "short" }).format(new Date(updatedAt)) : "—"}</span>
         </div>
 
         <div className="grid gap-4 xl:grid-cols-2">
