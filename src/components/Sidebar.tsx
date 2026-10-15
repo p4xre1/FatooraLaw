@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import {
-  Search, PanelLeftClose, PanelLeftOpen, Plus, ChevronDown, LogOut, Languages,
-  FolderPlus, ReceiptText, FileSignature, FileText, Lock,
+  Search, PanelLeftOpen, Plus, ChevronDown, LogOut, Languages,
+  FileText, Lock, X,
 } from "lucide-react"
 import type { ModuleKey } from "../store/types"
 import { planIncludes, requiredPlan, type PlanCode } from "../lib/plans"
@@ -39,10 +39,10 @@ import { useMizan } from "../store/useMizan"
 
 /**
  * There is no `/invoices` route yet (see docs/FEATURES_AND_TOOLS.md §11: no
- * invoicing module exists). Flip this when it ships and both the "Factures"
- * item and the primary button retarget themselves; nothing else changes.
- * While it is off the primary button opens the same three quick actions the
- * top bar already offers, so it is never a dead control.
+ * invoicing module exists). Flip this when it ships and the "Factures" rail
+ * item starts opening it; nothing else changes. There is deliberately no
+ * primary/quick-actions button in the rail while it is off — the owner
+ * asked for it gone, and the top bar keeps the same shortcuts.
  */
 const INVOICE_ROUTE_ENABLED = false
 
@@ -135,12 +135,10 @@ export default function Sidebar({
   const auth = useMizan((s) => s.auth)
   const [q, setQ] = useState("")
   const [moreOpen, setMoreOpen] = useState<boolean>(readMoreOpen)
-  const [quickOpen, setQuickOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
   /** Route the "Plus d'outils" row has already auto-expanded for. */
   const [autoOpenedFor, setAutoOpenedFor] = useState<ModuleKey | null>(null)
 
-  const quickRef = useRef<HTMLDivElement>(null)
   const accountRef = useRef<HTMLDivElement>(null)
 
   // The app-wide language preference; `useTranslation()` also writes dir/lang
@@ -175,12 +173,10 @@ export default function Sidebar({
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {
-      if (quickRef.current && !quickRef.current.contains(e.target as Node)) setQuickOpen(false)
       if (accountRef.current && !accountRef.current.contains(e.target as Node)) setAccountOpen(false)
     }
     function onKey(e: KeyboardEvent) {
       if (e.key !== "Escape") return
-      setQuickOpen(false)
       setAccountOpen(false)
     }
     document.addEventListener("mousedown", onDoc)
@@ -248,12 +244,6 @@ export default function Sidebar({
     .map((key) => ({ key, icon: NAV_BY_KEY.get(key)!.icon, label: label(key), lockedBy: lockedBy(key) }))
   const settingsItem = rows(["settings"])[0] ?? null
 
-  const quickActions = [
-    { icon: FolderPlus, label: t.newProject, to: "projects" as ModuleKey },
-    { icon: ReceiptText, label: t.newExpense, to: "procurement" as ModuleKey },
-    { icon: FileSignature, label: t.newContract, to: "legal" as ModuleKey },
-  ].filter((action) => allowed[action.to])
-
   const searching = query.length > 0
   // Searching implies intent: never hide a match inside the collapsed group.
   const moreExpanded = collapsed ? false : moreOpen || (searching && more.length > 0)
@@ -263,7 +253,6 @@ export default function Sidebar({
   function go(key: ModuleKey) {
     onNavigate(key)
     setMobileOpen(false)
-    setQuickOpen(false)
     setAccountOpen(false)
   }
 
@@ -367,19 +356,29 @@ export default function Sidebar({
           )}
           <button
             type="button"
-            onClick={() => setCollapsed(!collapsed)}
+            onClick={() => {
+              if (collapsed) {
+                setCollapsed(false)
+                return
+              }
+              // The ✕ hides the rail: on a phone the drawer closes, on a
+              // wide screen the rail folds to its icon strip — and this
+              // same header's expand control brings it back.
+              setMobileOpen(false)
+              setCollapsed(true)
+            }}
             aria-expanded={!collapsed}
-            aria-label={collapsed ? t.expand : t.collapse}
-            title={collapsed ? t.expand : t.collapse}
-            className={`hidden lg:grid ${ICON_BUTTON}`}
+            aria-label={collapsed ? t.expand : t.hide}
+            title={collapsed ? t.expand : t.hide}
+            className={collapsed ? `hidden lg:grid ${ICON_BUTTON}` : ICON_BUTTON}
           >
-            {collapsed ? <PanelLeftOpen className="h-4 w-4" aria-hidden="true" /> : <PanelLeftClose className="h-4 w-4" aria-hidden="true" />}
+            {collapsed ? <PanelLeftOpen className="h-4 w-4" aria-hidden="true" /> : <X className="h-5 w-5" aria-hidden="true" />}
           </button>
         </div>
 
-        {/* ---- Primary action ---- */}
-        <div className={`shrink-0 px-3 pb-2 pt-3 ${collapsed ? "lg:px-2" : ""}`} ref={quickRef}>
-          {INVOICE_ROUTE_ENABLED ? (
+        {/* ---- Primary action (invoicing only, once it ships) ---- */}
+        {INVOICE_ROUTE_ENABLED && (
+          <div className={`shrink-0 px-3 pb-2 pt-3 ${collapsed ? "lg:px-2" : ""}`}>
             <a
               href="/invoices"
               aria-label={collapsed ? t.newInvoice : undefined}
@@ -393,53 +392,8 @@ export default function Sidebar({
                 </>
               )}
             </a>
-          ) : (
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => {
-                  if (collapsed) {
-                    // Icon-only rail: fall back to the first allowed action.
-                    if (quickActions[0]) go(quickActions[0].to)
-                    return
-                  }
-                  setQuickOpen((open) => !open)
-                }}
-                aria-expanded={collapsed ? undefined : quickOpen}
-                aria-controls={collapsed ? undefined : "sidebar-quick-actions"}
-                aria-label={collapsed ? (quickActions[0]?.label ?? t.quickActions) : t.quickActions}
-                title={collapsed ? (quickActions[0]?.label ?? t.quickActions) : undefined}
-                className={`${ITEM} justify-center bg-sidebar-active font-semibold text-white hover:bg-sidebar-active-deep ${collapsed ? "lg:h-10 lg:w-full lg:px-0" : ""}`}
-              >
-                {collapsed ? <Plus className="h-[18px] w-[18px]" aria-hidden="true" /> : (
-                  <>
-                    <Plus className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
-                    <span className="flex-1 truncate text-start">{t.quickActions}</span>
-                    <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${quickOpen ? "rotate-180" : ""}`} aria-hidden="true" />
-                  </>
-                )}
-              </button>
-
-              {quickOpen && !collapsed && (
-                <div
-                  id="sidebar-quick-actions"
-                  className={`${POPOVER} top-full start-0 mt-1.5 w-full min-w-[228px]`}
-                  style={{ animation: "mz-pop .15s ease-out" }}
-                >
-                  {quickActions.map((action) => (
-                    <button key={action.to} type="button" onClick={() => go(action.to)} className={POPOVER_ITEM}>
-                      <action.icon className="h-4 w-4 shrink-0 text-sidebar-faint" aria-hidden="true" />
-                      <span className="truncate">{action.label}</span>
-                    </button>
-                  ))}
-                  {!quickActions.length && (
-                    <p className="px-3 py-2 text-[12.5px] text-sidebar-faint">{t.noResults}</p>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* ---- Module search ---- */}
         {!collapsed && (

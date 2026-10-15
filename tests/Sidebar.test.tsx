@@ -212,9 +212,11 @@ it("gives every collapsed-rail control an accessible name and hides the group la
     expect(within(nav).getByRole("link", { name }).getAttribute("title")).toBe(name)
   }
 
-  // The primary action degrades to a '+' icon button. It no longer opens a
-  // menu, so it is named after the action it performs, not "Actions rapides".
-  expect(within(aside).getByRole("button", { name: "Nouveau projet" })).not.toBeNull()
+  // No primary/quick-actions button anywhere in the rail (the owner
+  // asked for it gone); the collapsed rail is brought back by its named
+  // expand control.
+  expect(within(aside).queryByRole("button", { name: "Actions rapides" })).toBeNull()
+  expect(within(aside).getByRole("button", { name: "Déployer le menu" })).not.toBeNull()
   // The local-data notice that used to sit pinned in this footer is gone.
   expect(within(aside).queryByRole("button", { name: /Données stockées sur cet appareil/ })).toBeNull()
 })
@@ -222,7 +224,7 @@ it("gives every collapsed-rail control an accessible name and hides the group la
 it("collapses and expands the rail through a named, stateful toggle", () => {
   const setCollapsed = vi.fn()
   renderSidebar({ setCollapsed, collapsed: false })
-  const toggle = screen.getByRole("button", { name: "Réduire le menu" })
+  const toggle = screen.getByRole("button", { name: "Masquer le menu" })
   expect(toggle.getAttribute("aria-expanded")).toBe("true")
   fireEvent.click(toggle)
   expect(setCollapsed).toHaveBeenCalledWith(true)
@@ -298,13 +300,8 @@ it("navigates from the account popover and closes it", () => {
   expect(document.getElementById("sidebar-account-menu")).toBeNull()
 })
 
-it("closes both popovers on Escape", () => {
+it("closes the account popover on Escape", () => {
   renderSidebar()
-  fireEvent.click(screen.getByRole("button", { name: "Actions rapides" }))
-  expect(document.getElementById("sidebar-quick-actions")).not.toBeNull()
-  fireEvent.keyDown(document, { key: "Escape" })
-  expect(document.getElementById("sidebar-quick-actions")).toBeNull()
-
   fireEvent.click(screen.getByRole("button", { name: "Menu du compte" }))
   expect(document.getElementById("sidebar-account-menu")).not.toBeNull()
   fireEvent.keyDown(document, { key: "Escape" })
@@ -373,25 +370,23 @@ it("falls back to French for a language value it does not publish", () => {
   expect(screen.getByText("Au quotidien")).not.toBeNull()
 })
 
-/* --------------------------- quick actions ------------------------------ */
+/* --------------------------- quick actions & the ✕ --------------------------- */
 
-it("offers the three existing quick actions while no /invoices route exists", () => {
-  const onNavigate = vi.fn()
-  renderSidebar({ onNavigate })
-  fireEvent.click(screen.getByRole("button", { name: "Actions rapides" }))
-
-  const menu = document.getElementById("sidebar-quick-actions")!
-  fireEvent.click(within(menu).getByRole("button", { name: "Nouvelle dépense" }))
-  expect(onNavigate).toHaveBeenCalledWith("procurement")
+it("has no quick-actions button or menu in the rail", () => {
+  renderSidebar()
+  expect(screen.queryByRole("button", { name: "Actions rapides" })).toBeNull()
+  expect(document.getElementById("sidebar-quick-actions")).toBeNull()
 })
 
-it("drops quick actions the account cannot open", () => {
-  renderSidebar({ allowed: perms(["dashboard", "projects"]) })
-  fireEvent.click(screen.getByRole("button", { name: "Actions rapides" }))
-  const menu = document.getElementById("sidebar-quick-actions")!
-  expect(within(menu).getByRole("button", { name: "Nouveau projet" })).not.toBeNull()
-  expect(within(menu).queryByRole("button", { name: "Nouvelle dépense" })).toBeNull()
-  expect(within(menu).queryByRole("button", { name: "Générer un contrat" })).toBeNull()
+it("hides the rail from the ✕: the drawer closes and the rail folds", () => {
+  const setCollapsed = vi.fn()
+  const setMobileOpen = vi.fn()
+  renderSidebar({ setCollapsed, setMobileOpen, collapsed: false, mobileOpen: true })
+
+  const hide = screen.getByRole("button", { name: "Masquer le menu" })
+  fireEvent.click(hide)
+  expect(setMobileOpen).toHaveBeenCalledWith(false)
+  expect(setCollapsed).toHaveBeenCalledWith(true)
 })
 
 /* --------------------------- colour contract ---------------------------- */
