@@ -22,17 +22,17 @@ export type MapCity = {
   aliases: readonly string[]
 }
 
-/** Linear projection window (mainland + the southern provinces). */
-const BOUNDS = { latMin: 20.8, latMax: 36.1, lngMin: -17.4, lngMax: -0.8 }
+/** Projection window: the real boundary's bounding box (see below). */
+const BOUNDS = { latMin: 20.787, latMax: 35.951, lngMin: -17.116, lngMax: -1.044 }
 
 /**
  * The box the map is drawn in. Not square on purpose: at Morocco's
  * latitude a degree of longitude is ~98 km against ~111 km for a degree
  * of latitude, so a square box stretches the country sideways. The
  * height below (100 × 1698 km ÷ 1624 km ≈ 104.6) keeps one unit the
- * same number of kilometres on both axes.
+ * same number of kilometres on both axes (1 574 km × 1 683 km).
  */
-export const MAP_VIEW = { width: 100, height: 104.6 }
+export const MAP_VIEW = { width: 100, height: 106.9 }
 
 /** lat/lng → the SVG box. */
 export function project(lat: number, lng: number): { x: number; y: number } {
@@ -140,33 +140,46 @@ export const MAP_CITIES: (MapCity & { x: number; y: number })[] = SEEDS.map(([fr
 
 /** The country outline, as a projected polygon.
  *
- * Traced clockwise from Cap Spartel along the real coastline, the
- * Algeria and Mauritania borders, and back up the Atlantic — simplified,
- * but every coastal anchor sits seaward of the city it neighbours, so no
- * city dot ever floats in the ocean (the old outline cut Tanger, El
- * Jadida, Safi and Essaouira off into the Atlantic). The geometry test
- * in tests/cities.test.ts keeps every city strictly inside.
+ * Not a sketch: the real boundary, from Natural Earth's 50 m admin-0
+ * data (Morocco and the southern provinces dissolved into a single
+ * silhouette, the way the country is drawn at home), Douglas-Peucker
+ * simplified to 134 points with a ~3 km seaward buffer so coastal
+ * towns sit inside the line its generalisation would otherwise shave.
+ * At 1 574 km wide × 1 683 km tall the box above keeps the true
+ * proportions — the earlier hand-drawn polygon floated Tanger, El
+ * Jadida, Safi and Essaouira in the Atlantic and stretched the rest.
+ * tests/cities.test.ts keeps every city strictly inside.
  */
 export const MAP_OUTLINE: string = (
   [
-    // The Mediterranean coast, west → east.
-    [35.86, -5.92], [35.93, -5.45], [35.75, -5.30], [35.45, -4.85], [35.28, -3.98],
-    [35.42, -2.98], [35.10, -2.22], [34.93, -1.86],
-    // The Algeria border, south to the Mauritanian tripoint.
-    [34.30, -1.62], [33.20, -1.35], [32.35, -1.02], [31.60, -1.40], [30.70, -3.30],
-    [29.90, -5.30], [28.70, -7.90], [27.72, -8.58],
-    // The Mauritania border: south-east, then west to Cap Blanc.
-    [26.20, -10.10], [24.40, -11.90], [22.90, -13.60], [21.60, -15.60], [20.88, -17.02],
-    // The Atlantic coast, back north.
-    [21.70, -16.85], [23.00, -16.20], [23.95, -16.05], [24.70, -15.30], [26.18, -14.60],
-    [27.20, -13.28], [27.98, -13.02], [28.45, -11.15], [29.55, -10.15], [30.45, -9.68], [31.55, -9.82],
-    [32.33, -9.30], [33.26, -8.56], [33.62, -7.58], [34.08, -6.95], [34.30, -6.62],
-    [35.25, -6.20], [35.52, -6.09],
+    [35.959, -5.403], [35.931, -5.268], [35.896, -5.249], [35.842, -5.308], [35.754, -5.308], [35.491, -5.086],
+    [35.308, -4.823], [35.236, -4.621], [35.192, -4.331], [35.310, -3.695], [35.258, -3.582], [35.242, -3.396],
+    [35.268, -3.216], [35.436, -2.964], [35.159, -2.825], [35.132, -2.208], [34.994, -2.113], [34.771, -1.773],
+    [34.716, -1.763], [34.611, -1.816], [34.473, -1.704], [34.366, -1.758], [34.182, -1.677], [33.785, -1.684],
+    [33.571, -1.601], [33.322, -1.648], [33.085, -1.523], [32.889, -1.482], [32.805, -1.427], [32.575, -1.091],
+    [32.474, -1.036], [32.320, -1.215], [32.085, -1.205], [32.059, -1.276], [32.100, -2.448], [32.045, -2.858],
+    [32.022, -2.907], [31.807, -3.006], [31.675, -3.434], [31.661, -3.759], [31.612, -3.817], [31.362, -3.759],
+    [31.204, -3.801], [31.081, -3.599], [30.991, -3.599], [30.938, -3.652], [30.884, -3.975], [30.672, -4.310],
+    [30.442, -4.948], [30.146, -5.158], [29.929, -5.438], [29.802, -5.999], [29.790, -6.473], [29.644, -6.495],
+    [29.555, -6.579], [29.539, -6.630], [29.585, -7.148], [29.366, -7.471], [29.323, -7.671], [28.695, -8.639],
+    [25.969, -8.668], [25.965, -11.986], [23.463, -11.994], [23.290, -12.362], [23.244, -12.607], [22.978, -13.011],
+    [22.811, -13.125], [22.697, -13.127], [22.498, -13.064], [21.311, -12.997], [21.299, -16.940], [20.898, -17.033],
+    [20.800, -17.019], [20.783, -17.067], [20.859, -17.129], [21.911, -16.959], [22.180, -16.815], [22.300, -16.699],
+    [22.358, -16.535], [22.606, -16.387], [22.847, -16.332], [22.961, -16.228], [23.029, -16.203], [23.111, -16.237],
+    [23.787, -15.824], [23.646, -15.964], [23.653, -16.005], [23.865, -15.921], [24.096, -15.605], [24.502, -15.208],
+    [24.573, -15.058], [24.734, -14.931], [24.877, -14.886], [25.224, -14.873], [25.415, -14.823], [25.937, -14.551],
+    [26.173, -14.499], [26.270, -14.439], [26.442, -14.183], [26.516, -13.965], [26.755, -13.599], [27.669, -13.203],
+    [27.790, -13.064], [27.935, -12.970], [28.008, -12.799], [28.039, -12.474], [28.158, -11.996], [28.337, -11.566],
+    [28.406, -11.449], [28.738, -11.098], [29.088, -10.506], [29.399, -10.224], [29.828, -9.876], [30.119, -9.696],
+    [30.351, -9.655], [30.434, -9.680], [30.579, -9.793], [30.625, -9.877], [30.715, -9.905], [30.852, -9.862],
+    [31.429, -9.838], [31.729, -9.699], [32.102, -9.373], [32.248, -9.316], [32.588, -9.271], [32.942, -8.857],
+    [33.278, -8.528], [33.403, -8.311], [33.668, -7.574], [33.993, -6.920], [34.151, -6.780], [34.790, -6.380],
+    [35.809, -5.943], [35.858, -5.629],
   ] as [number, number][]
 )
   .map(([lat, lng]) => {
     const { x, y } = project(lat, lng)
-    return `${x.toFixed(1)},${y.toFixed(1)}`
+    return `${x.toFixed(2)},${y.toFixed(2)}`
   })
   .join(" ")
 

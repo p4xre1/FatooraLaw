@@ -73,7 +73,7 @@ const en = {
     otherPlaces: "Other places",
     bestIn: (city: string) => `Best clients in ${city}`,
     clients: (n: number) => `${n} client${n === 1 ? "" : "s"}`,
-    schematic: "Schematic map — simplified outline, true relative positions.",
+    schematic: "Real borders, true city positions.",
     noClients: "No clients with a city yet. Add clients and give them their city to light up the map.",
   },
   audience: {
@@ -188,7 +188,7 @@ const fr: ReportsCopy = {
     otherPlaces: "Autres lieux",
     bestIn: (city: string) => `Meilleurs clients à ${city}`,
     clients: (n: number) => `${n} client${n === 1 ? "" : "s"}`,
-    schematic: "Carte schématique — contour simplifié, positions relatives exactes.",
+    schematic: "Frontières réelles, positions exactes des villes.",
     noClients: "Aucun client avec une ville pour le moment. Ajoutez des clients et leur ville pour allumer la carte.",
   },
   audience: {
@@ -301,7 +301,7 @@ const ar: ReportsCopy = {
     otherPlaces: "أماكن أخرى",
     bestIn: (city: string) => `أفضل العملاء في ${city}`,
     clients: (n: number) => `${n} ${n === 1 ? "عميل" : "عملاء"}`,
-    schematic: "خريطة تخطيطية — حدود مبسطة ومواقع نسبية صحيحة.",
+    schematic: "حدود حقيقية ومواقع دقيقة للمدن.",
     noClients: "لا يوجد عملاء بمدينة بعد. أضف عملاء ومدنهم لتضيء الخريطة.",
   },
   audience: {

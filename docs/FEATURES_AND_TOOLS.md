@@ -574,12 +574,15 @@ Subscriptions stay labelled planned-per-month and are never folded into
 the totals; the stock value counts only articles with a known purchase
 price and names the rest.
 
-**Clients par ville — Maroc**: a schematic Morocco map (`lib/cities.ts`,
+**Clients par ville — Maroc**: a Morocco map (`lib/cities.ts`,
 `components/MoroccoMap.tsx`) with one dot per city — 75 cities covering all
 twelve regions — sized by client count or collected money (projects plus
-verified orders), true relative positions on a simplified drawn outline
-whose proportions are aspect-correct and which a geometry test keeps every
-city strictly inside (no tiles, no fetch — the app stays offline-capable). City names are matched by
+verified orders). The outline is the real boundary (Natural Earth 50 m
+admin-0, Morocco + southern provinces dissolved into one silhouette,
+simplified to 134 points with a ~3 km seaward buffer), the projection box
+keeps the true 1 574 km × 1 683 km proportions, and a geometry test keeps
+every city strictly inside (no tiles, no fetch — the app stays
+offline-capable). City names are matched by
 normalization plus FR/EN/AR aliases; a place the map does not know is listed
 beside it, never dropped. Selecting a city names its best clients (score
 order) with their product keywords.
