@@ -1,7 +1,25 @@
 import { supabase } from "./supabase"
 import type { LocaleId } from "./locales"
+import { BLOG_CATEGORIES, blogCategory, type BlogCategory } from "./routes"
+
+/**
+ * The five editorial sections of the blog, re-exported from `routes.ts` (the
+ * URL contract owns the keys — they are path segments under `/blog/`). The
+ * localized display labels live here, next to the rest of the public copy.
+ */
+export { BLOG_CATEGORIES, blogCategory, type BlogCategory }
 
 export type BlogTranslationLocale = Exclude<LocaleId, "fr">
+
+/** Sidebar labels, per locale. Never used in a URL. */
+export const BLOG_CATEGORY_LABELS: Record<BlogCategory, Record<LocaleId, string>> = {
+  tips: { fr: "Conseils", en: "Tips", ar: "نصائح" },
+  news: { fr: "Actualités", en: "News", ar: "أخبار" },
+  articles: { fr: "Articles", en: "Articles", ar: "مقالات" },
+  products: { fr: "Produits", en: "Products", ar: "منتجات" },
+  guides: { fr: "Guides", en: "Guides", ar: "أدلة" },
+}
+
 export type BlogContent = {
   title: string
   slug: string
@@ -25,6 +43,7 @@ export type BlogTranslation = BlogContent & {
 export type BlogPost = BlogContent & {
   id: string
   author_name: string
+  category: BlogCategory
   published: boolean
   published_at: string | null
   created_at: string
@@ -37,13 +56,14 @@ export type PublicBlogPost = BlogContent & {
   id: string
   locale: LocaleId
   author_name: string
+  category: BlogCategory
   published_at: string
   updated_at: string
   canonical_slug_fr: string
   translations: Partial<Record<LocaleId, BlogContent & { slug: string }>>
 }
 
-const BASE_COLUMNS = "id,title,slug,content,excerpt,seo_title,seo_description,keywords,author_name,published,published_at,created_at,updated_at,user_id"
+const BASE_COLUMNS = "id,title,slug,content,excerpt,seo_title,seo_description,keywords,author_name,category,image_url,image_alt,published,published_at,created_at,updated_at,user_id"
 const TRANSLATION_COLUMNS = "post_id,locale,title,slug,content,excerpt,seo_title,seo_description,keywords,updated_at"
 
 function asKeywords(value: unknown): string[] {
@@ -61,6 +81,9 @@ function toBase(post: Record<string, unknown>, translations: BlogTranslation[] =
     seo_description: String(post.seo_description ?? ""),
     keywords: asKeywords(post.keywords),
     author_name: String(post.author_name ?? "Fatorati"),
+    category: blogCategory(post.category),
+    image_url: String(post.image_url ?? ""),
+    image_alt: String(post.image_alt ?? ""),
     published: post.published === true,
     published_at: typeof post.published_at === "string" ? post.published_at : null,
     created_at: String(post.created_at ?? ""),
@@ -131,6 +154,9 @@ export async function listPublishedPosts(locale: LocaleId, client: typeof supaba
       seo_description: content.seo_description,
       keywords: content.keywords,
       author_name: base.author_name,
+      category: base.category,
+      image_url: base.image_url,
+      image_alt: base.image_alt,
       published_at: String(row.published_at ?? row.created_at),
       updated_at: String(row.updated_at ?? row.created_at),
       canonical_slug_fr: base.slug,
@@ -205,6 +231,9 @@ function asPublicPost(post: BlogPost, locale: LocaleId): PublicBlogPost {
     seo_description: content.seo_description,
     keywords: content.keywords,
     author_name: post.author_name,
+    category: post.category,
+    image_url: post.image_url,
+    image_alt: post.image_alt,
     published_at: post.published_at ?? post.created_at,
     updated_at: post.updated_at,
     canonical_slug_fr: post.slug,

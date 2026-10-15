@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  BLOG_CATEGORIES,
   AUTH_PATHS,
   DEFAULT_APP_PATH,
   LANDING_PAGES,
@@ -235,9 +236,13 @@ describe("SEO metadata", () => {
     expect(xml).toContain('xmlns:xhtml="http://www.w3.org/1999/xhtml"')
     expect(xml).toContain('<xhtml:link rel="alternate" hreflang="ar-MA" href="https://fatorati.tech/ar/pricing"/>')
     expect(xml).toContain('<xhtml:link rel="alternate" hreflang="x-default" href="https://fatorati.tech/pricing"/>')
-    expect(xml.match(/<url>/g)).toHaveLength(LANDING_PAGES.length * LOCALE_IDS.length)
+    const urls = LANDING_PAGES.length * LOCALE_IDS.length + BLOG_CATEGORIES.length * LOCALE_IDS.length
+    expect(xml.match(/<url>/g)).toHaveLength(urls)
     // Each URL carries its own four alternates (three languages + x-default).
-    expect(xml.match(/<xhtml:link /g)).toHaveLength(LANDING_PAGES.length * LOCALE_IDS.length * (LOCALES.length + 1))
+    expect(xml.match(/<xhtml:link /g)).toHaveLength(urls * (LOCALES.length + 1))
+    for (const category of BLOG_CATEGORIES) {
+      expect(xml, `sitemap ${category}`).toContain(`<loc>${SITE}/blog/${category}</loc>`)
+    }
   })
 
   it("keeps private screens out of the index", () => {

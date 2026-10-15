@@ -6,9 +6,9 @@ import { getPublishedSiteCmsData, type PublicSiteCmsData } from "./lib/siteCms"
 import { isSupabaseConfigured, supabaseConfig } from "./lib/supabase"
 import { setServerPath } from "./lib/router"
 import { SITE_URL } from "./lib/site"
-import { blogArticleFromPath, landingPageFromPath, localeEntries, localeRoute, localizedBlogArticlePath, localizedLandingPath, normalizePath } from "./lib/routes"
+import { BLOG_CATEGORIES, blogArticleFromPath, blogCategoryFromPath, landingPageFromPath, localeEntries, localeRoute, localizedBlogArticlePath, localizedBlogCategoryPath, localizedLandingPath, normalizePath } from "./lib/routes"
 import { LOCALES, localeInfo } from "./lib/locales"
-import { renderCustomHeadTags, renderHeadTags, seoForPath, type SeoEntry } from "./lib/seo"
+import { buildBlogCategoryHead, renderCustomHeadTags, renderHeadTags, seoForPath, type SeoEntry } from "./lib/seo"
 
 const prerenderFetch: typeof fetch = (input, init) => fetch(input, {
   ...init,
@@ -68,12 +68,19 @@ function loadPrerenderedSiteCms(path: string, locale: PublicSiteCmsData["locale"
  * re-attaches the real handler from <App/>.
  */
 
-/** Every public route in every locale, in sitemap order (`/`, `/ar`, `/en`, `/features`, …). */
-export const ROUTES: string[] = localeEntries().map((entry) => entry.path)
+/** Every public route in every locale, in sitemap order (`/`, `/ar`, `/en`, `/features`, `/blog/tips`, …). */
+export const ROUTES: string[] = [
+  ...localeEntries().map((entry) => entry.path),
+  ...LOCALES.flatMap((locale) => BLOG_CATEGORIES.map((category) => localizedBlogCategoryPath(locale.id, category))),
+]
 
 /** The document head (title, description, canonical, hreflang, Open Graph, JSON-LD) for one route. */
 export function head(pathname: string, siteUrl: string = SITE_URL, socialImage?: string): string {
   const { locale, path } = localeRoute(pathname)
+  const blogCategoryRoute = blogCategoryFromPath(path)
+  if (blogCategoryRoute) {
+    return renderCustomHeadTags({ ...buildBlogCategoryHead(blogCategoryRoute.category, locale, siteUrl), ...(socialImage ? { socialImage } : {}) })
+  }
   const entry: SeoEntry = seoForPath(path, locale)
   const jsonLd = buildJsonLd(entry.page, locale, T[locale], EXTRA[locale])
   return renderHeadTags({
@@ -88,6 +95,10 @@ export function head(pathname: string, siteUrl: string = SITE_URL, socialImage?:
 
 function headWithCms(pathname: string, siteUrl: string, socialImage: string | undefined, data?: PublicSiteCmsData): string {
   const { locale, path } = localeRoute(pathname)
+  const categoryRoute = blogCategoryFromPath(path)
+  if (categoryRoute) {
+    return renderCustomHeadTags({ ...buildBlogCategoryHead(categoryRoute.category, locale, siteUrl), ...(socialImage ? { socialImage } : {}) })
+  }
   const page = landingPageFromPath(path) ?? "home"
   const input = buildManagedSiteHead(data, page, locale, siteUrl)
   return input ? renderCustomHeadTags({ ...input, ...(socialImage ? { socialImage } : {}) }) : head(pathname, siteUrl, socialImage)
@@ -96,7 +107,7 @@ function headWithCms(pathname: string, siteUrl: string, socialImage: string | un
 /** HTML for the `#root` element of one public route. */
 export function render(pathname: string = "/", initialBlogPosts?: PublicBlogPost[], initialSiteCmsData?: PublicSiteCmsData): string {
   const path = normalizePath(pathname)
-  const page = landingPageFromPath(localeRoute(path).path) ?? "home"
+  const page = landingPageFromPath(localeRoute(path).path) ?? (blogCategoryFromPath(path) ? "blog" : "home")
   // The *localized* path: <Landing/> reads the current route and derives the
   // locale from the prefix, exactly as it does in the browser.
   setServerPath(path)
@@ -111,7 +122,7 @@ export function renderRoute(pathname: string, siteUrl: string = SITE_URL, social
 /** Prerenders the blog list into public landing documents when the DB is available. */
 export async function renderStaticRoute(pathname: string, siteUrl: string = SITE_URL, socialImage?: string): Promise<{ html: string; head: string; blogPosts?: PublicBlogPost[]; siteCms?: PublicSiteCmsData }> {
   const { locale, path } = localeRoute(pathname)
-  const page = landingPageFromPath(path) ?? "home"
+  const page = landingPageFromPath(path) ?? (blogCategoryFromPath(path) ? "blog" : "home")
   let blogPosts: PublicBlogPost[] | undefined
   if (page === "home" || page === "blog") blogPosts = await loadPrerenderedBlogPosts(locale)
   const siteCms = await loadPrerenderedSiteCms(pathname, locale)

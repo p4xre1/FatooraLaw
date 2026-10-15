@@ -1,14 +1,17 @@
-import type { LandingPage } from "./routes.ts"
+import type { BlogCategory, LandingPage } from "./routes.ts"
 import {
   AUTH_PATHS,
+  BLOG_CATEGORIES,
   LANDING_SECTIONS,
   MODULE_PATHS,
   NOT_FOUND_PATH,
   localeEntries,
+  localizedBlogCategoryPath,
   localizedLandingPath,
   normalizePath,
 } from "./routes.ts"
 import { DEFAULT_LOCALE, LOCALES, X_DEFAULT, localeInfo, type LocaleId } from "./locales.ts"
+import { SITE_URL } from "./site.ts"
 
 /**
  * Per-route, per-locale SEO metadata: the single source of truth used by
@@ -330,6 +333,148 @@ export function seoForPath(pathname: string, locale: LocaleId = DEFAULT_LOCALE):
   return seoEntry(page, locale)
 }
 
+/**
+ * The five blog section pages (`/blog/tips`, `/blog/news`, …) get the same
+ * treatment as every other public page: real prerendered documents, per locale,
+ * with SERP-length-checked titles and descriptions (see the budget note on
+ * `PAGE_COPY`).
+ */
+export const BLOG_CATEGORY_COPY: Record<BlogCategory, Record<LocaleId, LocaleCopy>> = {
+  tips: {
+    fr: {
+      title: "Conseils de gestion pour TPE marocaines | Fatorati",
+      description:
+        "Conseils pratiques pour les artisans, freelances et petites entreprises du Maroc : trésorerie, échéances, clients et coûts d'outils, expliqués simplement.",
+    },
+    ar: {
+      title: "نصائح التدبير للمقاولات الصغرى بالمغرب | فاتورتي",
+      description:
+        "نصائح عملية للحرفيين والمستقلين والمقاولات الصغرى بالمغرب: الخزينة، والمواعيد، والعملاء، والعقود، وتكاليف الأدوات، مشروحة بلغة واضحة وخطوات قابلة للتطبيق فوراً.",
+    },
+    en: {
+      title: "Management tips for Moroccan small businesses | Fatorati",
+      description:
+        "Practical tips for Moroccan artisans, freelancers and small businesses: cash flow, deadlines, clients, contracts and tool costs, explained in plain language.",
+    },
+  },
+  news: {
+    fr: {
+      title: "Actualités et nouveautés Fatorati pour les TPE",
+      description:
+        "Les nouveautés de Fatorati : nouvelles fonctionnalités, améliorations de la conformité marocaine, annonces produit et changements de tarifs, en un seul endroit.",
+    },
+    ar: {
+      title: "أخبار ومستجدات فاتورتي للمقاولات | فاتورتي",
+      description:
+        "مستجدات تطبيق فاتورتي: وظائف جديدة، وتحسينات في الامتثال المغربي، وإعلانات حول المنتج والأسعار، في مكان واحد. تابع هنا كل ما يتغير في التطبيق لخدمة مقاولتك.",
+    },
+    en: {
+      title: "Fatorati news and product updates for your business",
+      description:
+        "What is new in the Fatorati app: fresh features, Moroccan compliance improvements, product announcements and pricing changes, all in a single place.",
+    },
+  },
+  articles: {
+    fr: {
+      title: "Articles gestion, fiscalité et conformité | Fatorati",
+      description:
+        "Articles de fond pour les TPE marocaines : TVA, ICE, échéances DGI, loi 09-08 et organisation du quotidien, rédigés avec des sources officielles et vérifiées.",
+    },
+    ar: {
+      title: "مقالات التدبير والجباية والامتثال | فاتورتي",
+      description:
+        "مقالات معمّقة للمقاولات الصغرى المغربية: الرسم على القيمة المضافة، والمعرّف المشترك، وآجال الضرائب، والقانون 09-08، وتنظيم العمل اليومي، بمصادر رسمية موثوقة.",
+    },
+    en: {
+      title: "Business articles: management, tax and compliance",
+      description:
+        "In-depth articles for Moroccan small businesses: VAT, ICE, DGI deadlines, Law 09-08, day-to-day management and organisation, written with official sources.",
+    },
+  },
+  products: {
+    fr: {
+      title: "Produits et offres Fatorati pour les TPE du Maroc",
+      description:
+        "Présentation des produits et offres Fatorati : plans d'abonnement en dirhams, fonctionnalités incluses et accompagnement au démarrage de votre activité.",
+    },
+    ar: {
+      title: "منتجات وعروض فاتورتي للمقاولات الصغرى | فاتورتي",
+      description:
+        "تعريف بمنتجات وعروض فاتورتي: خطط الاشتراك بالدرهم، والوظائف المشمولة في كل خطة، والمنتجات متاحة للشراء المباشر، والمواكبة المقدّمة للانطلاق بثقة.",
+    },
+    en: {
+      title: "Fatorati products and offers for your business",
+      description:
+        "A closer look at Fatorati products and offers: subscription plans in dirhams, what each plan includes, one-time products and the support you get to start.",
+    },
+  },
+  guides: {
+    fr: {
+      title: "Guides pratiques pour gérer votre TPE | Fatorati",
+      description:
+        "Guides pas à pas pour les petites entreprises marocaines : facturer correctement, suivre la trésorerie, respecter les échéances et organiser ses documents.",
+    },
+    ar: {
+      title: "أدلة عملية لتدبير مقاولتك الصغرى بالمغرب",
+      description:
+        "أدلة خطوة بخطوة للمقاولات الصغرى المغربية: الفوترة الصحيحة، وتتبّع الخزينة، واحترام الآجال القانونية، وتنظيم الوثائق، مع نماذج وقوائم تحقق جاهزة للاستعمال.",
+    },
+    en: {
+      title: "Practical guides to run your Moroccan business",
+      description:
+        "Step-by-step guides for Moroccan small businesses: invoicing correctly, tracking cash flow, meeting legal deadlines and organising your documents.",
+    },
+  },
+}
+
+/** One blog section page in one locale: localized copy + its canonical path. */
+export function blogCategoryEntry(category: BlogCategory, locale: LocaleId = DEFAULT_LOCALE) {
+  const copy = BLOG_CATEGORY_COPY[category][locale]
+  return { ...copy, path: localizedBlogCategoryPath(locale, category) }
+}
+
+/** Complete alternate set for one blog section: every locale + `x-default`. */
+export function blogCategoryAlternates(category: BlogCategory, siteUrl: string): HreflangAlternate[] {
+  const origin = siteUrl.replace(/\/+$/, "")
+  return [
+    ...LOCALES.map((locale) => ({
+      hreflang: locale.tag,
+      href: `${origin}${localizedBlogCategoryPath(locale.id, category)}`,
+    })),
+    { hreflang: X_DEFAULT, href: `${origin}${localizedBlogCategoryPath(DEFAULT_LOCALE, category)}` },
+  ]
+}
+
+/**
+ * Structured head for one blog section document — the same contract the blog
+ * articles use (`renderCustomHeadTags`), plus `CollectionPage`/`Blog` schema so
+ * crawlers read the section as a list of posts rather than thin archive pages.
+ */
+export function buildBlogCategoryHead(category: BlogCategory, locale: LocaleId, siteUrl = SITE_URL): CustomHeadTagsInput {
+  const origin = siteUrl.replace(/\/+$/, "")
+  const entry = blogCategoryEntry(category, locale)
+  const canonical = `${origin}${entry.path}`
+  return {
+    title: entry.title,
+    description: entry.description,
+    canonical,
+    locale,
+    alternates: blogCategoryAlternates(category, siteUrl),
+    siteUrl: origin,
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      name: entry.title,
+      description: entry.description,
+      inLanguage: localeInfo(locale).tag,
+      url: canonical,
+      isPartOf: { "@id": `${origin}/#website` },
+      about: { "@id": `${origin}/#organization` },
+      blog: { "@type": "Blog", name: entry.title, url: canonical },
+    },
+  }
+}
+
 /** Absolute canonical URL for a public page — never contains a `#`. */
 export function canonicalUrl(siteUrl: string, page: LandingPage, locale: LocaleId = DEFAULT_LOCALE): string {
   return `${siteUrl.replace(/\/+$/, "")}${localizedLandingPath(page, locale)}`
@@ -394,7 +539,27 @@ export function buildSitemapXml(siteUrl: string, lastmod: string = isoDate()): s
     })
     .join("\n")
 
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${entries}\n</urlset>\n`
+  const categoryEntries = BLOG_CATEGORIES.flatMap((category) =>
+    LOCALES.filter((locale) => blogCategoryEntry(category, locale.id)).map((locale) => {
+      const entry = blogCategoryEntry(category, locale.id)
+      const alternates = blogCategoryAlternates(category, siteUrl).map(
+        (alternate) =>
+          `    <xhtml:link rel="alternate" hreflang="${escapeHtmlAttribute(alternate.hreflang)}" href="${escapeHtmlAttribute(alternate.href)}"/>`,
+      )
+      return [
+        "  <url>",
+        `    <loc>${escapeHtmlAttribute(`${origin}${entry.path}`)}</loc>`,
+        `    <lastmod>${lastmod}</lastmod>`,
+        "    <changefreq>weekly</changefreq>",
+        "    <priority>0.6</priority>",
+        ...alternates,
+        "  </url>",
+      ].join("\n")
+    }),
+  ).join("\n")
+
+  const allEntries = entries ? `${entries}\n${categoryEntries}` : categoryEntries
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${allEntries}\n</urlset>\n`
 }
 
 /** `llms.txt` (https://llmstxt.org) generated from the same page list as the sitemap. */

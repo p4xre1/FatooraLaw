@@ -1,5 +1,6 @@
 import type { BlogContent, BlogPost, BlogTranslationLocale } from "../../lib/blog"
 import type { LocaleId } from "../../lib/locales"
+import type { BlogCategory } from "../../lib/routes"
 import { supabase } from "../../lib/supabase"
 import { getCmsPost, listCmsPosts } from "../../lib/blog"
 
@@ -12,6 +13,11 @@ export type PostInput = {
   locales: Record<LocaleId, BlogContent>
   author_name: string
   published: boolean
+  /** One editorial section per post, shared by every translation. */
+  category?: BlogCategory
+  /** Cover image, post-level (the French canonical row). */
+  image_url?: string
+  image_alt?: string
 }
 
 const BASE_WRITE_COLUMNS = (content: BlogContent) => ({
@@ -54,7 +60,15 @@ export async function createPost(input: PostInput): Promise<Post> {
   // Save as a draft first so the database publication guard can verify all
   // translations and SEO fields atomically before the final publish update.
   const { data, error } = await supabase.from("posts")
-    .insert({ ...BASE_WRITE_COLUMNS(input.locales.fr), author_name: input.author_name, published: false, user_id: auth.user.id })
+    .insert({
+      ...BASE_WRITE_COLUMNS(input.locales.fr),
+      ...(input.category ? { category: input.category } : {}),
+      ...(input.image_url !== undefined ? { image_url: input.image_url } : {}),
+      ...(input.image_alt !== undefined ? { image_alt: input.image_alt } : {}),
+      author_name: input.author_name,
+      published: false,
+      user_id: auth.user.id,
+    })
     .select("id")
     .single()
   if (error) throw new Error(error.message)
@@ -76,6 +90,9 @@ export async function updatePost(id: string, input: PostInput): Promise<Post> {
 
   const { error } = await supabase.from("posts").update({
     ...BASE_WRITE_COLUMNS(input.locales.fr),
+    ...(input.category ? { category: input.category } : {}),
+    ...(input.image_url !== undefined ? { image_url: input.image_url } : {}),
+    ...(input.image_alt !== undefined ? { image_alt: input.image_alt } : {}),
     author_name: input.author_name,
   }).eq("id", id)
   if (error) throw new Error(error.message)

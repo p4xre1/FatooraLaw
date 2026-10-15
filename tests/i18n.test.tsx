@@ -2,7 +2,8 @@ import { fireEvent, render, screen } from "@testing-library/react"
 import { beforeEach, expect, it } from "vitest"
 import Landing, { EXTRA } from "../src/marketing/Landing"
 import { ROUTES, head, render as renderSsr } from "../src/entry-server"
-import { LANDING_PAGES, localizedLandingPath } from "../src/lib/routes"
+import { LANDING_PAGES, localizedBlogCategoryPath,
+  localizedLandingPath } from "../src/lib/routes"
 import { LOCALE_IDS, LOCALES, hreflang } from "../src/lib/locales"
 import { PAGE_COPY, hreflangAlternates } from "../src/lib/seo"
 import { SITE_URL } from "../src/lib/site"
@@ -27,11 +28,15 @@ beforeEach(() => {
 })
 
 it("publishes one prerendered route per public page per language", () => {
-  expect(ROUTES).toHaveLength(LANDING_PAGES.length * LOCALES.length)
+  // 12 marketing pages + 5 blog section pages (/blog/tips, …), each × 3 locales.
+  expect(ROUTES).toHaveLength((LANDING_PAGES.length + 5) * LOCALES.length)
   expect(new Set(ROUTES).size).toBe(ROUTES.length)
   for (const locale of LOCALE_IDS) {
     for (const page of LANDING_PAGES) {
       expect(ROUTES, `${page}/${locale}`).toContain(localizedLandingPath(page, locale))
+    }
+    for (const category of ["tips", "news", "articles", "products", "guides"] as const) {
+      expect(ROUTES, `${category}/${locale}`).toContain(localizedBlogCategoryPath(locale, category))
     }
   }
   // French keeps the unprefixed URLs every existing link already points at.

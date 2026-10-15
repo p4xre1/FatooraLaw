@@ -141,7 +141,7 @@ function assertCrawlable(route, html, prefix = "") {
   // graph even though every tag is present.
   if (!html.includes(`href="${prefix}/about"`)) problems.push(`missing ${prefix}/about link`)
   if (!html.includes(`href="${prefix}/contact"`)) problems.push(`missing ${prefix}/contact link`)
-  if (!/"(FAQPage|HowTo|Product|Article)"/.test(html) && !html.includes("FAQPage")) problems.push("missing content schema")
+  if (!/"(FAQPage|HowTo|Product|Article|CollectionPage|Blog)"/.test(html) && !html.includes("FAQPage")) problems.push("missing content schema")
   if (!html.includes("sameAs")) problems.push("missing sameAs")
   const words = visibleWords(html)
   if (words < 450) problems.push(`only ${words} server-rendered words`)

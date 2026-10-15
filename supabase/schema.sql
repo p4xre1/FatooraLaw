@@ -847,6 +847,50 @@ alter table public.posts
   add column if not exists author_name text not null default 'Fatorati',
   add column if not exists published_at timestamptz;
 
+-- Editorial section (one per post, shared by translations) + cover image.
+-- Keys are URL segments under /blog/ (see src/lib/routes.ts BLOG_CATEGORIES).
+alter table public.posts
+  add column if not exists category text not null default 'articles'
+    check (category in ('tips', 'news', 'articles', 'products', 'guides')),
+  add column if not exists image_url text not null default ''
+    check (char_length(image_url) <= 1000),
+  add column if not exists image_alt text not null default ''
+    check (char_length(image_alt) <= 300);
+
+create index if not exists posts_category_idx on public.posts (category, published, published_at desc);
+
+grant select (category, image_url, image_alt) on public.posts to anon, authenticated;
+grant update (category, image_url, image_alt) on public.posts to authenticated;
+
+-- Cover-image uploads: one public bucket, CMS admins only may write. The
+-- storage schema exists in Supabase but not in embedded Postgres sandboxes,
+-- so the whole block is skipped where it cannot apply.
+do $$
+begin
+  if to_regnamespace('storage') is not null then
+    insert into storage.buckets (id, name, public)
+    values ('blog-media', 'blog-media', true)
+    on conflict (id) do nothing;
+
+    drop policy if exists blog_media_public_read on storage.objects;
+    create policy blog_media_public_read on storage.objects
+    for select to anon, authenticated
+    using (bucket_id = 'blog-media');
+
+    drop policy if exists blog_media_admin_write on storage.objects;
+    create policy blog_media_admin_write on storage.objects
+    for insert to authenticated
+    with check (bucket_id = 'blog-media' and (public.is_admin() or public.is_platform_admin()));
+
+    drop policy if exists blog_media_admin_update on storage.objects;
+    create policy blog_media_admin_update on storage.objects
+    for update to authenticated
+    using (bucket_id = 'blog-media' and (public.is_admin() or public.is_platform_admin()))
+    with check (bucket_id = 'blog-media' and (public.is_admin() or public.is_platform_admin()));
+  end if;
+end
+$$;
+
 update public.posts set published_at = created_at where published and published_at is null;
 
 create table if not exists public.post_translations (

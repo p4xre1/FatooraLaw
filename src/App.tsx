@@ -30,6 +30,7 @@ import {
   DEFAULT_APP_PATH,
   authScreenFromPath,
   blogArticleFromPath,
+  blogCategoryFromPath,
   landingPageFromPath,
   localeRoute,
   moduleFromPath,
@@ -120,17 +121,18 @@ export default function App() {
   // a prefix in front of a private screen stays an unknown path.
   const landingPage = landingPageFromPath(localeRoute(path).path)
   const articleRoute = blogArticleFromPath(path)
+  const blogCategoryRoute = blogCategoryFromPath(path)
   const authScreen = authScreenFromPath(path)
   const routeModule = moduleFromPath(path)
-  const initialBlogPosts = useMemo(() => landingPage === "home" || landingPage === "blog"
+  const initialBlogPosts = useMemo(() => landingPage === "home" || landingPage === "blog" || blogCategoryRoute
     ? readPrerenderedBlogPosts(path, localeRoute(path).locale)
-    : undefined, [path, landingPage])
+    : undefined, [path, landingPage, blogCategoryRoute])
   const initialArticlePost = useMemo(() => articleRoute
     ? readPrerenderedBlogPost(path, articleRoute.locale, articleRoute.slug)
     : undefined, [path, articleRoute?.locale, articleRoute?.slug])
   const initialSiteCmsData = useMemo(() => readPrerenderedSiteCmsData(path, localeRoute(path).locale), [path])
   /** A path that belongs to no screen: `/404`, a typo, an old link. */
-  const unknownPath = !landingPage && !articleRoute && !authScreen && !routeModule && path !== "/"
+  const unknownPath = !landingPage && !articleRoute && !blogCategoryRoute && !authScreen && !routeModule && path !== "/"
 
   // Appearance (Paramètres → Apparence): the `.dark` class on <html> re-bases
   // the semantic colour tokens (see index.css), which is the whole repaint.
@@ -232,6 +234,7 @@ export default function App() {
       return <NotFound onHome={() => navigate("/")} />
     }
     if (articleRoute) return <BlogArticlePage locale={articleRoute.locale} slug={articleRoute.slug} initialPost={initialArticlePost} onEnter={() => navigate(AUTH_PATHS.login)} />
+    if (blogCategoryRoute) return <Landing onEnter={() => navigate(AUTH_PATHS.login)} initialBlogPosts={initialBlogPosts} initialSiteCmsData={initialSiteCmsData} />
     if (authScreen) {
       return (
         <>
@@ -252,7 +255,7 @@ export default function App() {
 
   // A signed-in visitor on a public marketing page: show it (the redirect
   // effect above only takes over `/` and the auth screens).
-  if (landingPage && landingPage !== "home") {
+  if ((landingPage && landingPage !== "home") || blogCategoryRoute) {
     return <Landing onEnter={() => navigate(DEFAULT_APP_PATH)} initialBlogPosts={initialBlogPosts} initialSiteCmsData={initialSiteCmsData} />
   }
   if (articleRoute) {
