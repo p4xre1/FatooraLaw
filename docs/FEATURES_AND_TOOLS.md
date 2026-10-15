@@ -229,6 +229,18 @@ account's data.
 ---
 
 ### 3.4 Achats & Dépenses — `/procurement`
+
+**Détail d'une dépense** (`lib/expenseCalc.ts`): an expense can be itemised —
+articles with quantities and unit prices (the "number of items" is their sum),
+a TVA rate of its own (defaulted from Paramètres, basis of the TVA
+récupérable), and the receipt photo itself stored with the record (image,
+512 KB max, validated like the logo). `amount` remains what was paid (TTC)
+everywhere; HT/TVA are derived — from the lines when itemised, from the TTC
+and rate otherwise, and `null` (shown as unknown) for legacy expenses with no
+rate, never invented. The list underlines the split and the item count, the
+receipt thumbnail opens the photo, and the Excel export carries items, rate
+and HT alongside the TTC.
+
 **File:** `src/modules/Procurement.tsx` (156 lines)
 
 **What it does.** An expense register with a two-state approval workflow.

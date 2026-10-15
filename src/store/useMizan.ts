@@ -177,7 +177,16 @@ export const useMizan = create<State>()(
 
       addExpense: (e) => {
         requireAmount(e.amount, "Le montant")
-        const ex: Expense = { ...e, id: uid(), note: sanitize(e.note) }
+        if (e.taxRate !== undefined && !isTaxRate(e.taxRate)) throw new Error("Le taux de TVA doit être compris entre 0 et 100 %.")
+        const items = e.items?.length
+          ? e.items.map((item) => {
+              requireAmount(item.qty, "La quantité", MAX_QUANTITY)
+              requireAmount(item.unitPrice, "Le prix unitaire")
+              return { label: sanitize(item.label), qty: item.qty, unitPrice: item.unitPrice }
+            })
+          : undefined
+        if (e.receiptImage) validateLogoDataURL(e.receiptImage)
+        const ex: Expense = { ...e, id: uid(), note: sanitize(e.note), items, receiptImage: e.receiptImage ?? null }
         set((s) => ({ expenses: [ex, ...s.expenses] }))
         get().log("a enregistré une dépense", `${ex.note} (${ex.amount} MAD)`, "procurement", "info")
       },

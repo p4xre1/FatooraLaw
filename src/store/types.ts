@@ -43,16 +43,33 @@ export type Contact = {
   balance: number // positive = they owe us (receivable), negative = we owe them
 }
 
+/** One bought article on an expense: what, how many, at what unit price. */
+export type ExpenseItem = {
+  label: string
+  /** Number of items bought. */
+  qty: number
+  /** Unit price excluding tax (HT). */
+  unitPrice: number
+}
+
 export type Expense = {
   id: string
   date: string
   vendorId: string
   category: string
   method: "transfer" | "check" | "cash"
+  /** What was paid, tax included (TTC) — the dashboard's number. */
   amount: number
   status: "pending" | "approved"
+  /** A receipt/invoice is noted for this expense (paper, or the photo below). */
   receipt: boolean
   note: string
+  /** Line detail, when the purchase was itemised. `amount` is its TTC total. */
+  items?: ExpenseItem[]
+  /** TVA rate (%) charged on this expense — the TVA récupérable basis. */
+  taxRate?: number
+  /** The receipt photo itself, stored with the record (data URL, ≤ 512 KB). */
+  receiptImage?: string | null
 }
 
 export type StockItem = {
