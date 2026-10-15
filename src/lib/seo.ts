@@ -1,14 +1,17 @@
-import type { LandingPage } from "./routes.ts"
+import type { BlogCategory, LandingPage } from "./routes.ts"
 import {
   AUTH_PATHS,
+  BLOG_CATEGORIES,
   LANDING_SECTIONS,
   MODULE_PATHS,
   NOT_FOUND_PATH,
   localeEntries,
+  localizedBlogCategoryPath,
   localizedLandingPath,
   normalizePath,
 } from "./routes.ts"
 import { DEFAULT_LOCALE, LOCALES, X_DEFAULT, localeInfo, type LocaleId } from "./locales.ts"
+import { SITE_URL } from "./site.ts"
 
 /**
  * Per-route, per-locale SEO metadata: the single source of truth used by
@@ -69,30 +72,36 @@ export const PAGE_SEO: Record<LandingPage, PageSeo> = {
  * three languages of one page stay side by side and a translation cannot
  * silently go missing (`Record<LandingPage, …>` makes an omission a type
  * error, not a French page with an Arabic URL).
+ *
+ * Length budget (checked by `tests/seoCopy.test.tsx` and the SEO crawlers):
+ *   - `title` 40–60 characters: inside that band the whole title shows on the
+ *     Google results page instead of being cut at ~60;
+ *   - `description` 140–160 characters: long enough for the two full SERP
+ *     lines, short enough never to be truncated with "…".
  */
 export const PAGE_COPY: Record<LandingPage, Record<LocaleId, LocaleCopy>> = {
   home: {
     fr: {
-      title: "Fatorati | Gestion, factures et conformité pour les TPE marocaines",
+      title: "Gestion, factures et conformité TPE marocaines | Fatorati",
       description:
-        "Fatorati réunit tableau de bord, projets, achats, abonnements, échéances légales et conformité Loi 09-08 dans une seule application mobile-first pour artisans, freelances et PME au Maroc.",
+        "Tableau de bord, factures, achats, abonnements et échéances légales : Fatorati réunit la gestion de votre TPE dans une application mobile-first au Maroc.",
     },
     ar: {
       title: "فاتورتي | تدبير وفواتير وامتثال للمقاولات الصغرى المغربية",
       description:
-        "فاتورتي تجمع لوحة القيادة والمشاريع والمشتريات والاشتراكات والمواعيد القانونية والامتثال للقانون 09-08 في تطبيق واحد موجّه للحرفيين والمستقلين والمقاولات الصغرى بالمغرب.",
+        "فاتورتي تجمع لوحة القيادة والفواتير والمشتريات والاشتراكات والمواعيد القانونية والامتثال للقانون 09-08 في تطبيق واحد موجّه للحرفيين والمقاولات الصغرى بالمغرب.",
     },
     en: {
-      title: "Fatorati | Management, invoicing and compliance for Moroccan SMEs",
+      title: "Management, invoicing and compliance for SMEs | Fatorati",
       description:
         "Dashboard, projects, purchases, subscriptions, legal deadlines and Law 09-08 compliance in one mobile-first app for Moroccan artisans and small businesses.",
     },
   },
   features: {
     fr: {
-      title: "Fonctionnalités : calendrier, risques et trésorerie | Fatorati",
+      title: "Calendrier, risques et trésorerie des TPE | Fatorati",
       description:
-        "Découvrez les trois piliers de Fatorati : calendrier des échéances, gestion des risques et conformité marocaine, suivi des abonnements et des dépenses — avec aperçus réels de l'interface.",
+        "Découvrez les trois piliers de Fatorati : calendrier des échéances, gestion des risques et conformité marocaine, suivi des abonnements et des dépenses.",
     },
     ar: {
       title: "الوظائف: المواعيد والمخاطر والخزينة | فاتورتي",
@@ -102,22 +111,22 @@ export const PAGE_COPY: Record<LandingPage, Record<LocaleId, LocaleCopy>> = {
     en: {
       title: "Features: deadlines, risk and cash flow tracking | Fatorati",
       description:
-        "Explore the three pillars of Fatorati — a deadline calendar, risk and Moroccan compliance tracking, and subscription and expense monitoring, with real interface previews.",
+        "Explore the three pillars of Fatorati: a deadline calendar, risk and Moroccan compliance tracking, and subscription and expense monitoring, with real previews.",
     },
   },
   assistant: {
     fr: {
-      title: "Assistant juridique marocain : modèles et règles locales | Fatorati",
+      title: "Assistant juridique marocain : modèles et règles | Fatorati",
       description:
-        "L'assistant Fatorati propose des modèles de contrats et les règles juridiques marocaines applicables (DOC, Loi 09-08, mention ICE, TVA 20 %) directement dans votre espace de gestion.",
+        "Modèles de contrats et règles juridiques marocaines applicables (DOC, Loi 09-08, mention ICE, TVA 20 %) servis dans votre espace de gestion.",
     },
     ar: {
       title: "مساعد قانوني مغربي: نماذج وقواعد محلية | فاتورتي",
       description:
-        "يوفّر مساعد فاتورتي نماذج عقود والقواعد القانونية المغربية المطبَّقة (ق.ل.ع، القانون 09-08، المعرّف المشترك للمقاولة، الرسم على القيمة المضافة 20 %) داخل مساحة تدبيرك.",
+        "يوفّر مساعد فاتورتي نماذج عقود والقواعد القانونية المغربية المطبَّقة (ق.ل.ع، القانون 09-08، المعرّف المشترك للمقاولة، الرسم على القيمة المضافة 20 %) في مساحتك.",
     },
     en: {
-      title: "Moroccan legal assistant: templates and local rules | Fatorati",
+      title: "Legal assistant: Moroccan templates and rules | Fatorati",
       description:
         "The Fatorati assistant surfaces Moroccan contract templates and the local rules that apply — DOC, Law 09-08, ICE and 20% VAT — inside your management workspace.",
     },
@@ -126,15 +135,15 @@ export const PAGE_COPY: Record<LandingPage, Record<LocaleId, LocaleCopy>> = {
     fr: {
       title: "À propos de Fatorati : notre mission au Maroc",
       description:
-        "Fatorati est né d'un constat simple : les artisans, freelances et petites entreprises marocaines méritent une gestion claire, abordable et conforme, sans logiciel complexe.",
+        "Fatorati est née d'un constat simple : les artisans, freelances et petites entreprises marocaines méritent une gestion claire, abordable et vraiment conforme.",
     },
     ar: {
-      title: "عن فاتورتي: مهمتنا في المغرب",
+      title: "عن فاتورتي: مهمتنا لخدمة المقاولات الصغرى بالمغرب",
       description:
         "انطلقت فاتورتي من ملاحظة بسيطة: الحرفيون والمستقلون والمقاولات الصغرى بالمغرب يستحقون تدبيراً واضحاً وبأسعار معقولة ومطابقاً للقانون، بدون برامج معقّدة.",
     },
     en: {
-      title: "About Fatorati: our mission in Morocco",
+      title: "About Fatorati: our mission for Moroccan SMEs",
       description:
         "Fatorati started from a simple observation: Moroccan artisans, freelancers and small businesses deserve clear, affordable and compliant management software.",
     },
@@ -143,29 +152,29 @@ export const PAGE_COPY: Record<LandingPage, Record<LocaleId, LocaleCopy>> = {
     fr: {
       title: "Avantages : pourquoi choisir Fatorati pour votre TPE",
       description:
-        "Gagnez du temps sur le suivi des échéances, évitez les pénalités de retard, maîtrisez vos coûts d'outils et gardez vos documents légaux au même endroit : les bénéfices concrets de Fatorati.",
+        "Gagnez du temps sur le suivi des échéances, évitez les pénalités de retard, maîtrisez vos coûts d'outils et gardez vos documents légaux au même endroit.",
     },
     ar: {
       title: "الفوائد: لماذا تختار فاتورتي لمقاولتك الصغرى",
       description:
-        "اربح الوقت في تتبّع المواعيد، وتجنّب غرامات التأخير، وتحكّم في تكاليف الأدوات، واحفظ وثائقك القانونية في مكان واحد: فوائد فاتورتي العملية.",
+        "اربح الوقت في تتبّع المواعيد، وتجنّب غرامات التأخير، وتحكّم في تكاليف الأدوات، واحفظ وثائقك القانونية في مكان واحد: فوائد فاتورتي العملية لمقاولتك.",
     },
     en: {
       title: "Benefits: why Moroccan small businesses choose Fatorati",
       description:
-        "Save time on deadlines, avoid late-payment penalties, keep your tool costs under control and keep your legal documents in one place — the concrete benefits of Fatorati.",
+        "Save time on deadlines, avoid late-payment penalties, keep your tool costs under control and keep your legal documents in one place with Fatorati.",
     },
   },
   pricing: {
     fr: {
       title: "Tarifs Fatorati : des offres claires pour les TPE marocaines",
       description:
-        "Comparez les offres Fatorati : prix en dirhams, fonctionnalités incluses et engagement sans surprise. Sans carte bancaire pour commencer, résiliable à tout moment.",
+        "Comparez les offres Fatorati : prix en dirhams, fonctionnalités incluses et sans engagement. Sans carte bancaire pour commencer, résiliable à tout moment.",
     },
     ar: {
       title: "أسعار فاتورتي: عروض واضحة للمقاولات الصغرى بالمغرب",
       description:
-        "قارن عروض فاتورتي: الأسعار بالدرهم، والوظائف المشمولة، والتزام بدون مفاجآت. بدون بطاقة بنكية للانطلاق، ويمكن الإلغاء في أي وقت.",
+        "قارن عروض فاتورتي: الأسعار بالدرهم، والوظائف المشمولة في كل خطة، والتزام بدون مفاجآت. بدون بطاقة بنكية للانطلاق، ويمكنك إلغاء الاشتراك في أي وقت.",
     },
     en: {
       title: "Fatorati pricing: clear plans for Moroccan small businesses",
@@ -175,9 +184,9 @@ export const PAGE_COPY: Record<LandingPage, Record<LocaleId, LocaleCopy>> = {
   },
   blog: {
     fr: {
-      title: "Ressources et guides de gestion pour les TPE au Maroc | Fatorati",
+      title: "Guides de gestion pour les TPE marocaines | Fatorati",
       description:
-        "Guides pratiques sur la TVA, l'ICE, les échéances DGI, le suivi de trésorerie et la conformité CNDP, écrits pour les artisans, freelances et petites entreprises marocaines.",
+        "Guides pratiques sur la TVA, l'ICE, les échéances DGI, le suivi de trésorerie et la conformité CNDP, écrits pour les artisans, freelances et TPE marocaines.",
     },
     ar: {
       title: "أدلة ومصادر التدبير للمقاولات الصغرى بالمغرب | فاتورتي",
@@ -194,7 +203,7 @@ export const PAGE_COPY: Record<LandingPage, Record<LocaleId, LocaleCopy>> = {
     fr: {
       title: "Questions fréquentes sur Fatorati et la conformité au Maroc",
       description:
-        "Réponses aux questions les plus posées : compatibilité avec les TPE marocaines, usage sur mobile, sécurité et confidentialité des données, changement d'offre et accompagnement.",
+        "Réponses aux questions les plus posées : compatibilité avec les TPE marocaines, usage sur mobile, sécurité des données, changement d'offre et accompagnement.",
     },
     ar: {
       title: "أسئلة شائعة حول فاتورتي والامتثال بالمغرب",
@@ -204,73 +213,73 @@ export const PAGE_COPY: Record<LandingPage, Record<LocaleId, LocaleCopy>> = {
     en: {
       title: "Frequently asked questions about Fatorati and compliance",
       description:
-        "Answers to the questions we hear most: fit for Moroccan small businesses, using it on a phone, data security and privacy, changing plan, and the support you get.",
+        "Answers to the questions we hear most: fit for Moroccan small businesses, using it on a phone, data security and privacy, changing plan and support.",
     },
   },
   contact: {
     fr: {
-      title: "Contacter l'équipe Fatorati",
+      title: "Contacter le support Fatorati à Tanger, Maroc",
       description:
-        "Une question sur Fatorati, les tarifs ou la mise en route ? Écrivez-nous : l'équipe répond aux entreprises marocaines et à leurs besoins de gestion et de conformité.",
+        "Une question sur Fatorati, les tarifs ou la mise en route ? Écrivez-nous : l'équipe répond aux entreprises marocaines sur la gestion et la conformité.",
     },
     ar: {
-      title: "تواصل مع فريق فاتورتي",
+      title: "تواصل مع فريق دعم فاتورتي في طنجة، المغرب",
       description:
-        "سؤال حول فاتورتي أو الأسعار أو الانطلاق؟ راسلنا: يجيب الفريق عن المقاولات المغربية واحتياجاتها في التدبير والامتثال.",
+        "سؤال حول فاتورتي أو الأسعار أو طريقة الانطلاق؟ راسلنا من طنجة: يجيب الفريق عن المقاولات المغربية واحتياجاتها في التدبير والامتثال للقانون 09-08.",
     },
     en: {
-      title: "Contact the Fatorati team",
+      title: "Contact the Fatorati team in Tangier, Morocco",
       description:
         "A question about Fatorati, pricing or getting started? Write to us — the team answers Moroccan businesses about their management and compliance needs.",
     },
   },
   privacy: {
     fr: {
-      title: "Politique de confidentialité | Fatorati",
+      title: "Politique de confidentialité des données | Fatorati",
       description:
-        "Quelles données Fatorati collecte, pourquoi, combien de temps elles sont conservées, et comment exercer vos droits d'accès, de rectification et d'opposition (Loi 09-08 / CNDP).",
+        "Quelles données Fatorati collecte, pourquoi, combien de temps elles sont conservées, et comment exercer vos droits d'accès, de rectification et d'opposition.",
     },
     ar: {
-      title: "سياسة الخصوصية | فاتورتي",
+      title: "سياسة الخصوصية وحماية المعطيات الشخصية | فاتورتي",
       description:
         "ما هي المعطيات التي تجمعها فاتورتي، ولماذا، ومدة حفظها، وكيف تمارس حقوقك في الولوج والتصحيح والتعرض (القانون 09-08 / اللجنة الوطنية لحماية المعطيات).",
     },
     en: {
-      title: "Privacy policy | Fatorati",
+      title: "Privacy policy and data protection | Fatorati",
       description:
         "What data Fatorati collects, why, how long it is kept, and how to exercise your rights of access, correction and objection (Law 09-08 / CNDP).",
     },
   },
   terms: {
     fr: {
-      title: "Conditions d'utilisation | Fatorati",
+      title: "Conditions générales d'utilisation | Fatorati",
       description:
-        "Les règles d'utilisation du service Fatorati : usage licite, confidentialité des identifiants, évolution des fonctionnalités et responsabilités de chaque partie.",
+        "Les règles d'utilisation du service Fatorati : usage licite, confidentialité des identifiants, évolution des fonctionnalités et responsabilités de chacun.",
     },
     ar: {
-      title: "شروط الاستخدام | فاتورتي",
+      title: "شروط الاستخدام والأحكام العامة للخدمة | فاتورتي",
       description:
-        "قواعد استعمال خدمة فاتورتي: الاستعمال المشروع، والحفاظ على سرية معرّفات الدخول، وتطوّر الوظائف، ومسؤوليات كل طرف.",
+        "قواعد استعمال خدمة فاتورتي: الاستعمال المشروع، والحفاظ على سرية معرّفات الدخول، وتطوّر الوظائف، ومسؤوليات كل طرف تجاه الخدمة والبيانات الشخصية.",
     },
     en: {
-      title: "Terms of use | Fatorati",
+      title: "Terms of service for your account | Fatorati",
       description:
         "The rules for using Fatorati: lawful use, keeping your credentials confidential, how features evolve, and what each party is responsible for.",
     },
   },
   cookies: {
     fr: {
-      title: "Politique de cookies | Fatorati",
+      title: "Politique de cookies et consentement | Fatorati",
       description:
-        "Cookies strictement nécessaires et mesure d'audience Google Analytics activée uniquement après consentement : ce que Fatorati dépose, pourquoi, et comment modifier votre choix.",
+        "Cookies strictement nécessaires et mesure d'audience Google Analytics activée uniquement après consentement : ce que Fatorati dépose et comment changer d'avis.",
     },
     ar: {
-      title: "سياسة ملفات الارتباط | فاتورتي",
+      title: "سياسة ملفات الارتباط والموافقة | فاتورتي",
       description:
-        "ملفات ارتباط ضرورية بشكل صارم، وقياس الجمهور عبر Google Analytics لا يُفعّل إلا بموافقتك: ما تضعه فاتورتي، ولماذا، وكيف تغيّر اختيارك.",
+        "ملفات ارتباط ضرورية بشكل صارم، وقياس الجمهور عبر Google Analytics لا يُفعّل إلا بموافقتك: ما تضعه فاتورتي، ولماذا، وكيف تغيّر اختيارك في أي وقت.",
     },
     en: {
-      title: "Cookie policy | Fatorati",
+      title: "Cookie policy and your consent | Fatorati",
       description:
         "Strictly necessary cookies, and Google Analytics only after you consent: what Fatorati sets, why, and how to change your choice at any time.",
     },
@@ -322,6 +331,148 @@ export function seoForPath(pathname: string, locale: LocaleId = DEFAULT_LOCALE):
   if (found) return found
   const page = publicPages().find((entry) => entry.path === path)?.page ?? ("home" as LandingPage)
   return seoEntry(page, locale)
+}
+
+/**
+ * The five blog section pages (`/blog/tips`, `/blog/news`, …) get the same
+ * treatment as every other public page: real prerendered documents, per locale,
+ * with SERP-length-checked titles and descriptions (see the budget note on
+ * `PAGE_COPY`).
+ */
+export const BLOG_CATEGORY_COPY: Record<BlogCategory, Record<LocaleId, LocaleCopy>> = {
+  tips: {
+    fr: {
+      title: "Conseils de gestion pour TPE marocaines | Fatorati",
+      description:
+        "Conseils pratiques pour les artisans, freelances et petites entreprises du Maroc : trésorerie, échéances, clients et coûts d'outils, expliqués simplement.",
+    },
+    ar: {
+      title: "نصائح التدبير للمقاولات الصغرى بالمغرب | فاتورتي",
+      description:
+        "نصائح عملية للحرفيين والمستقلين والمقاولات الصغرى بالمغرب: الخزينة، والمواعيد، والعملاء، والعقود، وتكاليف الأدوات، مشروحة بلغة واضحة وخطوات قابلة للتطبيق فوراً.",
+    },
+    en: {
+      title: "Management tips for Moroccan small businesses | Fatorati",
+      description:
+        "Practical tips for Moroccan artisans, freelancers and small businesses: cash flow, deadlines, clients, contracts and tool costs, explained in plain language.",
+    },
+  },
+  news: {
+    fr: {
+      title: "Actualités et nouveautés Fatorati pour les TPE",
+      description:
+        "Les nouveautés de Fatorati : nouvelles fonctionnalités, améliorations de la conformité marocaine, annonces produit et changements de tarifs, en un seul endroit.",
+    },
+    ar: {
+      title: "أخبار ومستجدات فاتورتي للمقاولات | فاتورتي",
+      description:
+        "مستجدات تطبيق فاتورتي: وظائف جديدة، وتحسينات في الامتثال المغربي، وإعلانات حول المنتج والأسعار، في مكان واحد. تابع هنا كل ما يتغير في التطبيق لخدمة مقاولتك.",
+    },
+    en: {
+      title: "Fatorati news and product updates for your business",
+      description:
+        "What is new in the Fatorati app: fresh features, Moroccan compliance improvements, product announcements and pricing changes, all in a single place.",
+    },
+  },
+  articles: {
+    fr: {
+      title: "Articles gestion, fiscalité et conformité | Fatorati",
+      description:
+        "Articles de fond pour les TPE marocaines : TVA, ICE, échéances DGI, loi 09-08 et organisation du quotidien, rédigés avec des sources officielles et vérifiées.",
+    },
+    ar: {
+      title: "مقالات التدبير والجباية والامتثال | فاتورتي",
+      description:
+        "مقالات معمّقة للمقاولات الصغرى المغربية: الرسم على القيمة المضافة، والمعرّف المشترك، وآجال الضرائب، والقانون 09-08، وتنظيم العمل اليومي، بمصادر رسمية موثوقة.",
+    },
+    en: {
+      title: "Business articles: management, tax and compliance",
+      description:
+        "In-depth articles for Moroccan small businesses: VAT, ICE, DGI deadlines, Law 09-08, day-to-day management and organisation, written with official sources.",
+    },
+  },
+  products: {
+    fr: {
+      title: "Produits et offres Fatorati pour les TPE du Maroc",
+      description:
+        "Présentation des produits et offres Fatorati : plans d'abonnement en dirhams, fonctionnalités incluses et accompagnement au démarrage de votre activité.",
+    },
+    ar: {
+      title: "منتجات وعروض فاتورتي للمقاولات الصغرى | فاتورتي",
+      description:
+        "تعريف بمنتجات وعروض فاتورتي: خطط الاشتراك بالدرهم، والوظائف المشمولة في كل خطة، والمنتجات متاحة للشراء المباشر، والمواكبة المقدّمة للانطلاق بثقة.",
+    },
+    en: {
+      title: "Fatorati products and offers for your business",
+      description:
+        "A closer look at Fatorati products and offers: subscription plans in dirhams, what each plan includes, one-time products and the support you get to start.",
+    },
+  },
+  guides: {
+    fr: {
+      title: "Guides pratiques pour gérer votre TPE | Fatorati",
+      description:
+        "Guides pas à pas pour les petites entreprises marocaines : facturer correctement, suivre la trésorerie, respecter les échéances et organiser ses documents.",
+    },
+    ar: {
+      title: "أدلة عملية لتدبير مقاولتك الصغرى بالمغرب",
+      description:
+        "أدلة خطوة بخطوة للمقاولات الصغرى المغربية: الفوترة الصحيحة، وتتبّع الخزينة، واحترام الآجال القانونية، وتنظيم الوثائق، مع نماذج وقوائم تحقق جاهزة للاستعمال.",
+    },
+    en: {
+      title: "Practical guides to run your Moroccan business",
+      description:
+        "Step-by-step guides for Moroccan small businesses: invoicing correctly, tracking cash flow, meeting legal deadlines and organising your documents.",
+    },
+  },
+}
+
+/** One blog section page in one locale: localized copy + its canonical path. */
+export function blogCategoryEntry(category: BlogCategory, locale: LocaleId = DEFAULT_LOCALE) {
+  const copy = BLOG_CATEGORY_COPY[category][locale]
+  return { ...copy, path: localizedBlogCategoryPath(locale, category) }
+}
+
+/** Complete alternate set for one blog section: every locale + `x-default`. */
+export function blogCategoryAlternates(category: BlogCategory, siteUrl: string): HreflangAlternate[] {
+  const origin = siteUrl.replace(/\/+$/, "")
+  return [
+    ...LOCALES.map((locale) => ({
+      hreflang: locale.tag,
+      href: `${origin}${localizedBlogCategoryPath(locale.id, category)}`,
+    })),
+    { hreflang: X_DEFAULT, href: `${origin}${localizedBlogCategoryPath(DEFAULT_LOCALE, category)}` },
+  ]
+}
+
+/**
+ * Structured head for one blog section document — the same contract the blog
+ * articles use (`renderCustomHeadTags`), plus `CollectionPage`/`Blog` schema so
+ * crawlers read the section as a list of posts rather than thin archive pages.
+ */
+export function buildBlogCategoryHead(category: BlogCategory, locale: LocaleId, siteUrl = SITE_URL): CustomHeadTagsInput {
+  const origin = siteUrl.replace(/\/+$/, "")
+  const entry = blogCategoryEntry(category, locale)
+  const canonical = `${origin}${entry.path}`
+  return {
+    title: entry.title,
+    description: entry.description,
+    canonical,
+    locale,
+    alternates: blogCategoryAlternates(category, siteUrl),
+    siteUrl: origin,
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      name: entry.title,
+      description: entry.description,
+      inLanguage: localeInfo(locale).tag,
+      url: canonical,
+      isPartOf: { "@id": `${origin}/#website` },
+      about: { "@id": `${origin}/#organization` },
+      blog: { "@type": "Blog", name: entry.title, url: canonical },
+    },
+  }
 }
 
 /** Absolute canonical URL for a public page — never contains a `#`. */
@@ -388,7 +539,27 @@ export function buildSitemapXml(siteUrl: string, lastmod: string = isoDate()): s
     })
     .join("\n")
 
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${entries}\n</urlset>\n`
+  const categoryEntries = BLOG_CATEGORIES.flatMap((category) =>
+    LOCALES.filter((locale) => blogCategoryEntry(category, locale.id)).map((locale) => {
+      const entry = blogCategoryEntry(category, locale.id)
+      const alternates = blogCategoryAlternates(category, siteUrl).map(
+        (alternate) =>
+          `    <xhtml:link rel="alternate" hreflang="${escapeHtmlAttribute(alternate.hreflang)}" href="${escapeHtmlAttribute(alternate.href)}"/>`,
+      )
+      return [
+        "  <url>",
+        `    <loc>${escapeHtmlAttribute(`${origin}${entry.path}`)}</loc>`,
+        `    <lastmod>${lastmod}</lastmod>`,
+        "    <changefreq>weekly</changefreq>",
+        "    <priority>0.6</priority>",
+        ...alternates,
+        "  </url>",
+      ].join("\n")
+    }),
+  ).join("\n")
+
+  const allEntries = entries ? `${entries}\n${categoryEntries}` : categoryEntries
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${allEntries}\n</urlset>\n`
 }
 
 /** `llms.txt` (https://llmstxt.org) generated from the same page list as the sitemap. */

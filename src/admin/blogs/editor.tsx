@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react"
-import type { FormEvent } from "react"
-import { useNavigate, useParams } from "react-router"
-import { Loader2, Save } from "lucide-react"
-import type { BlogContent, BlogTranslationLocale } from "../../lib/blog"
+import { useEffect, useRef, useState } from "react"
+import type { ChangeEvent, FormEvent } from "react"
+import { useNavigate, useParams, useSearchParams } from "react-router"
+import { ImagePlus, Loader2, Save, Upload } from "lucide-react"
+import { BLOG_CATEGORIES, BLOG_CATEGORY_LABELS, blogCategory, type BlogCategory, type BlogContent, type BlogTranslationLocale } from "../../lib/blog"
 import type { LocaleId } from "../../lib/locales"
-import { Btn, Card, Field, Input, Textarea, Toggle } from "../../components/kit"
+import { supabase } from "../../lib/supabase"
+import { Btn, Card, Field, Input, Select, Textarea, Toggle } from "../../components/kit"
 import { FormAlert } from "../../modules/auth/components/FormAlert"
 import { createPost, getPost, updatePost, type PostInput } from "./client"
+import ViralChecklist from "./ViralChecklist"
 import { getBlogPublishRules } from "../platform/client"
 import {
   MAX_CONTENT_LENGTH,
@@ -63,13 +65,33 @@ function cleanLocales(locales: Record<EditableLocale, BlogContent>): Record<Edit
  * Drafts may have incomplete translations; the database publish trigger is
  * authoritative and enforces whatever language/SEO policy the platform uses.
  */
+/** Uploads a device image to the public `blog-media` bucket and returns its URL. */
+async function uploadCoverImage(file: File, slug: string): Promise<string> {
+  const extension = (file.name.split(".").pop() ?? "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg"
+  const base = (slug || "cover").replace(/[^a-z0-9-]/gi, "-").slice(0, 60)
+  const path = `posts/${Date.now()}-${base}.${extension}`
+  const { error } = await supabase.storage.from("blog-media").upload(path, file, { cacheControl: "31536000", upsert: false })
+  if (error) throw new Error(`تعذر رفع الصورة: ${error.message}`)
+  const { data } = supabase.storage.from("blog-media").getPublicUrl(path)
+  return data.publicUrl
+}
+
+const EMPTY_COVER = { url: "", alt: "", source: "none" as "none" | "url" | "upload" }
+
 export default function BlogEditorView() {
   const { id } = useParams<{ id: string }>()
   const isNew = !id
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [locales, setLocales] = useState<Record<EditableLocale, BlogContent>>(blankLocales)
   const [activeLocale, setActiveLocale] = useState<EditableLocale>("fr")
   const [authorName, setAuthorName] = useState("Fatorati")
+  // One section per post (shared by the translations); arriving from a section
+  // page in the CMS (`/admin/blogs/category/tips`) pre-selects it.
+  const [category, setCategory] = useState<BlogCategory>(() => blogCategory(searchParams.get("category")))
+  const [cover, setCover] = useState(EMPTY_COVER)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [published, setPublished] = useState(false)
   const [rules, setRules] = useState<PublishRules>(DEFAULT_RULES)
   const [loading, setLoading] = useState(!isNew)
@@ -91,6 +113,8 @@ export default function BlogEditorView() {
   useEffect(() => {
     setLocales(blankLocales())
     setAuthorName("Fatorati")
+    setCategory(blogCategory(searchParams.get("category")))
+    setCover(EMPTY_COVER)
     setPublished(false)
     setError(null)
     setNotice(null)
@@ -101,6 +125,8 @@ export default function BlogEditorView() {
       if (cancelled) return
       setLocales(fromPost(post))
       setAuthorName(post.author_name)
+      setCategory(post.category)
+      setCover({ url: post.image_url ?? "", alt: post.image_alt ?? "", source: post.image_url ? "url" : "none" })
       setPublished(post.published)
     }).catch((err) => {
       if (!cancelled) setError(err instanceof Error ? err.message : "تعذر تحميل المقال.")
@@ -158,7 +184,14 @@ export default function BlogEditorView() {
     if (saving || loading) return
     setError(null)
     setNotice(null)
-    const input: PostInput = { locales: cleanLocales(locales), author_name: authorName.trim() || "Fatorati", published }
+    const input: PostInput = {
+      locales: cleanLocales(locales),
+      author_name: authorName.trim() || "Fatorati",
+      published,
+      category,
+      image_url: cover.url.trim(),
+      image_alt: cover.alt.trim(),
+    }
     const validationError = validate(input.locales, published)
     if (validationError) { setError(validationError); return }
 
@@ -240,12 +273,68 @@ export default function BlogEditorView() {
                 </Field>
               </div>
             </div>
+            <div className="mt-4">
+              <ViralChecklist post={{ ...active, image_url: cover.url, image_alt: cover.alt, brandName: "Fatorati", siteHost: "fatorati.tech" }} />
+            </div>
           </div>
         </div>
 
-        <Field label="اسم الكاتب">
-          <Input value={authorName} onChange={(event) => setAuthorName(event.target.value)} maxLength={120} dir="auto" />
-        </Field>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="القسم / Section" hint="يظهر المقال في صفحة هذا القسم على الموقع (/blog/…) وفي شارة القسم على البطاقات والقائمة الجانبية.">
+            <Select value={category} onChange={(event) => setCategory(blogCategory(event.target.value))}>
+              {BLOG_CATEGORIES.map((key) => (
+                <option key={key} value={key}>{BLOG_CATEGORY_LABELS[key].ar} — {BLOG_CATEGORY_LABELS[key].fr} ({key})</option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="اسم الكاتب">
+            <Input value={authorName} onChange={(event) => setAuthorName(event.target.value)} maxLength={120} dir="auto" />
+          </Field>
+        </div>
+
+        {/* Cover image: URL or upload from the device, plus alt text (falls
+            back to the title when left empty — both persisted post-level). */}
+        <div className="rounded-xl border border-line bg-canvas/60 p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <ImagePlus className="h-4 w-4 text-brand" aria-hidden="true" />
+            <h2 className="text-[13px] font-bold text-ink">صورة الغلاف (اختياري)</h2>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="رابط الصورة">
+              <Input value={cover.url} onChange={(event) => setCover({ ...cover, url: event.target.value, source: event.target.value ? "url" : "none" })} placeholder="https://…" dir="ltr" className="text-start" />
+            </Field>
+            <div className="flex items-end gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/avif"
+                className="hidden"
+                onChange={async (event: ChangeEvent<HTMLInputElement>) => {
+                  const file = event.target.files?.[0]
+                  if (!file) return
+                  setUploading(true)
+                  try {
+                    const url = await uploadCoverImage(file, locales.fr.slug)
+                    setCover((current) => ({ ...current, url, source: "upload" }))
+                  } catch (uploadError) {
+                    setError(uploadError instanceof Error ? uploadError.message : "تعذر رفع الصورة.")
+                  } finally {
+                    setUploading(false)
+                    if (fileInputRef.current) fileInputRef.current.value = ""
+                  }
+                }}
+              />
+              <Btn type="button" variant="outline" disabled={uploading} onClick={() => fileInputRef.current?.click()}>
+                {uploading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Upload className="h-4 w-4" aria-hidden="true" />}
+                رفع صورة — اختر صورة من جهازك
+              </Btn>
+            </div>
+          </div>
+          <Field label="النص البديل للصورة (Alt Text) — لتحسين ظهورها في نتائج بحث الصور" hint="إن تُرك فارغاً، سيُستخدم العنوان الرئيسي تلقائياً كنص بديل.">
+            <Input value={cover.alt} onChange={(event) => setCover({ ...cover, alt: event.target.value })} maxLength={300} dir="auto" />
+          </Field>
+          {cover.url && <img src={cover.url} alt={cover.alt.trim() || locales.fr.title || "معاينة الغلاف"} className="mt-3 max-h-48 w-full rounded-lg border border-line object-cover" />}
+        </div>
         <div className="flex items-center justify-between rounded-lg border border-line bg-canvas px-3.5 py-3">
           <div>
             <p className="text-[13px] font-semibold text-ink">نشر المقال</p>

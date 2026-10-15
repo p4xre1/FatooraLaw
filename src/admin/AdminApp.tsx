@@ -51,6 +51,7 @@ export default function AdminApp() {
             <Route path="content-improvement" element={<ContentImprovement />} />
             <Route path="contact-inbox" element={<ContactInbox />} />
             <Route path="blogs" element={<BlogListView />} />
+            <Route path="blogs/category/:category" element={<BlogListView />} />
             <Route path="blogs/new" element={<BlogEditorView />} />
             <Route path="blogs/:id" element={<BlogEditorView />} />
           </Route>

@@ -52,7 +52,7 @@ const STATUS_LABELS = {
 } as const
 
 const STATUS_STYLE: Record<keyof typeof STATUS_LABELS, string> = {
-  pending: "bg-amber-50 text-amber-700 ring-amber-600/20",
+  pending: "bg-warn-50 text-amber-700 ring-amber-600/20",
   active: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
   frozen: "bg-sky-50 text-sky-700 ring-sky-600/20",
   stopped: "bg-rose-50 text-rose-700 ring-rose-600/20",
@@ -74,7 +74,7 @@ function whatsappNumber(contact: string): string {
   return digits
 }
 
-const inputCls = "w-full rounded-lg border border-line-strong bg-white px-3 py-2 text-[13px] outline-none focus:border-brand"
+const inputCls = "w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-[13px] outline-none focus:border-brand"
 const labelCls = "mb-1 block text-[11px] font-bold text-muted"
 
 export default function SubscriptionEditor() {
@@ -109,7 +109,7 @@ export default function SubscriptionEditor() {
 
       <CodeBuilder />
 
-      <section className="rounded-2xl border bg-white p-4 shadow-sm">
+      <section className="rounded-2xl border bg-surface p-4 shadow-sm">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-[15px] font-bold">سجل الاشتراكات ({records.length})</h2>
           <div className="flex items-center gap-2">
@@ -120,7 +120,7 @@ export default function SubscriptionEditor() {
           </div>
         </div>
 
-        {shown.length === 0 && <p className="py-6 text-center text-[13px] text-gray-400">لا توجد اشتراكات بعد. أنشئ أول رمز من المنشئ أعلاه.</p>}
+        {shown.length === 0 && <p className="py-6 text-center text-[13px] text-faint">لا توجد اشتراكات بعد. أنشئ أول رمز من المنشئ أعلاه.</p>}
 
         <div className="space-y-2.5">
           {shown.map((record) => (
@@ -139,7 +139,7 @@ export default function SubscriptionEditor() {
 
       <CatalogEditor />
 
-      <p className="rounded-xl border border-dashed bg-amber-50/60 p-3 text-[12px] leading-relaxed text-amber-800">
+      <p className="rounded-xl border border-dashed bg-warn-50/60 p-3 text-[12px] leading-relaxed text-warn">
         ملاحظة: هذه السجلات محفوظة في هذا المتصفح (local-first) — التجميد والإيقاف يسريان فوراً على التطبيق في نفس المتصفح.
         عند ربط Supabase تنتقل نفس السجلات إلى جدول <span dir="ltr" className="font-mono">account_subscriptions</span> وتصبح السيطرة خادمية.
       </p>
@@ -194,7 +194,7 @@ function CodeBuilder() {
     : ""
 
   return (
-    <section className="rounded-2xl border bg-white p-4 shadow-sm">
+    <section className="rounded-2xl border bg-surface p-4 shadow-sm">
       <h2 className="mb-3 text-[15px] font-bold">منشئ الرموز — رمز جديد لعميل</h2>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <div><label className={labelCls} htmlFor="cms-name">اسم العميل *</label><input id="cms-name" value={clientName} onChange={(e) => setClientName(e.target.value)} className={inputCls} placeholder="مثال: كريم بنجلون" /></div>
@@ -243,7 +243,7 @@ function CodeBuilder() {
           </p>
           <p className="mt-1 font-mono text-[20px] font-bold tracking-wider">{created.code}</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <button type="button" onClick={() => void copyCode()} className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-[12.5px] font-semibold hover:bg-white/20">
+            <button type="button" onClick={() => void copyCode()} className="inline-flex items-center gap-1.5 rounded-lg bg-surface/10 px-3 py-1.5 text-[12.5px] font-semibold hover:bg-surface/20">
               {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />} {copied ? "Copié" : "Copier"}
             </button>
             {waNumber && (
@@ -280,7 +280,7 @@ function RecordRow({ record, onFreeze, onUnfreeze, onStop, onReactivate, onRemov
           <p className="mt-0.5 font-mono text-[11.5px] text-slate-500" dir="ltr">{record.code}</p>
         </div>
 
-        <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset ${record.plan === "boost" ? "bg-violet-50 text-violet-700 ring-violet-600/20" : "bg-blue-50 text-blue-700 ring-blue-600/20"}`}>
+        <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset ${record.plan === "boost" ? "bg-violet-50 text-violet-700 ring-violet-600/20" : "bg-brand-50 text-blue-700 ring-blue-600/20"}`}>
           {record.plan.toUpperCase()} · {record.period === "1M" ? "شهر" : "سنة"}
         </span>
         <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset ${STATUS_STYLE[status]}`}>{STATUS_LABELS[status]}</span>
@@ -346,7 +346,7 @@ function CatalogEditor() {
     field === "tagline" ? translations[locale].plans.tagline[plan] : translations[locale].plans.value[plan]
 
   return (
-    <section className="rounded-2xl border bg-white p-4 shadow-sm">
+    <section className="rounded-2xl border bg-surface p-4 shadow-sm">
       <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-[15px] font-bold">الأسعار والنصوص</h2>
         <div className="flex items-center gap-2">

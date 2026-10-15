@@ -99,16 +99,19 @@
 .dark {
   color-scheme: dark;
 
-  --color-canvas: #0a0f1c;
-  --color-surface: #111a2c;
-  --color-line: #1f2b44;
-  --color-line-strong: #2c3d5f;
-  --color-ink: #e8eef7;
-  --color-muted: #9db0c7;
-  --color-faint: #7186a1;
+  /* Neutral dark family around the #0D1117 canvas (GitHub-dark style):
+     surfaces step up one elevation at a time, lines stay quiet, and only
+     the brand/semantic tints carry colour. */
+  --color-canvas: #0d1117;
+  --color-surface: #151b23;
+  --color-line: #293039;
+  --color-line-strong: #3d454f;
+  --color-ink: #e6edf3;
+  --color-muted: #9da9b8;
+  --color-faint: #74808d;
 
-  --color-brand-50: #15264a;
-  --color-brand-100: #1d3461;
+  --color-brand-50: #16233a;
+  --color-brand-100: #1e2f4d;
   --color-brand-700: #4a86e8;
 
   --color-emerald-50: #0b2e24;
@@ -118,10 +121,10 @@
   --color-warn: #f0a832;
   --color-warn-50: #2e2108;
   --color-serious-50: #381414;
-  --color-info-50: #15264a;
+  --color-info-50: #16233a;
 
-  --color-sidebar: #0d1526;
-  --color-sidebar-hover: #16213a;
+  --color-sidebar: #10161d;
+  --color-sidebar-hover: #1a212b;
   --color-sidebar-active-deep: #7db1ff;
   --color-sidebar-ink: #dbe4f0;
   --color-sidebar-faint: #8ea0b8;

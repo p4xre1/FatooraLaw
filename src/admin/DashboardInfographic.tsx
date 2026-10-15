@@ -28,7 +28,7 @@ export default function DashboardInfographic() {
   }
 
   return (
-    <div className="rounded-xl border bg-gradient-to-br from-blue-50 to-indigo-50 p-5 shadow-sm">
+    <div className="rounded-xl border bg-gradient-to-br from-brand-50 to-info-50 p-5 shadow-sm">
       <h3 className="font-bold flex items-center gap-2"><BarChart3 /> Dashboard Infographic</h3>
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-4">
         {[
@@ -38,7 +38,7 @@ export default function DashboardInfographic() {
           { label: "Audit Events", value: stats.audit, color: "text-rose-600" },
           { label: "Total Amount", value: stats.totalAmount.toFixed(2), color: "text-violet-600" },
         ].map((s) => (
-          <div key={s.label} className="rounded-lg bg-white p-3 shadow-sm text-center"><div className={`text-2xl font-extrabold ${s.color}`}>{s.value}</div><div className="text-xs text-gray-500">{s.label}</div></div>
+          <div key={s.label} className="rounded-lg bg-surface p-3 shadow-sm text-center"><div className={`text-2xl font-extrabold ${s.color}`}>{s.value}</div><div className="text-xs text-muted">{s.label}</div></div>
         ))}
       </div>
       <div className="flex gap-2 mt-4">

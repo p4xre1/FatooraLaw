@@ -82,6 +82,23 @@ export const MODULE_PATHS: Record<ModuleKey, string> = {
 /** Shown for any path that is not a known page (hosts serve it with a 404-ish status via noindex). */
 export const NOT_FOUND_PATH = "/404"
 
+/* ---------------------------- blog categories -----------------------------
+ * The five editorial sections of the blog. The keys are URL segments
+ * (`/blog/tips`), so they stay ASCII, lowercase and stable — the localized
+ * labels live in `BLOG_CATEGORY_LABELS` (src/lib/blog.ts) and never appear in
+ * a URL. One category page exists per locale, exactly like the other public
+ * pages, and `/blog/<category>` must never be mistaken for an article slug,
+ * so `BLOG_ARTICLE_PATH` below reserves these five words.
+ * ------------------------------------------------------------------------ */
+
+export const BLOG_CATEGORIES = ["tips", "news", "articles", "products", "guides"] as const
+export type BlogCategory = (typeof BLOG_CATEGORIES)[number]
+
+/** Accepts a stored/URL value and returns a known category, defaulting to `articles`. */
+export function blogCategory(value: unknown): BlogCategory {
+  return (BLOG_CATEGORIES as readonly string[]).includes(String(value)) ? (value as BlogCategory) : "articles"
+}
+
 /** Default path for a signed-in visitor arriving on `/`, `/login`, … */
 export const DEFAULT_APP_PATH = MODULE_PATHS.dashboard
 
@@ -141,7 +158,14 @@ export type LocaleEntry = { page: LandingPage; locale: LocaleId; path: string }
  *   `/en`          → `{ locale: "en", path: "/" }`
  *   `/ar/login`    → `{ locale: "fr", path: "/ar/login" }`  (unknown path → 404)
  */
-const BLOG_ARTICLE_PATH = /^\/blog\/([a-z0-9]+(?:-[a-z0-9]+)*)$/
+/**
+ * `/blog/<slug>` for an article. The five category words are reserved —
+ * `/blog/tips` is the tips section page, never an article slug — so the
+ * negative lookahead keeps article URLs and section URLs unambiguous.
+ */
+const BLOG_CATEGORY_ALTERNATION = BLOG_CATEGORIES.join("|")
+const BLOG_ARTICLE_PATH = new RegExp(`^/blog/(?!(?:${BLOG_CATEGORY_ALTERNATION})(?:/|$))([a-z0-9]+(?:-[a-z0-9]+)*)$`)
+const BLOG_CATEGORY_PATH = new RegExp(`^/blog/(${BLOG_CATEGORY_ALTERNATION})$`)
 
 export function localeRoute(pathname?: string | null): LocaleRoute {
   const path = normalizePath(pathname)
@@ -150,7 +174,7 @@ export function localeRoute(pathname?: string | null): LocaleRoute {
     if (path === locale.prefix) return { locale: locale.id, path: "/" }
     if (path.startsWith(`${locale.prefix}/`)) {
       const rest = path.slice(locale.prefix.length)
-      if (landingPageFromPath(rest) !== null || BLOG_ARTICLE_PATH.test(rest)) return { locale: locale.id, path: rest }
+      if (landingPageFromPath(rest) !== null || BLOG_ARTICLE_PATH.test(rest) || BLOG_CATEGORY_PATH.test(rest)) return { locale: locale.id, path: rest }
     }
   }
   return { locale: DEFAULT_LOCALE, path }
@@ -161,6 +185,13 @@ export function blogArticleFromPath(pathname?: string | null): { locale: LocaleI
   const { locale, path } = localeRoute(pathname)
   const match = BLOG_ARTICLE_PATH.exec(path)
   return match ? { locale, slug: match[1] } : null
+}
+
+/** A public, localized blog section URL such as `/ar/blog/guides`. */
+export function blogCategoryFromPath(pathname?: string | null): { locale: LocaleId; category: BlogCategory } | null {
+  const { locale, path } = localeRoute(pathname)
+  const match = BLOG_CATEGORY_PATH.exec(path)
+  return match ? { locale, category: match[1] as BlogCategory } : null
 }
 
 /**
@@ -186,6 +217,13 @@ export function localizedBlogArticlePath(locale: LocaleId, slug: string): string
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(normalizedSlug)) return localizedLandingPath("blog", locale)
   const { prefix } = localeInfo(locale)
   const path = `/blog/${normalizedSlug}`
+  return prefix ? `${prefix}${path}` : path
+}
+
+/** Canonical path of a blog section page in one locale (`/blog/tips`, `/ar/blog/tips`, …). */
+export function localizedBlogCategoryPath(locale: LocaleId, category: BlogCategory): string {
+  const { prefix } = localeInfo(locale)
+  const path = `/blog/${category}`
   return prefix ? `${prefix}${path}` : path
 }
 
@@ -221,7 +259,7 @@ export function modulePath(key: ModuleKey): string {
 /** True when the public layout (header, footer, cookie banner) should render. */
 export function isPublicPath(pathname: string | undefined | null): boolean {
   const path = localeRoute(pathname).path
-  return landingPageFromPath(path) !== null || BLOG_ARTICLE_PATH.test(path)
+  return landingPageFromPath(path) !== null || BLOG_ARTICLE_PATH.test(path) || BLOG_CATEGORY_PATH.test(path)
 }
 
 /** True when `pathname` addresses a screen that must never be indexed. */

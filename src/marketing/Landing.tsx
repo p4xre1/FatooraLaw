@@ -8,13 +8,26 @@ import {
 import { Logo } from "../components/nav"
 import { Brand } from "../components/Brand"
 import { SITE_URL } from "../lib/site"
-import { listPublishedPosts, getPublishedPostBySlug, type PublicBlogPost } from "../lib/blog"
+import { listPublishedPosts, getPublishedPostBySlug, BLOG_CATEGORIES, BLOG_CATEGORY_LABELS, type PublicBlogPost } from "../lib/blog"
 import { CONTACT_CITY, CONTACT_COUNTRY, CONTACT_EMAIL, CONTACT_PHONE, telHref } from "../lib/contact"
 import { readCookieConsent, writeCookieConsent, useMarketingAnalytics } from "../lib/cookieConsent"
 import { recordSiteEvent, useSiteVisitTracking } from "../lib/siteAnalytics"
 import { applyDocumentHead, applyCustomDocumentHead, applyNoIndexHead, seoForPath, type CustomDocumentHeadInput, type HreflangAlternate } from "../lib/seo"
 import { getPublishedSiteCmsData, submitCmsSupportRequest, type PublicCmsAnnouncement, type PublicCmsDownload, type PublicCmsFeature, type PublicCmsProduct, type PublicCmsRelease, type PublicSiteCmsData } from "../lib/siteCms"
-import { LANDING_PAGES, landingPath, landingPageFromPath, localeRoute, localizedBlogArticlePath, localizedLandingPath, normalizePath, type LandingPage } from "../lib/routes"
+import { buildBlogCategoryHead } from "../lib/seo"
+import {
+  LANDING_PAGES,
+  landingPath,
+  landingPageFromPath,
+  localeRoute,
+  localizedBlogArticlePath,
+  localizedBlogCategoryPath,
+  localizedLandingPath,
+  normalizePath,
+  blogCategoryFromPath,
+  type LandingPage,
+  type BlogCategory,
+} from "../lib/routes"
 import { LOCALES, isRTL, localeInfo, type LocaleId } from "../lib/locales"
 import { LocaleProvider, useLocaleHref } from "../lib/localeContext"
 import { currentHistoryState, navigate, onInternalLinkClick, useRoutePath } from "../lib/router"
@@ -235,12 +248,18 @@ export function buildManagedSiteHead(data: PublicSiteCmsData | undefined, page: 
  * page's title, description, `canonical` and JSON-LD behind — the classic
  * "every page claims to be the homepage" SPA bug.
  */
-function usePageHead(page: LandingPage, lang: Lang, t: Dict, extra: ExtraCopy) {
+function usePageHead(page: LandingPage, lang: Lang, t: Dict, extra: ExtraCopy, category?: BlogCategory | null) {
   useEffect(() => {
     // `locale` is passed explicitly: the canonical URL, the `hreflang`
     // alternates and `og:locale` all depend on which language tree we are in.
+    // A blog section URL gets its own title/description/canonical/alternates
+    // (same contract as the articles) instead of the /blog ones.
+    if (category) {
+      applyCustomDocumentHead(buildBlogCategoryHead(category, lang, SITE_URL))
+      return
+    }
     applyDocumentHead({ page, locale: lang, siteUrl: SITE_URL, jsonLd: buildJsonLd(page, lang, t, extra) })
-  }, [page, lang, t, extra])
+  }, [page, lang, t, extra, category])
 }
 
 export type Lang = "fr" | "en" | "ar"
@@ -432,7 +451,11 @@ export default function Landing({ onEnter = () => {}, initialPage, initialBlogPo
   // `initialPage` only matters while prerendering (the server has no URL of
   // its own); in the browser the page always comes from the real URL, so
   // every screen keeps its own link, reload and share behaviour.
-  const page: LandingPage = initialPage ?? landingPageFromPath(route.path) ?? "home"
+  // A blog section URL (`/blog/tips`) renders the blog page filtered to one
+  // section: it is a real public page of its own (own document, own head), the
+  // sidebar below stays the single organiser of the five sections.
+  const blogCategoryRoute = blogCategoryFromPath(path)
+  const page: LandingPage = initialPage ?? landingPageFromPath(route.path) ?? (blogCategoryRoute ? "blog" : "home")
   const landingRef = useLandingMotion(page)
   const t = T[lang]
   const extra = EXTRA[lang]
@@ -457,7 +480,7 @@ export default function Landing({ onEnter = () => {}, initialPage, initialBlogPo
     navigate(localizedLandingPath(page, next))
   }
 
-  usePageHead(page, lang, t, extra)
+  usePageHead(page, lang, t, extra, blogCategoryRoute?.category ?? null)
   useEffect(() => {
     const head = buildManagedSiteHead(currentSiteCmsData, page, lang)
     if (head) applyCustomDocumentHead(head)
@@ -538,9 +561,9 @@ export default function Landing({ onEnter = () => {}, initialPage, initialBlogPo
           {(home || page === "pricing") && <PricingSection copy={extra.pricing} onEnter={onEnter} locale={lang} path={path} />}
           {(home || page === "pricing") && <OneTimeProductsSection products={currentSiteCmsData?.products ?? []} locale={lang} path={path} />}
           {(home || page === "pricing") && <DownloadReleaseSection releases={currentSiteCmsData?.releases ?? []} downloads={currentSiteCmsData?.downloads ?? []} locale={lang} path={path} />}
-          {(home || page === "blog") && <BlogSection copy={extra.blog} locale={lang} showAll={page === "blog"} initialPosts={initialBlogPosts} />}
+          {(home || page === "blog") && <BlogSection copy={extra.blog} locale={lang} showAll={page === "blog"} initialPosts={initialBlogPosts} activeCategory={blogCategoryRoute?.category ?? null} />}
           {(home || page === "faq") && <FaqSection copy={extra.faq} />}
-          {(home || page === "contact") && <ContactSection copy={extra.contact} />}
+          {(home || page === "contact") && <ContactSection copy={extra.contact} locale={lang} />}
           {page === "contact" && <SupportRequestForm locale={lang} />}
           {(page === "home" || page === "privacy" || page === "terms" || page === "cookies") && <LegalSection copy={extra.legal} active={page === "home" ? undefined : page} />}
         </>}
@@ -648,7 +671,10 @@ function BlogArticleView({ locale, slug, initialPost, onEnter }: { locale: Local
         </a>
         {post ? <article itemScope itemType="https://schema.org/BlogPosting" className="mx-auto max-w-3xl">
           <header className="border-b border-[var(--l-border)] pb-8">
-            <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-blue-400">{ui.reading}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <a href={localizedBlogCategoryPath(locale, post.category)} onClick={onInternalLinkClick} className="rounded-full bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold text-blue-400 hover:bg-blue-500/20">{BLOG_CATEGORY_LABELS[post.category][locale]}</a>
+              <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-blue-400">{ui.reading}</p>
+            </div>
             <h1 itemProp="headline" className="font-display mt-3 text-[32px] font-extrabold leading-tight text-[var(--l-heading)] sm:text-[44px]">{post.title}</h1>
             {post.excerpt && <p itemProp="description" className="mt-5 text-[16px] leading-relaxed text-[var(--l-muted)]">{post.excerpt}</p>}
             <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] text-[var(--l-faint)]">
@@ -656,6 +682,10 @@ function BlogArticleView({ locale, slug, initialPost, onEnter }: { locale: Local
               {validDate(post.published_at) && <time itemProp="datePublished" dateTime={new Date(post.published_at).toISOString()}>{new Intl.DateTimeFormat(localeInfo(locale).tag, { dateStyle: "long" }).format(new Date(post.published_at))}</time>}
             </div>
           </header>
+          {/* The cover image from the CMS editor; the alt falls back to the title
+              exactly as the editor field documents, so a missing alt is never
+              shipped as empty. */}
+          {post.image_url && <img src={post.image_url} alt={post.image_alt?.trim() || post.title} width={1200} height={630} loading="eager" className="mt-8 w-full rounded-2xl border border-[var(--l-border-strong)] object-cover shadow-lg" />}
           <div itemProp="articleBody" className="prose prose-slate mt-9 max-w-none text-[15px] leading-8 text-[var(--l-text)] dark:prose-invert">
             {renderBlogBody(post.content)}
           </div>
@@ -702,7 +732,7 @@ function GhostLink({ children, href, className = "" }: { children: React.ReactNo
   return <a href={href} onClick={onInternalLinkClick} className={`landing-secondary inline-flex items-center justify-center gap-2 ${className}`}>{children}</a>
 }
 
-function LandingBrand({ size = 34, alt = "" }: { size?: number; alt?: string }) {
+function LandingBrand({ size = 34, alt = "Fatorati" }: { size?: number; alt?: string }) {
   /**
    * The landing header and footer sit on a light surface that may become dark
    * navy when the visitor switches theme, so this is the `auto` treatment: both
@@ -710,10 +740,13 @@ function LandingBrand({ size = 34, alt = "" }: { size?: number; alt?: string }) 
    * landing.css). No script reads the theme, so the mark is already right on the
    * first painted frame.
    *
-   * `alt` is the caller's business: the header passes nothing because the link
-   * around it is labelled "Fatorati accueil", the footer passes the brand name
-   * because that mark is the only place the name appears in that column, and
-   * the dashboard mock-up keeps it decorative.
+   * `alt` is the caller's business: it defaults to the brand name so no rendered
+   * copy of the mark ever ships without descriptive alt text (SEO audits and
+   * crawlers count empty `alt` as a missing one); the dark duplicates stay
+   * `aria-hidden` inside `Brand`, so a screen reader never hears the name twice.
+   * The header link around it is labelled "Fatorati accueil" — the brand name is
+   * announced once there, and the footer keeps the alt because that mark is the
+   * only place the name appears in that column.
    */
   return <span className="landing-brand"><Brand height={size} tone="auto" alt={alt} /></span>
 }
@@ -1208,7 +1241,7 @@ function CmsFeatureCard({ feature }: { feature: PublicCmsFeature }) {
   const Icon = iconMap[feature.icon] ?? Sparkles
   return <article className="flex flex-col overflow-hidden rounded-2xl border border-[var(--l-border)] bg-[var(--l-surface)] p-5">
     <span className="grid h-10 w-10 place-items-center rounded-xl bg-blue-500/10 text-blue-400"><Icon className="h-5 w-5" /></span>
-    {feature.image_url && <img src={feature.image_url} alt="" loading="lazy" className="mt-4 max-h-48 w-full rounded-lg object-cover" />}
+    {feature.image_url && <img src={feature.image_url} alt={feature.title} loading="lazy" className="mt-4 max-h-48 w-full rounded-lg object-cover" />}
     <h3 className="font-display mt-4 text-[16px] font-bold text-[var(--l-heading)]">{feature.title}</h3>
     {feature.description && <p className="mt-2 text-[13px] leading-relaxed text-[var(--l-muted)]">{feature.description}</p>}
     {feature.details && <p className="mt-3 whitespace-pre-line text-[12px] leading-relaxed text-[var(--l-faint)]">{feature.details}</p>}
@@ -1383,7 +1416,7 @@ function Assistant({ t, onEnter, showHeading = true }: { t: Dict; onEnter: () =>
           <div className="rounded-2xl border border-[var(--l-border-strong)] bg-[var(--l-panel)] p-4 shadow-2xl backdrop-blur-xl">
             <div className="flex items-center gap-2.5 border-b border-[var(--l-border)] pb-3">
               <span className="grid h-8 w-8 place-items-center rounded-lg text-white" style={{ backgroundImage: GRAD }}><ScrollText className="h-4 w-4" /></span>
-              <div><p className="text-[12.5px] font-semibold text-[var(--l-heading)]">{t.asst.panel}</p><p className="text-[10.5px] text-[var(--l-faint)]">{t.asst.panelSub}</p></div>
+              <div><h3 className="text-[12.5px] font-semibold text-[var(--l-heading)]">{t.asst.panel}</h3><p className="text-[10.5px] text-[var(--l-faint)]">{t.asst.panelSub}</p></div>
             </div>
             <div className="mt-3 space-y-2">
               {t.asst.rules.map((r) => (
@@ -1414,8 +1447,10 @@ function AboutSection({ copy, showHeading = true }: { copy: ExtraCopy["about"]; 
         </div>}
         <div>
           <p className="text-[15px] leading-relaxed text-[var(--l-muted)]">{copy.desc}</p>
+          {/* Each commitment is an <h3> under the section <h2>: the page keeps a
+              real H1→H2→H3 outline for crawlers while staying a visual checklist. */}
           <ul className="mt-6 space-y-3">
-            {copy.points.map((point) => <li key={point} className="flex items-start gap-2.5 text-[13.5px] text-[var(--l-text)]"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />{point}</li>)}
+            {copy.points.map((point) => <li key={point} className="flex items-start gap-2.5 text-[13.5px] text-[var(--l-text)]"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" aria-hidden="true" /><h3 className="font-semibold">{point}</h3></li>)}
           </ul>
         </div>
       </div>
@@ -1470,7 +1505,7 @@ function PricingSection({ copy, onEnter, locale, path, showHeading = true }: { c
   )
 }
 
-function BlogSection({ copy, locale, initialPosts, showAll = false, showHeading = true }: { copy: ExtraCopy["blog"]; locale: LocaleId; initialPosts?: PublicBlogPost[]; showAll?: boolean; showHeading?: boolean }) {
+function BlogSection({ copy, locale, initialPosts, showAll = false, showHeading = true, activeCategory = null }: { copy: ExtraCopy["blog"]; locale: LocaleId; initialPosts?: PublicBlogPost[]; showAll?: boolean; showHeading?: boolean; activeCategory?: BlogCategory | null }) {
   const [posts, setPosts] = useState<PublicBlogPost[]>(() => initialPosts ?? [])
   const [loading, setLoading] = useState(initialPosts === undefined)
   const [loadError, setLoadError] = useState(false)
@@ -1479,6 +1514,17 @@ function BlogSection({ copy, locale, initialPosts, showAll = false, showHeading 
     fr: { read: "Lire l’article", empty: "Aucun article publié pour le moment.", error: "Les articles ne sont pas disponibles pour le moment." },
     en: { read: "Read article", empty: "No articles have been published yet.", error: "Articles are temporarily unavailable." },
     ar: { read: "اقرأ المقال", empty: "لا توجد مقالات منشورة حالياً.", error: "المقالات غير متاحة مؤقتاً." },
+  }[locale]
+  /**
+   * The five sections are real pages (`/blog/tips`, …), so the sidebar is a
+   * nav of links, not buttons — shareable, crawlable, and it works before
+   * hydration. `activeCategory` arrives from the URL; the "all posts" view is
+   * the `/blog` page itself.
+   */
+  const sectionsCopy = {
+    fr: { title: "Sections", all: "Tous les articles" },
+    en: { title: "Sections", all: "All articles" },
+    ar: { title: "الأقسام", all: "كل المقالات" },
   }[locale]
 
   useEffect(() => {
@@ -1499,26 +1545,63 @@ function BlogSection({ copy, locale, initialPosts, showAll = false, showHeading 
     return () => { active = false }
   }, [locale, initialPosts])
 
-  const visiblePosts = showAll ? posts : posts.slice(0, 3)
+  // The full list feeds the sidebar counts; the visible list respects the
+  // section URL when there is one (the homepage and /blog show everything).
+  const counts = new Map<BlogCategory, number>()
+  for (const post of posts) counts.set(post.category, (counts.get(post.category) ?? 0) + 1)
+  const filtered = activeCategory ? posts.filter((post) => post.category === activeCategory) : posts
+  const visiblePosts = showAll || activeCategory ? filtered : posts.slice(0, 3)
   return (
     <section id="blog" aria-busy={loading} className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
       {showHeading && <div className="mx-auto max-w-2xl text-center">
         <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-blue-400">{copy.eyebrow}</p>
         <h2 className="font-display mt-3 text-[30px] font-bold text-[var(--l-heading)] sm:text-[38px]">{copy.title}</h2>
       </div>}
-      <div className="mx-auto mt-12 max-w-3xl space-y-4">
-        {visiblePosts.map((post) => {
-          const date = validDate(post.published_at) ? new Intl.DateTimeFormat(localeInfo(locale).tag, { year: "numeric", month: "short", day: "numeric" }).format(new Date(post.published_at)) : ""
-          return <article key={post.id} className="landing-resource-card rounded-2xl border border-[var(--l-border)] bg-[var(--l-surface)] p-6 sm:p-7">
-            <div className="flex flex-wrap items-center justify-between gap-2"><span className="rounded-full bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold text-blue-400">{post.keywords[0] ?? copy.eyebrow}</span>{date && <time dateTime={new Date(post.published_at).toISOString()} className="text-[11px] text-[var(--l-faint)]">{date}</time>}</div>
-            <h3 className="font-display mt-4 text-[19px] font-bold text-[var(--l-heading)]">{post.title}</h3><p className="mt-2 max-w-2xl text-[13.5px] leading-relaxed text-[var(--l-muted)]">{post.excerpt}</p>
-            <a href={localizedBlogArticlePath(locale, post.slug)} onClick={onInternalLinkClick} className="mt-4 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-blue-400">{copyByLocale.read} <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" /></a>
-          </article>
-        })}
-        {!loading && !visiblePosts.length && <p role="status" className="rounded-2xl border border-[var(--l-border)] bg-[var(--l-surface)] px-6 py-8 text-center text-[13px] text-[var(--l-muted)]">{loadError ? copyByLocale.error : copyByLocale.empty}</p>}
-        {loading && <p role="status" className="py-8 text-center text-[13px] text-[var(--l-faint)]">{locale === "ar" ? "جارٍ تحميل المقالات…" : locale === "en" ? "Loading articles…" : "Chargement des articles…"}</p>}
+      <div className={`mx-auto mt-12 grid gap-10 ${showAll || activeCategory ? "" : "max-w-3xl"}`}>
+        {(showAll || activeCategory) && <aside className="self-start lg:sticky lg:top-24">
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--l-faint)]">{sectionsCopy.title}</h3>
+          <nav aria-label={sectionsCopy.title} className="mt-3 flex flex-wrap gap-2 lg:flex-col lg:items-stretch">
+            <a
+              href={localizedLandingPath("blog", locale)}
+              onClick={onInternalLinkClick}
+              aria-current={activeCategory === null ? "page" : undefined}
+              className={`flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 text-[13px] font-semibold transition-colors ${activeCategory === null ? "border-blue-400/40 bg-blue-500/10 text-[var(--l-accent-text)]" : "border-[var(--l-border)] bg-[var(--l-surface)] text-[var(--l-muted)] hover:border-blue-400/30 hover:text-[var(--l-heading)]"}`}
+            >
+              <span>{sectionsCopy.all}</span>
+              <span className="text-[11px] text-[var(--l-faint)]">{posts.length}</span>
+            </a>
+            {BLOG_CATEGORIES.map((category) => {
+              const active = activeCategory === category
+              return (
+                <a
+                  key={category}
+                  href={localizedBlogCategoryPath(locale, category)}
+                  onClick={onInternalLinkClick}
+                  aria-current={active ? "page" : undefined}
+                  className={`flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 text-[13px] font-semibold transition-colors ${active ? "border-blue-400/40 bg-blue-500/10 text-[var(--l-accent-text)]" : "border-[var(--l-border)] bg-[var(--l-surface)] text-[var(--l-muted)] hover:border-blue-400/30 hover:text-[var(--l-heading)]"}`}
+                >
+                  <span>{BLOG_CATEGORY_LABELS[category][locale]}</span>
+                  <span className="text-[11px] text-[var(--l-faint)]">{counts.get(category) ?? 0}</span>
+                </a>
+              )
+            })}
+          </nav>
+        </aside>}
+        <div className="min-w-0 space-y-4">
+          {activeCategory && <p className="rounded-xl border border-[var(--l-border)] bg-[var(--l-surface)] px-4 py-3 text-[13px] text-[var(--l-muted)]"><span className="font-semibold text-[var(--l-heading)]">{BLOG_CATEGORY_LABELS[activeCategory][locale]}</span> — {filtered.length} {locale === "ar" ? (filtered.length === 1 ? "مقال" : "مقالات") : filtered.length === 1 ? "article" : "articles"}</p>}
+          {visiblePosts.map((post) => {
+            const date = validDate(post.published_at) ? new Intl.DateTimeFormat(localeInfo(locale).tag, { year: "numeric", month: "short", day: "numeric" }).format(new Date(post.published_at)) : ""
+            return <article key={post.id} className="landing-resource-card rounded-2xl border border-[var(--l-border)] bg-[var(--l-surface)] p-6 sm:p-7">
+              <div className="flex flex-wrap items-center justify-between gap-2"><span className="rounded-full bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold text-blue-400">{BLOG_CATEGORY_LABELS[post.category][locale]}</span>{date && <time dateTime={new Date(post.published_at).toISOString()} className="text-[11px] text-[var(--l-faint)]">{date}</time>}</div>
+              <h3 className="font-display mt-4 text-[19px] font-bold text-[var(--l-heading)]">{post.title}</h3><p className="mt-2 max-w-2xl text-[13.5px] leading-relaxed text-[var(--l-muted)]">{post.excerpt}</p>
+              <a href={localizedBlogArticlePath(locale, post.slug)} onClick={onInternalLinkClick} className="mt-4 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-blue-400">{copyByLocale.read} <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" /></a>
+            </article>
+          })}
+          {!loading && !visiblePosts.length && <p role="status" className="rounded-2xl border border-[var(--l-border)] bg-[var(--l-surface)] px-6 py-8 text-center text-[13px] text-[var(--l-muted)]">{loadError ? copyByLocale.error : copyByLocale.empty}</p>}
+          {loading && <p role="status" className="py-8 text-center text-[13px] text-[var(--l-faint)]">{locale === "ar" ? "جارٍ تحميل المقالات…" : locale === "en" ? "Loading articles…" : "Chargement des articles…"}</p>}
+          {!showAll && !activeCategory && posts.length > 3 && <div className="mt-7 text-center"><a href={to("blog")} onClick={onInternalLinkClick} className="inline-flex items-center gap-2 rounded-lg border border-[var(--l-border-strong)] px-4 py-2.5 text-[13px] font-semibold text-[var(--l-heading)] hover:border-blue-400/50">{locale === "ar" ? "كل المقالات" : locale === "en" ? "All articles" : "Tous les articles"} <ArrowRight className="h-4 w-4 rtl:rotate-180" /></a></div>}
+        </div>
       </div>
-      {!showAll && posts.length > 3 && <div className="mt-7 text-center"><a href={to("blog")} onClick={onInternalLinkClick} className="inline-flex items-center gap-2 rounded-lg border border-[var(--l-border-strong)] px-4 py-2.5 text-[13px] font-semibold text-[var(--l-heading)] hover:border-blue-400/50">{locale === "ar" ? "كل المقالات" : locale === "en" ? "All articles" : "Tous les articles"} <ArrowRight className="h-4 w-4 rtl:rotate-180" /></a></div>}
     </section>
   )
 }
@@ -1637,17 +1720,24 @@ function formatMoney(amount: number, currency: string, locale: LocaleId): string
 }
 function validDate(value: string): boolean { return Number.isFinite(new Date(value).getTime()) }
 
-function ContactSection({ copy, showHeading = true }: { copy: ExtraCopy["contact"]; showHeading?: boolean }) {
+function ContactSection({ copy, locale, showHeading = true }: { copy: ExtraCopy["contact"]; locale: LocaleId; showHeading?: boolean }) {
+  /** Small heading above each contact channel: heading structure for crawlers, scannability for visitors. */
+  const channelLabels: Record<LocaleId, { email: string; phone: string; address: string }> = {
+    fr: { email: "E-mail", phone: "Téléphone", address: "Adresse" },
+    en: { email: "Email", phone: "Phone", address: "Address" },
+    ar: { email: "البريد الإلكتروني", phone: "الهاتف", address: "العنوان" },
+  }
+  const label = channelLabels[locale]
   return (
     <section id="contact" className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
       <div className="mx-auto max-w-3xl rounded-3xl border border-blue-400/20 bg-blue-500/10 p-8 sm:p-10">
         {showHeading && <><p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-blue-400">{copy.eyebrow}</p><h2 className="font-display mt-3 text-[30px] font-bold text-[var(--l-heading)] sm:text-[38px]">{copy.title}</h2></>}<p className="mt-3 max-w-xl text-[15px] leading-relaxed text-[var(--l-muted)]">{copy.sub}</p>
         <div className="mt-8 grid gap-3 sm:grid-cols-3">
-          <a href={`mailto:${copy.email}`} className="flex items-center gap-2.5 rounded-xl border border-[var(--l-border)] bg-[var(--l-panel)] p-3 text-[12px] text-[var(--l-text)] hover:border-blue-400/40"><Mail className="h-4 w-4 text-blue-400" />{copy.email}</a>
+          <a href={`mailto:${copy.email}`} className="rounded-xl border border-[var(--l-border)] bg-[var(--l-panel)] p-3 text-[12px] text-[var(--l-text)] hover:border-blue-400/40"><h3 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--l-faint)]">{label.email}</h3><span className="mt-1 flex items-center gap-2"><Mail className="h-4 w-4 shrink-0 text-blue-400" />{copy.email}</span></a>
           {copy.phone && (
-            <a href={telHref(copy.phone)} className="flex items-center gap-2.5 rounded-xl border border-[var(--l-border)] bg-[var(--l-panel)] p-3 text-[12px] text-[var(--l-text)] hover:border-blue-400/40"><Phone className="h-4 w-4 text-blue-400" />{copy.phone}</a>
+            <a href={telHref(copy.phone)} className="rounded-xl border border-[var(--l-border)] bg-[var(--l-panel)] p-3 text-[12px] text-[var(--l-text)] hover:border-blue-400/40"><h3 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--l-faint)]">{label.phone}</h3><span className="mt-1 flex items-center gap-2"><Phone className="h-4 w-4 shrink-0 text-blue-400" />{copy.phone}</span></a>
           )}
-          <span className="flex items-center gap-2.5 rounded-xl border border-[var(--l-border)] bg-[var(--l-panel)] p-3 text-[12px] text-[var(--l-text)]"><MapPin className="h-4 w-4 shrink-0 text-blue-400" />{copy.city}</span>
+          <span className="rounded-xl border border-[var(--l-border)] bg-[var(--l-panel)] p-3 text-[12px] text-[var(--l-text)]"><h3 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--l-faint)]">{label.address}</h3><span className="mt-1 flex items-center gap-2"><MapPin className="h-4 w-4 shrink-0 text-blue-400" />{copy.city}</span></span>
         </div>
         <a href={`mailto:${copy.email}`} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-500 px-5 py-3 text-[13px] font-semibold text-white hover:bg-blue-400">{copy.cta} <Mail className="h-4 w-4" /></a>
       </div>
@@ -1657,15 +1747,35 @@ function ContactSection({ copy, showHeading = true }: { copy: ExtraCopy["contact
 
 function LegalSection({ copy, active, showHeading = true }: { copy: ExtraCopy["legal"]; active?: "privacy" | "terms" | "cookies"; showHeading?: boolean }) {
   const items = [{ id: "privacy", title: copy.privacy, text: copy.privacyText }, { id: "terms", title: copy.terms, text: copy.termsText }, { id: "cookies", title: copy.cookies, text: copy.cookiesText }]
+  /**
+   * The copy is written as "Titre — texte" per paragraph. Rendering that lead-in
+   * as an <h3> (instead of the start of a wall of <p>) gives each legal clause a
+   * real heading: crawlers get a proper H1→H2→H3 outline on /privacy, /terms and
+   * /cookies, and visitors can scan the clauses. Only a short lead-in is
+   * promoted, so introductory sentences that merely contain an em dash stay
+   * paragraphs.
+   */
+  const clauseLead = (para: string): string | null => {
+    const sep = para.indexOf(" — ")
+    return sep > 2 && sep <= 60 ? para.slice(0, sep) : null
+  }
   return (
     <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
       <div className="mx-auto max-w-3xl border-t border-[var(--l-border)] pt-10">
         {items.filter((item) => !active || item.id === active).map((item) => (
           <article id={item.id} key={item.id}>
             {showHeading && <h2 className="font-display text-[24px] font-bold text-[var(--l-heading)]">{item.title}</h2>}
-            {item.text.split("\n\n").map((para, i) => (
-              <p key={i} className="mt-4 text-[14px] leading-relaxed text-[var(--l-muted)]">{para}</p>
-            ))}
+            {item.text.split("\n\n").map((para, i) => {
+              const lead = clauseLead(para)
+              return lead ? (
+                <div key={i} className="mt-6">
+                  <h3 className="font-display text-[16px] font-bold text-[var(--l-heading)]">{lead}</h3>
+                  <p className="mt-2 text-[14px] leading-relaxed text-[var(--l-muted)]">{para.slice(lead.length + 3)}</p>
+                </div>
+              ) : (
+                <p key={i} className="mt-4 text-[14px] leading-relaxed text-[var(--l-muted)]">{para}</p>
+              )
+            })}
           </article>
         ))}
       </div>
