@@ -575,9 +575,11 @@ the totals; the stock value counts only articles with a known purchase
 price and names the rest.
 
 **Clients par ville — Maroc**: a schematic Morocco map (`lib/cities.ts`,
-`components/MoroccoMap.tsx`) with one dot per city, sized by client count or
-collected money, true relative positions on a simplified drawn outline (no
-tiles, no fetch — the app stays offline-capable). City names are matched by
+`components/MoroccoMap.tsx`) with one dot per city — 75 cities covering all
+twelve regions — sized by client count or collected money (projects plus
+verified orders), true relative positions on a simplified drawn outline
+whose proportions are aspect-correct and which a geometry test keeps every
+city strictly inside (no tiles, no fetch — the app stays offline-capable). City names are matched by
 normalization plus FR/EN/AR aliases; a place the map does not know is listed
 beside it, never dropped. Selecting a city names its best clients (score
 order) with their product keywords.
