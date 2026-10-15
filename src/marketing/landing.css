@@ -46,7 +46,7 @@
   overflow: clip;
 }
 .landing-root.landing-atlas[data-theme='dark'] {
-  --l-bg-solid: #101b2d;
+  --l-bg-solid: #0c1116;
   --l-header: #132036;
   --l-panel: #182841;
   --l-panel-2: #1d304d;
