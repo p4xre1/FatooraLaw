@@ -19,6 +19,7 @@ import { Btn } from "./components/kit"
 import PlanLock from "./components/PlanLock"
 import { usePlan, usePlanStatus } from "./store/usePlan"
 import { planIncludes } from "./lib/plans"
+import { applyThemeClass, useResolvedTheme } from "./lib/theme"
 import { useToday } from "./hooks/useToday"
 import Landing, { BlogArticlePage } from "./marketing/Landing"
 import { readPrerenderedBlogPost, readPrerenderedBlogPosts } from "./lib/blogPrerender"
@@ -105,6 +106,7 @@ export default function App() {
   // Subscribing (not just reading) matters here: the badge and the plan gate
   // must react the moment a code is redeemed in Paramètres.
   const plan = usePlanStatus(useToday())
+  const resolvedTheme = useResolvedTheme()
   const { needsOnboarding, submitting: onboardingSubmitting, error: onboardingError, submit: submitOnboarding } = useOnboarding(auth?.id ?? null)
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -127,6 +129,17 @@ export default function App() {
   const initialSiteCmsData = useMemo(() => readPrerenderedSiteCmsData(path, localeRoute(path).locale), [path])
   /** A path that belongs to no screen: `/404`, a typo, an old link. */
   const unknownPath = !landingPage && !articleRoute && !authScreen && !routeModule && path !== "/"
+
+  // Appearance (Paramètres → Apparence): the `.dark` class on <html> re-bases
+  // the semantic colour tokens (see index.css), which is the whole repaint.
+  // Applied only while a private module screen is showing — the marketing
+  // pages and auth screens keep the light identity they were designed with —
+  // and removed again when the shell unmounts (e.g. on the way to /admin).
+  const privateScreen = Boolean(auth && routeModule)
+  useEffect(() => {
+    applyThemeClass(privateScreen && resolvedTheme === "dark")
+  }, [privateScreen, resolvedTheme])
+  useEffect(() => () => applyThemeClass(false), [])
 
   // Leaving a local development session must also clear its opt-in marker,
   // otherwise the next reload would sign the same tab straight back in.

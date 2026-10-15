@@ -1,5 +1,9 @@
 @import 'tailwindcss';
 
+/* The `dark:` variant follows the `.dark` class App puts on <html> — not the
+   OS media query alone, because Paramètres can also force light or dark. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   /* Self-hosted fonts only: no request leaves the visitor's browser for a font
      (see the notice in src/main.tsx). 'Fatorati Landing Sans' is the Inter
@@ -12,6 +16,8 @@
 
   /* Ink / surfaces (light content area) */
   --color-ink: #0b1220;
+  /* Always-black surface (plan cards): pinned in both appearances. */
+  --color-night: #0b1220;
   --color-canvas: #f4f6f9;
   --color-surface: #ffffff;
   --color-line: #e5e8ee;
@@ -77,6 +83,49 @@
 
 :root {
   color-scheme: light;
+}
+
+/* ---------------------------------------------------------------------------
+   Dark appearance. The app is painted with semantic tokens (bg-surface,
+   text-ink, border-line, the sidebar set), so dark mode is one redefinition
+   of those tokens under `.dark` — App puts the class on <html> while a
+   signed-in screen is showing (see lib/theme.ts), and takes it off for the
+   marketing pages, the auth screens and the CMS, which keep their designed
+   light identity. Accent hues (brand, good, warn, serious) keep their hue;
+   only their pale tint backgrounds and text shades are re-based so badge
+   pairs stay readable. `--color-night` is deliberately absent: the plan
+   cards are black in both appearances.
+   --------------------------------------------------------------------------- */
+.dark {
+  color-scheme: dark;
+
+  --color-canvas: #0a0f1c;
+  --color-surface: #111a2c;
+  --color-line: #1f2b44;
+  --color-line-strong: #2c3d5f;
+  --color-ink: #e8eef7;
+  --color-muted: #9db0c7;
+  --color-faint: #7186a1;
+
+  --color-brand-50: #15264a;
+  --color-brand-100: #1d3461;
+  --color-brand-700: #4a86e8;
+
+  --color-emerald-50: #0b2e24;
+  --color-emerald-700: #2cc79b;
+
+  --color-good-50: #0b2e24;
+  --color-warn: #f0a832;
+  --color-warn-50: #2e2108;
+  --color-serious-50: #381414;
+  --color-info-50: #15264a;
+
+  --color-sidebar: #0d1526;
+  --color-sidebar-hover: #16213a;
+  --color-sidebar-active-deep: #7db1ff;
+  --color-sidebar-ink: #dbe4f0;
+  --color-sidebar-faint: #8ea0b8;
+  --color-sidebar-line: #1f2b44;
 }
 
 html,

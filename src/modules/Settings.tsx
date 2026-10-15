@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { Save, Upload, Download, Building2, Percent, FileText, HardDrive, Check } from "lucide-react"
+import { Save, Upload, Download, Building2, Percent, FileText, HardDrive, Check, Sun, Moon, Monitor, Palette } from "lucide-react"
 import type { Settings as SettingsT } from "../store/types"
 import { useMizan } from "../store/useMizan"
 import { exportCurrentBackup, exportLegacyBackup, hasLegacyData } from "../lib/legacyBackup"
@@ -9,6 +9,7 @@ import { useLocalSaveStatus } from "../lib/localSaveStatus"
 import { useTranslation } from "../lib/language/store"
 import { Card, SectionTitle, Btn, Field, Input, Textarea, Select } from "../components/kit"
 import { PlanActivationCard } from "../components/PlanStatus"
+import { THEME_MODES, useThemeStore, type ThemeMode } from "../lib/theme"
 
 export default function Settings() {
   const { t: copy } = useTranslation()
@@ -140,6 +141,15 @@ export default function Settings() {
           this screen a client comes here for. */}
       <PlanActivationCard />
 
+      {/* Appearance: light, dark, or the OS's own choice. A device preference
+          (lib/theme.ts), applied the moment it is clicked — no save button,
+          because there is nothing here that a half-typed form could lose. */}
+      <Card className="p-5">
+        <h2 className="mb-1 inline-flex items-center gap-2 text-[14px] font-bold"><Palette className="h-4 w-4 text-brand" /> {t.appearance.title}</h2>
+        <p className="mb-4 text-[12.5px] text-muted">{t.appearance.hint}</p>
+        <ThemeChoice />
+      </Card>
+
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="p-5">
           <h2 className="mb-4 inline-flex items-center gap-2 text-[14px] font-bold"><Building2 className="h-4 w-4 text-brand" /> {t.identity.title}</h2>
@@ -194,6 +204,40 @@ export default function Settings() {
           </Card>
         </div>
       </div>
+    </div>
+  )
+}
+
+const THEME_ICONS: Record<ThemeMode, typeof Sun> = { light: Sun, dark: Moon, system: Monitor }
+
+function ThemeChoice() {
+  const { t } = useTranslation()
+  const mode = useThemeStore((state) => state.mode)
+  const setMode = useThemeStore((state) => state.setMode)
+  const labels: Record<ThemeMode, string> = {
+    light: t.settings.appearance.light,
+    dark: t.settings.appearance.dark,
+    system: t.settings.appearance.system,
+  }
+  return (
+    <div role="radiogroup" aria-label={t.settings.appearance.title} className="inline-flex flex-wrap gap-1 rounded-xl bg-canvas p-1">
+      {THEME_MODES.map((value) => {
+        const Icon = THEME_ICONS[value]
+        const active = mode === value
+        return (
+          <button
+            key={value}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => setMode(value)}
+            className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-[13px] font-semibold transition-colors ${active ? "bg-surface text-ink shadow-sm" : "text-muted hover:text-ink"}`}
+          >
+            <Icon className="h-4 w-4" aria-hidden="true" />
+            {labels[value]}
+          </button>
+        )
+      })}
     </div>
   )
 }

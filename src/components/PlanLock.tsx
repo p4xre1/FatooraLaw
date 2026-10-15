@@ -18,7 +18,8 @@ import type { ModuleKey } from "../store/types"
  * What replaces a module the account's plan does not include — and the page
  * that sells the upgrade.
  *
- * Design contract: black cards (`bg-ink`, the dashboard's own near-black) on
+ * Design contract: black cards (`bg-night`, a near-black pinned in both
+ * appearances) on
  * the light page, because this is the one screen whose job is to be looked at.
  * Every card carries its *value* sentence before its feature list — what the
  * plan is worth, then what it contains — and the lists themselves are
@@ -58,7 +59,7 @@ export default function PlanLock({ module, onNavigate }: { module: PlanModule; o
   return (
     <div className="mz-view mx-auto max-w-5xl space-y-4">
       {/* ---- Header: what is locked, and the billing period ---- */}
-      <div className="overflow-hidden rounded-2xl bg-ink text-white shadow-lg">
+      <div className="overflow-hidden rounded-2xl bg-night text-white shadow-lg">
         <div className="flex flex-wrap items-center gap-4 p-5">
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand text-white">
             <Lock className="h-5 w-5" aria-hidden="true" />
@@ -175,7 +176,7 @@ export default function PlanLock({ module, onNavigate }: { module: PlanModule; o
                   rel="noopener noreferrer"
                   className={`relative inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-[13.5px] font-bold transition-all hover:-translate-y-0.5 ${
                     code === "boost"
-                      ? "bg-white text-ink shadow-lg hover:bg-white/90"
+                      ? "bg-white text-night shadow-lg hover:bg-white/90"
                       : "bg-brand text-white shadow-lg hover:bg-brand-700"
                   }`}
                 >
@@ -197,14 +198,14 @@ export default function PlanLock({ module, onNavigate }: { module: PlanModule; o
             </>
           )
 
-          const cardClass = "plan-rise relative flex h-full flex-col overflow-hidden rounded-2xl bg-ink p-5 text-white shadow-xl transition-transform duration-300 hover:-translate-y-1"
+          const cardClass = "plan-rise relative flex h-full flex-col overflow-hidden rounded-2xl bg-night p-5 text-white shadow-xl transition-transform duration-300 hover:-translate-y-1"
           return code === "boost" ? (
             <div
               key={code}
               className="plan-rise rounded-2xl bg-gradient-to-br from-brand via-emerald-brand to-brand p-[1.5px] shadow-xl transition-transform duration-300 hover:-translate-y-1"
               style={{ animationDelay: `${index * 90}ms` }}
             >
-              <div className="relative flex h-full flex-col overflow-hidden rounded-[15px] bg-ink p-5 text-white">
+              <div className="relative flex h-full flex-col overflow-hidden rounded-[15px] bg-night p-5 text-white">
                 {inner}
               </div>
             </div>

@@ -1011,6 +1011,19 @@ consent, stored under `COOKIE_CONSENT_KEY` and broadcast via
 
 ---
 
+### 6.8 Appearance — dark mode
+
+**Paramètres → Apparence**: Clair / Sombre / Système (`src/lib/theme.ts`). A
+device preference (persisted as `fatorati.theme.v1`, like the language, not
+per-account business data), applied at once with no save step. The dashboard is
+painted with semantic colour tokens (`bg-surface`, `text-ink`, `border-line`,
+the sidebar set), so dark mode is a single redefinition of those tokens under a
+`.dark` class (`src/index.css`) that `App` hangs on `<html>` while a signed-in
+screen is showing — plus `color-scheme: dark` so scrollbars and form controls
+agree. The marketing pages, auth screens and the CMS keep their designed light
+identity; the plan cards are black in both appearances (`--color-night` never
+flips). "Système" follows the OS live, including a sunset switch mid-session.
+
 ## 7. Admin CMS — 18 routes, 2 roles
 
 **Router:** `src/admin/AdminApp.tsx` (react-router). **Auth:**
