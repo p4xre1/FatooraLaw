@@ -88,3 +88,59 @@ it("removes the class when the CMS unmounts (back to the marketing pages)", () =
   view.unmount()
   expect(document.documentElement.classList.contains("dark")).toBe(false)
 })
+
+/* ----------------------------- the CMS shell ------------------------------ */
+
+it("organises the destinations into role-filtered groups in a left sidebar", () => {
+  const view = renderLayout()
+  // The shell lays the sidebar on the physical left even though the console
+  // is RTL (row-reverse), and the single nav instance holds every group.
+  expect(view.container.querySelector(".flex-row-reverse")).not.toBeNull()
+  const nav = view.getByRole("navigation", { name: "التنقل الرئيسي" })
+  const text = nav.textContent
+  // A content admin gets the content groups; the platform-only ones
+  // (overview, billing, security) are absent from the DOM entirely.
+  for (const label of ["المحتوى", "البريد والدعم", "النظام والسلامة"]) {
+    expect(text, label).toContain(label)
+  }
+  expect(text).toContain("المدونة")
+  expect(text).toContain("المراقبة")
+  expect(text).not.toContain("عام")
+  expect(text).not.toContain("المبيعات والنمو")
+  expect(text).not.toContain("الاشتراكات")
+  expect(text).not.toContain("الأمان")
+  view.unmount()
+
+  const platform: AdminAccess = { status: "authenticated", user: null, isContentAdmin: true, isPlatformAdmin: true }
+  const platformView = render(
+    <MemoryRouter initialEntries={["/admin"]}>
+      <Routes>
+        <Route element={<Outlet context={platform} />}>
+          <Route path="admin" element={<AdminLayout />} />
+        </Route>
+      </Routes>
+    </MemoryRouter>,
+  )
+  const platformText = platformView.getByRole("navigation", { name: "التنقل الرئيسي" }).textContent
+  expect(platformText).toContain("الاشتراكات")
+  expect(platformText).toContain("الأمان")
+  platformView.unmount()
+})
+
+it("exactly one theme toggle and one sign-out control exist (one sidebar instance)", () => {
+  const view = renderLayout()
+  expect(view.getAllByRole("button", { name: "الوضع الداكن" })).toHaveLength(1)
+  expect(view.getAllByRole("button", { name: "تسجيل الخروج" })).toHaveLength(1)
+})
+
+it("opens the drawer from the mobile bar and closes it from the backdrop", () => {
+  const view = renderLayout()
+  const aside = view.container.querySelector("aside")!
+  expect(aside.className).toContain("-translate-x-full")
+  fireEvent.click(view.getByRole("button", { name: "فتح القائمة" }))
+  expect(aside.className).toContain("translate-x-0")
+  // The aside X and the backdrop both close; either path works.
+  expect(view.getAllByRole("button", { name: "إغلاق القائمة" }).length).toBeGreaterThanOrEqual(2)
+  fireEvent.click(view.getAllByRole("button", { name: "إغلاق القائمة" })[0])
+  expect(aside.className).toContain("-translate-x-full")
+})
