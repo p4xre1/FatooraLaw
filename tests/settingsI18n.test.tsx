@@ -19,8 +19,8 @@ it("renders identity, tax, backup and document settings in English", () => {
   expect(screen.getByLabelText("Tax ID")).toBeDefined()
   expect(screen.getByText("Tax and currency")).toBeDefined()
   expect(screen.getByLabelText("VAT rate (%)")).toBeDefined()
-  expect(screen.getByRole("button", { name: "Export my local data" })).toBeDefined()
-  expect(screen.getByText("This data is not encrypted by the application.", { exact: false })).toBeDefined()
+  expect(screen.getByRole("button", { name: "Export my local data (JSON)" })).toBeDefined()
+  expect(screen.getByText("Records in this browser are not encrypted.", { exact: false })).toBeDefined()
   expect(screen.getByText("Document header and footer")).toBeDefined()
 
   fireEvent.click(screen.getByRole("button", { name: "Save" }))
@@ -35,7 +35,7 @@ it("translates Settings and logo validation into Arabic and sets RTL", () => {
   expect(screen.getByLabelText("اسم الشركة")).toBeDefined()
   expect(screen.getByLabelText("المعرّف الضريبي")).toBeDefined()
   expect(screen.getByLabelText("نسبة الضريبة على القيمة المضافة (%)")).toBeDefined()
-  expect(screen.getByRole("button", { name: "تصدير بياناتي المحلية" })).toBeDefined()
+  expect(screen.getByRole("button", { name: "تصدير بياناتي المحلية (JSON)" })).toBeDefined()
 
   fireEvent.change(screen.getByLabelText("ملف الشعار"), {
     target: { files: [new File(["<svg/>"], "logo.svg", { type: "image/svg+xml" })] },

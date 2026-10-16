@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, FolderKanban, Users, ShoppingCart, Boxes, Scale,
+  LayoutDashboard, FolderKanban, Users, ShoppingCart, Boxes, Scale, FileText,
   BarChart3, ShieldCheck, ScrollText, Settings, CalendarDays, ShieldAlert, Wrench, Truck, UserCheck,
 } from "lucide-react"
 import type { ModuleKey } from "../store/types"
@@ -18,6 +18,7 @@ import { Brand } from "./Brand"
 export const NAV: { key: ModuleKey; icon: typeof LayoutDashboard; group: string }[] = [
   { key: "dashboard", icon: LayoutDashboard, group: "Pilotage" },
   { key: "projects", icon: FolderKanban, group: "Opérations" },
+  { key: "invoices", icon: FileText, group: "Opérations" },
   { key: "contacts", icon: Users, group: "Opérations" },
   { key: "procurement", icon: ShoppingCart, group: "Opérations" },
   { key: "inventory", icon: Boxes, group: "Opérations" },

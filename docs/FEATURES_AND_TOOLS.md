@@ -49,14 +49,16 @@ different audiences.
 | Surface | Who uses it | Auth needed | Where its data lives |
 |---|---|---|---|
 | **A. Marketing site** | Visitors, crawlers, AI answer engines | No | ☁️ Supabase CMS tables, read at build time and prerendered |
-| **B. Signed-in app** | The business owner and their team | Yes — Supabase session | 🖥️ `localStorage`, one key per user + ☁️ Supabase for identity |
+| **B. Signed-in app** | The business owner and their team | Yes — Supabase session | 🖥️ `localStorage` primary; optional opt-in ☁️ RLS mirror per account/device + Supabase identity |
 | **C. Admin CMS** | Content editors and platform operators | Yes — Supabase + a CMS role | ☁️ Supabase, protected by Row Level Security |
 
-⚠️ **The single most important fact about this product:** surface **B** — every
-business record you enter — is stored in the **browser**, not on a server. It is
-a prototype. `SECURITY.md` states this explicitly, the Settings screen says it
-in the UI, and the Reports screen refuses to invent numbers because of it.
-Read §4 before trusting any figure.
+⚠️ **The single most important fact about this product:** surface **B** still
+uses browser storage as its primary source and is a prototype. Settings now
+offers an explicit opt-in Supabase JSON snapshot mirror, protected by RLS per
+user/device. That second copy is readable by the authenticated account and
+trusted project operators; it is not end-to-end encrypted, live multi-device
+sync, or a restore workflow. Read `SECURITY.md` and §4 before trusting any
+figure.
 
 ---
 

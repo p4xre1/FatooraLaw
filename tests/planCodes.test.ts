@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process"
 import { resolve } from "node:path"
 import { describe, expect, it } from "vitest"
-import { checkPlanCode, codeFor, normalizeCode, redeemPlanCode } from "../src/lib/planCodes"
+import { activationKeyHash, checkPlanCode, codeFor, normalizeCode, randomActivationKey, redeemPlanCode } from "../src/lib/planCodes"
 import { PLAN_SALES_WHATSAPP, planPurchaseLink, PLANS } from "../src/lib/plans"
 
 /**
@@ -22,6 +22,19 @@ const run = (args: string[]) =>
 
 /** The codes printed by the generator, without the banner around them. */
 const codesIn = (output: string) => output.match(/\b(?:PRO|BOOST)-(?:1M|1Y)-[0-9A-Z]{8}\b/g) ?? []
+
+describe("server-backed single-use activation keys", () => {
+  it("creates opaque, high-entropy keys and a stable normalized SHA-256 digest", async () => {
+    const first = randomActivationKey("pro", "1M")
+    const second = randomActivationKey("pro", "1M")
+    expect(first).toMatch(/^PRO-1M-[A-Z2-9]{20}$/)
+    expect(first.split("-")[2]).not.toMatch(/[ILOU]/)
+    expect(second).not.toBe(first)
+    expect(await activationKeyHash(first)).toMatch(/^[0-9a-f]{64}$/)
+    expect(await activationKeyHash(first)).toBe(await activationKeyHash(first.toLowerCase().replace(/-/g, " ")))
+    expect(await activationKeyHash(first)).not.toBe(await activationKeyHash(second))
+  })
+})
 
 describe("the code format", () => {
   it("carries the plan and the period, and a checksum that depends on both", async () => {

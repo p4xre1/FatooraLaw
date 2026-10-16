@@ -135,9 +135,9 @@ export function PlanActivationCard() {
     const result = await usePlan.getState().redeem(value)
     if (!result.ok) {
       setError(result.reason === "format" ? t.codeFormat : t.codeWrong)
-      // A refused attempt belongs in the audit trail: repeated guessing is the
-      // one thing a hand-issued code system should be able to show afterwards.
-      log("a tenté un code d'activation refusé", value.slice(0, 24), "settings", "warning")
+      // Never log the submitted key (or a prefix). Server-side abuse telemetry
+      // records only the authenticated account and a short-lived source digest.
+      log("a tenté un code d'activation refusé", "", "settings", "warning")
       setBusy(false)
       return
     }

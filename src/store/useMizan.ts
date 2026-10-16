@@ -99,7 +99,7 @@ type State = {
   updateSettings: (patch: Partial<Settings>) => void
 }
 
-type LocalData = Pick<State, "settings" | "projects" | "contacts" | "expenses" | "stock" | "contracts" | "team" | "tools" | "audit" | "orders" | "campaigns">
+export type LocalData = Pick<State, "settings" | "projects" | "contacts" | "expenses" | "stock" | "contracts" | "team" | "tools" | "audit" | "orders" | "campaigns">
 
 function initialData(): LocalData {
   return emptyBusinessData()
@@ -255,6 +255,10 @@ export const useMizan = create<State>()(
 
       addCampaign: (c) => {
         requireAmount(c.spend, "La dépense publicitaire")
+        if (c.impressions !== undefined) requireAmount(c.impressions, "Les impressions")
+        if (c.clicks !== undefined) requireAmount(c.clicks, "Les clics")
+        if (c.conversions !== undefined) requireAmount(c.conversions, "Les conversions")
+        if (c.conversionValue !== undefined) requireAmount(c.conversionValue, "La valeur des conversions")
         if (!validDateRange(c.startedAt, c.endedAt)) throw new Error("Les dates de campagne sont invalides.")
         const campaign: AdCampaign = { ...c, id: uid(), name: sanitize(c.name), startedAt: c.startedAt ? dateFromDay(calendarDay(c.startedAt)!) : "", endedAt: c.endedAt ? dateFromDay(calendarDay(c.endedAt)!) : "" }
         if (!campaign.name) throw new Error("Le nom de la campagne est requis.")

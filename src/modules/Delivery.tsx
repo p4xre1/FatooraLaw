@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react"
-import { Boxes, Megaphone, Plus, Target, Truck } from "lucide-react"
+import { BarChart3, Boxes, Megaphone, Plus, Target, Truck } from "lucide-react"
 import { useMizan } from "../store/useMizan"
+import { parseAdReportCsv, adMetrics, type AdReportParseResult } from "../lib/adsAnalytics"
 import { useTranslation } from "../lib/language/store"
 import { useFormats } from "../lib/language/formats"
 import { Card, SectionTitle, Btn, Badge, Table, Th, Td, Modal, Field, Input, Select, EmptyState } from "../components/kit"
@@ -29,11 +30,13 @@ function formatDuration(hours: number | null, t: { minutes: (n: number) => strin
 export default function Delivery() {
   const { t: copy } = useTranslation()
   const t = copy.delivery
+  const a = copy.ads
   const modules = copy.shared.modules
   const { decimalMoney } = useFormats()
   const { orders, campaigns, contacts, stock, settings, updateDeliveryOrder } = useMizan()
   const [creating, setCreating] = useState(false)
   const [campaignOpen, setCampaignOpen] = useState(false)
+  const [adImportOpen, setAdImportOpen] = useState(false)
   const cur = settings.currency
 
   const now = useMemo(() => new Date().toISOString(), [])
@@ -65,6 +68,7 @@ export default function Delivery() {
         sub={t.subtitle(orders.length, funnel.delivered)}
         action={(
           <span className="flex flex-wrap gap-2">
+            <Btn variant="outline" onClick={() => setAdImportOpen(true)}><BarChart3 className="h-4 w-4" /> {a.importButton}</Btn>
             <Btn variant="outline" onClick={() => setCampaignOpen(true)}><Megaphone className="h-4 w-4" /> {t.newCampaign}</Btn>
             <Btn onClick={() => setCreating(true)}><Plus className="h-4 w-4" /> {t.newOrder}</Btn>
           </span>
@@ -79,6 +83,8 @@ export default function Delivery() {
           </Card>
         ))}
       </div>
+
+      <AdPerformance campaigns={campaigns} currency={cur} labels={a} />
 
       {/* ---- Orders: the sale, what was collected, every cost, the profit ---- */}
       <Card>
@@ -218,6 +224,7 @@ export default function Delivery() {
 
       {creating && <CreateOrder onClose={() => setCreating(false)} />}
       {campaignOpen && <CreateCampaign onClose={() => setCampaignOpen(false)} />}
+      {adImportOpen && <ImportAdReport onClose={() => setAdImportOpen(false)} /> }
     </div>
   )
 }
@@ -288,3 +295,97 @@ function CreateCampaign({ onClose }: { onClose: () => void }) {
 }
 
 export { formatDuration }
+
+function AdPerformance({ campaigns, currency, labels }: { campaigns: import("../store/types").AdCampaign[]; currency: "MAD" | "EUR" | "USD"; labels: ReturnType<typeof useTranslation>["t"]["ads"] }) {
+  const { decimalMoney } = useFormats()
+  const rows = campaigns.filter((campaign) => campaign.impressions !== undefined || campaign.clicks !== undefined || campaign.conversions !== undefined || campaign.conversionValue !== undefined)
+  const totalSpend = rows.reduce((sum, row) => sum + row.spend, 0)
+  const totalClicks = rows.reduce((sum, row) => sum + (row.clicks ?? 0), 0)
+  const totalConversions = rows.reduce((sum, row) => sum + (row.conversions ?? 0), 0)
+  return (
+    <Card>
+      <header className="border-b border-line px-5 py-3.5">
+        <h2 className="text-[14px] font-bold">{labels.performance}</h2>
+        <p className="text-[11.5px] text-muted">{labels.performanceSubtitle}</p>
+      </header>
+      {rows.length === 0 ? (
+        <p className="px-5 py-6 text-center text-[13px] text-muted">{labels.noMetrics}</p>
+      ) : (
+        <>
+          <div className="grid gap-3 border-b border-line p-4 sm:grid-cols-3">
+            <Metric label={labels.totalSpend} value={decimalMoney(totalSpend, currency, true)} />
+            <Metric label={labels.totalClicks} value={String(totalClicks)} />
+            <Metric label={labels.totalConversions} value={String(totalConversions)} />
+          </div>
+          <Table head={<><Th>{labels.platform}</Th><Th>{labels.impressions}</Th><Th>{labels.clicks}</Th><Th>{labels.conversions}</Th><Th>{labels.ctr}</Th><Th>{labels.cpc}</Th><Th>{labels.cpa}</Th><Th>{labels.conversionValue}</Th><Th>{labels.roas}</Th></>}>
+            {rows.map((row) => {
+              const metrics = adMetrics(row)
+              return <tr key={row.id}>
+                <Td><div className="font-medium">{row.name}</div><div className="text-[11px] text-muted">{row.platform} · {row.startedAt}{row.endedAt && row.endedAt !== row.startedAt ? ` – ${row.endedAt}` : ""}</div></Td>
+                <Td className="tnum">{row.impressions ?? "—"}</Td><Td className="tnum">{row.clicks ?? "—"}</Td><Td className="tnum">{row.conversions ?? "—"}</Td>
+                <Td className="tnum">{metrics.ctr === null ? "—" : `${(metrics.ctr * 100).toFixed(2)}%`}</Td>
+                <Td className="tnum">{metrics.cpc === null ? "—" : decimalMoney(metrics.cpc, currency, true)}</Td>
+                <Td className="tnum">{metrics.cpa === null ? "—" : decimalMoney(metrics.cpa, currency, true)}</Td>
+                <Td className="tnum">{decimalMoney(row.conversionValue ?? 0, currency, true)}</Td>
+                <Td className="tnum">{metrics.roas === null ? "—" : `${metrics.roas.toFixed(2)}×`}</Td>
+              </tr>
+            })}
+          </Table>
+        </>
+      )}
+    </Card>
+  )
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return <div className="rounded-lg bg-canvas p-3"><p className="text-[11px] text-muted">{label}</p><p className="tnum mt-1 font-bold">{value}</p></div>
+}
+
+function ImportAdReport({ onClose }: { onClose: () => void }) {
+  const { t: copy } = useTranslation()
+  const a = copy.ads
+  const { addCampaign } = useMizan()
+  const [platform, setPlatform] = useState<AdPlatform>("facebook")
+  const [parsed, setParsed] = useState<AdReportParseResult | null>(null)
+  const [error, setError] = useState("")
+  const [busy, setBusy] = useState(false)
+
+  async function readFile(file?: File) {
+    setParsed(null)
+    setError("")
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) { setError(a.fileTooLarge); return }
+    try {
+      const result = parseAdReportCsv(await file.text(), platform)
+      setParsed(result)
+      if (!result.campaigns.length) setError(result.errors[0] ?? a.empty)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : a.empty)
+    }
+  }
+
+  return (
+    <Modal title={a.modalTitle} onClose={onClose}>
+      <div className="space-y-4">
+        <p className="rounded-lg bg-canvas p-3 text-[12px] text-muted">{a.privacy}</p>
+        {error && <p role="alert" className="text-sm text-serious">{error}</p>}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label={a.platform}><Select value={platform} onChange={(e) => { setPlatform(e.target.value as AdPlatform); setParsed(null) }}><option value="facebook">Meta (Facebook / Instagram)</option><option value="google">Google Ads</option></Select></Field>
+          <Field label={a.file}><Input type="file" accept=".csv,text/csv" onChange={(e) => void readFile(e.target.files?.[0])} /></Field>
+        </div>
+        {parsed && <div className="space-y-2">
+          <p className="text-[12px] font-semibold">{a.preview}: {parsed.rowCount} {a.rows} · {parsed.campaigns.length} {a.campaigns}</p>
+          {parsed.errors.length > 0 && <div className="rounded-lg bg-amber-50 p-3 text-[12px] text-amber-900"><strong>{a.errors}</strong><ul className="list-inside list-disc">{parsed.errors.slice(0, 5).map((item, i) => <li key={i}>{item}</li>)}</ul></div>}
+          <div className="max-h-48 overflow-auto rounded-lg border border-line">
+            {parsed.campaigns.map((row) => <div key={row.name} className="flex items-center justify-between gap-3 border-b border-line p-2 text-[12px]"><span className="truncate">{row.name}</span><span className="tnum shrink-0">{row.spend.toFixed(2)} · {row.clicks} clicks · {row.conversions} conversions</span></div>)}
+          </div>
+          <Btn className="w-full" disabled={busy || parsed.campaigns.length === 0} onClick={() => {
+            setBusy(true)
+            try { parsed.campaigns.forEach((campaign) => addCampaign(campaign)); onClose() }
+            catch (reason) { setError(reason instanceof Error ? reason.message : a.empty); setBusy(false) }
+          }}>{a.save}</Btn>
+        </div>}
+      </div>
+    </Modal>
+  )
+}

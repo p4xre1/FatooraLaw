@@ -6,14 +6,22 @@
   "keywords": "gestion entreprise Maroc, facturation Maroc, comptabilité TPE PME, conformité Loi 09-08, CNDP, gestion trésorerie, gestion projets artisans freelances, logiciel gestion PME marocaine",
   "organization": {
     "name": "Fatorati",
-    "email": "bonjour@fatorati.tech",
-    "telephone": "",
+    "email": "contact@fatorati.tech",
+    "telephone": "+212772966980",
     "addressLocality": "Tanger",
     "addressCountry": "MA",
     "foundingDate": "2026-01-01",
-    "sameAs": ["https://github.com/p4xre1/FatooraLaw"],
-    "knowsAbout": ["Gestion des TPE au Maroc", "TVA et échéances DGI", "Loi 09-08 / CNDP", "Suivi des abonnements"],
-    "logoUrl": "/brand/fatorati-icon-on-blue.png"
+    "sameAs": [
+      "https://github.com/p4xre1/FatooraLaw"
+    ],
+    "knowsAbout": [
+      "Gestion des TPE au Maroc",
+      "TVA et échéances DGI",
+      "Loi 09-08 / CNDP",
+      "Suivi des abonnements"
+    ],
+    "logoUrl": "/brand/fatorati-icon-on-blue.png",
+    "supportEmail": "support@fatorati.tech"
   },
   "icons": {
     "icon": "/favicon.ico",

@@ -6,30 +6,28 @@ import {
 } from "./plans"
 
 /**
- * Activation codes — how a paid account is unlocked today.
- *
- * The flow the owner asked for: the client pays by transfer (RIB) after a
- * WhatsApp conversation, and receives a code like `PRO-1M-3K7F9Q2Z` to type
- * into Paramètres. The code carries the plan and the period; the date it runs
- * to is computed when it is redeemed, so a code sent by mistake is harmless
- * until it is used.
- *
- * ⚠️ **This is a light gate, not a security boundary.** The check is an HMAC of
- * the code's own payload, and the key ships inside the bundle (it has to — there
- * is no server in this build and the app works offline). Anyone who reads the
- * bundle can mint a code, exactly as anyone could previously type a plan tier
- * into devtools. It stops typos, casual sharing and guessing; it does not stop a
- * determined user. Real entitlement is the ☁️ `account_subscriptions` table
- * that already exists in the migrations, and it is where this belongs once the
- * app is connected to Supabase: the server would hand out the plan and this
- * module would only format what it is told.
- *
- * `scripts/plan-code.mjs` mints codes offline for the owner; a test asserts the
- * two implementations agree, so the script cannot drift from the app.
+ * Configured deployments issue random opaque keys whose digests live in
+ * Supabase and consume them through an atomic RPC. The deterministic checksum
+ * helpers below are retained only for local previews and migration-era tests;
+ * configured builds never accept them.
  */
 
-/** Must match `scripts/plan-code.mjs`. */
+/** Legacy local checksum secret; never used by the configured account flow. */
 export const CODE_SECRET = "fatorati.plan.code.v1"
+
+/** Opaque high-entropy claim code; only its digest is stored in Supabase. */
+export function randomActivationKey(plan: CodedPlan, period: PlanPeriod): string {
+  const alphabet = "ABCDEFGHJKMNPQRSTVWXYZ23456789"
+  const bytes = crypto.getRandomValues(new Uint8Array(20))
+  const token = [...bytes].map((byte) => alphabet[byte % alphabet.length]).join("")
+  return `${plan.toUpperCase()}-${period}-${token}`
+}
+
+export async function activationKeyHash(code: string): Promise<string> {
+  const bytes = new TextEncoder().encode(code.trim().toUpperCase().replace(/[\s._-]+/g, ""))
+  const digest = await crypto.subtle.digest("SHA-256", bytes)
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("")
+}
 
 /** Crockford-style base32: no I, L, O or U, so a code cannot be misread. */
 const ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"

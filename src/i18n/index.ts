@@ -23,6 +23,7 @@ import { app } from "./app.ts"
 import { plans } from "./plans.ts"
 import { delivery } from "./delivery.ts"
 import { verification } from "./verification.ts"
+import { ads } from "./ads.ts"
 
 /**
  * The application dictionary: every string the signed-in product shows, in the
@@ -63,6 +64,7 @@ const en = {
   plans: plans.en,
   delivery: delivery.en,
   verification: verification.en,
+  ads: ads.en,
 }
 
 const fr: typeof en = {
@@ -90,6 +92,7 @@ const fr: typeof en = {
   plans: plans.fr,
   delivery: delivery.fr,
   verification: verification.fr,
+  ads: ads.fr,
 }
 
 const ar: typeof en = {
@@ -117,6 +120,7 @@ const ar: typeof en = {
   plans: plans.ar,
   delivery: delivery.ar,
   verification: verification.ar,
+  ads: ads.ar,
 }
 
 export type Translation = typeof en

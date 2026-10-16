@@ -17,6 +17,7 @@ const en = {
   modules: {
     dashboard: "Dashboard",
     projects: "Projects",
+    invoices: "Invoices",
     contacts: "Clients & Suppliers",
     procurement: "Purchases & Expenses",
     inventory: "Stock & Equipment",
@@ -56,6 +57,7 @@ const fr: SharedCopy = {
   modules: {
     dashboard: "Tableau de bord",
     projects: "Projets",
+    invoices: "Factures",
     contacts: "Clients & Fournisseurs",
     procurement: "Achats & Dépenses",
     inventory: "Stock & Matériel",
@@ -88,6 +90,7 @@ const ar: SharedCopy = {
   modules: {
     dashboard: "لوحة التحكم",
     projects: "المشاريع",
+    invoices: "الفواتير",
     contacts: "العملاء والموردون",
     procurement: "المشتريات والمصاريف",
     inventory: "المخزون والمعدات",

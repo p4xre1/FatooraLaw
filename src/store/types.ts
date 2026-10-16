@@ -3,6 +3,7 @@ export type Role = "owner" | "accountant" | "supervisor" | "assistant"
 export type ModuleKey =
   | "dashboard"
   | "projects"
+  | "invoices"
   | "contacts"
   | "procurement"
   | "inventory"
@@ -168,6 +169,12 @@ export type AdCampaign = {
   spend: number
   startedAt: string
   endedAt: string
+  /** Aggregate ad-platform metrics, when imported from a report. Optional:
+   *  never account credentials or per-user data — campaign-level only. */
+  impressions?: number
+  clicks?: number
+  conversions?: number
+  conversionValue?: number
 }
 
 /** Call-confirmation stage of an order's client. */

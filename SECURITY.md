@@ -77,10 +77,15 @@ service-role key through the browser or a `VITE_*` variable.
 
 **Do not use this as a production financial system yet.**
 
-- Projects, contacts, expenses, stock, contracts, subscriptions, team, settings,
-  and dashboard audit entries are stored in localStorage, partitioned by Supabase user ID.
-  Partitioning prevents accidental reuse between accounts in the normal UI;
-  it is not encryption, a device access boundary, or cloud backup.
+- The local workspace remains the app's primary source: projects, contacts,
+  expenses, stock, contracts, subscriptions, team, settings and audit entries
+  are partitioned in browser `localStorage` by Supabase user ID. This is not
+  encryption or a device access boundary. An owner may explicitly opt in to a
+  second Supabase mirror from Settings; it is RLS-protected per authenticated
+  user and browser/device, but stored as readable JSONB (not end-to-end
+  encrypted). It is a backup copy, not live cross-device sync or a restore path.
+  The mirror includes business contact/financial data; no auth session, ad
+  platform credentials, tokens or passwords are included.
 - Logout removes private records from active memory but keeps the account's
   saved local records. Legacy shared data is preserved for explicit backup
   and ownership review, not automatically reassigned to a new login.

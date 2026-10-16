@@ -33,9 +33,17 @@ export function useSupabaseAuth() {
         // user_metadata is editable by the user. It may supply display text,
         // but NEVER permissions. profiles.role is protected server-side.
         const { data: profile, error } = await supabase.from("profiles")
-          .select("name, role").eq("id", session.user.id).maybeSingle()
+          .select("name, role, deletion_requested_at").eq("id", session.user.id).maybeSingle()
         if (!isCurrent(request)) return
         if (error || !profile) { clearSession(request); return }
+        // A successful sign-in during the recovery window is the user's explicit
+        // choice to return. The RPC refuses reactivation after day 30.
+        if (profile.deletion_requested_at) {
+          const requested = new Date(profile.deletion_requested_at).getTime()
+          if (!Number.isFinite(requested) || requested <= Date.now() - 30 * 24 * 60 * 60 * 1000) { clearSession(request); return }
+          const { data: reactivated, error: reactivateError } = await supabase.rpc("reactivate_account")
+          if (!isCurrent(request) || reactivateError || reactivated !== true) { clearSession(request); return }
+        }
         const name = typeof profile.name === "string" && profile.name.trim() ? profile.name : session.user.email
         signIn(name, session.user.email, trustedRole(profile.role), session.user.id)
         setReady(true)

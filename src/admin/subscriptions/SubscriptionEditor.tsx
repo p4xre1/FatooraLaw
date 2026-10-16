@@ -14,13 +14,14 @@
  *     plans, per language, applied at once to the lock page, the dashboard
  *     strip and the WhatsApp buy message.
  *
- * Local-first, like the rest of the CMS today: records live in this browser
- * (`fatorati.subscriptions.v1`, `fatorati.plan-catalog.v1`). The shapes map
- * onto `account_subscriptions` / `plan_catalog` when Supabase is connected.
+ * Activation key digests are stored server-side in `activation_keys` when
+ * Supabase is configured; plaintext keys are shown once at issuance only.
+ * The descriptive client ledger and plan-copy editor remain local to this
+ * browser and are not the server's authoritative subscription record.
  */
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
-  Ban, Check, Copy, FileDown, KeyRound, MessageCircle, Play, RotateCcw, Snowflake, Trash2,
+  Ban, Check, Copy, FileDown, KeyRound, MessageCircle, Play, RotateCcw, ShieldAlert, ShieldCheck, Snowflake, Trash2,
 } from "lucide-react"
 import { useSubscriptions } from "../../store/useSubscriptions"
 import { usePlanCatalog } from "../../store/usePlanCatalog"
@@ -28,7 +29,8 @@ import {
   SUBSCRIPTION_SOURCES, daysLeft, displayStatus, projectedEnd,
   type SubscriptionRecord, type SubscriptionSource,
 } from "../../lib/subscriptionLedger"
-import { codeForSerial, randomSerial } from "../../lib/planCodes"
+import { activationKeyHash, codeForSerial, randomActivationKey, randomSerial } from "../../lib/planCodes"
+import { isSupabaseConfigured, supabase } from "../../lib/supabase"
 import { PLAN_ORDER, PLANS, type PlanCode, type PlanPeriod } from "../../lib/plans"
 import { defaultCatalog } from "../../lib/planCatalog"
 import { translations } from "../../i18n"
@@ -107,7 +109,9 @@ export default function SubscriptionEditor() {
         </p>
       </header>
 
+      <AdminMfaPanel />
       <CodeBuilder />
+      <ActivationKeyLedger />
 
       <section className="rounded-2xl border bg-surface p-4 shadow-sm">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -141,10 +145,112 @@ export default function SubscriptionEditor() {
 
       <p className="rounded-xl border border-dashed bg-warn-50/60 p-3 text-[12px] leading-relaxed text-warn">
         ملاحظة: هذه السجلات محفوظة في هذا المتصفح (local-first) — التجميد والإيقاف يسريان فوراً على التطبيق في نفس المتصفح.
-        عند ربط Supabase تنتقل نفس السجلات إلى جدول <span dir="ltr" className="font-mono">account_subscriptions</span> وتصبح السيطرة خادمية.
+مفاتيح التفعيل الجديدة تُحفظ خادمياً عند إعداد Supabase؛ أما هذا السجل التفصيلي وأدوات التجميد المحلية فتبقى في هذا المتصفح فقط. الخطة المستردة نفسها تُسجل في <span dir="ltr" className="font-mono">account_subscriptions</span>.
       </p>
     </div>
   )
+}
+
+/* --------------------------- admin MFA enrollment ------------------------ */
+
+function AdminMfaPanel() {
+  const [aal2, setAal2] = useState(false)
+  const [factorId, setFactorId] = useState<string | null>(null)
+  const [qr, setQr] = useState<string | null>(null)
+  const [secret, setSecret] = useState<string | null>(null)
+  const [code, setCode] = useState("")
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  async function refresh() {
+    try {
+      const [{ data: assurance }, { data: factors, error: factorError }] = await Promise.all([
+        supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
+        supabase.auth.mfa.listFactors(),
+      ])
+      if (factorError) throw factorError
+      setAal2(assurance?.currentLevel === "aal2")
+      const verified = factors?.totp.find((factor) => factor.status === "verified")
+      const pending = factors?.totp.find((factor) => factor.status !== "verified")
+      setFactorId(verified?.id ?? pending?.id ?? null)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "تعذر التحقق من المصادقة متعددة العوامل.")
+    }
+  }
+  useEffect(() => { void refresh() }, [])
+
+  async function enroll() {
+    setBusy(true); setError(null)
+    try {
+      const { data, error: enrollError } = await supabase.auth.mfa.enroll({ factorType: "totp", friendlyName: "Fatorati CMS" })
+      if (enrollError) throw enrollError
+      setFactorId(data.id); setQr(data.totp.qr_code); setSecret(data.totp.secret)
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "تعذر إعداد المصادقة متعددة العوامل.") }
+    finally { setBusy(false) }
+  }
+
+  async function verify() {
+    if (!factorId || !/^\d{6}$/.test(code.trim())) { setError("أدخل الرمز المكوّن من 6 أرقام من تطبيق المصادقة."); return }
+    setBusy(true); setError(null)
+    try {
+      const { error: verifyError } = await supabase.auth.mfa.challengeAndVerify({ factorId, code: code.trim() })
+      if (verifyError) throw verifyError
+      setQr(null); setSecret(null); setCode("")
+      await refresh()
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "رمز المصادقة غير صحيح.") }
+    finally { setBusy(false) }
+  }
+
+  return <section className={`rounded-xl border p-4 ${aal2 ? "border-good/30 bg-good-50/60" : "border-warn/30 bg-warn-50/70"}`}>
+    <div className="flex items-start gap-3">
+      {aal2 ? <ShieldCheck className="mt-0.5 h-5 w-5 text-emerald-700" /> : <ShieldAlert className="mt-0.5 h-5 w-5 text-amber-700" />}
+      <div className="min-w-0 flex-1">
+        <h2 className="text-sm font-bold">{aal2 ? "المصادقة متعددة العوامل مفعّلة لهذه الجلسة" : "يلزم إكمال المصادقة متعددة العوامل"}</h2>
+        <p className="mt-1 text-xs leading-relaxed text-muted">إنشاء مفاتيح التفعيل وعرضها وإلغاؤها محمي بمستوى MFA من الخادم (AAL2). لا تدخل رمزك إلا بعد ربط تطبيق مصادقة موثوق.</p>
+        {!aal2 && !factorId && <button type="button" disabled={busy} onClick={() => void enroll()} className="mt-3 rounded-lg bg-ink px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{busy ? "جارٍ الإعداد…" : "إعداد تطبيق المصادقة"}</button>}
+        {!aal2 && qr && <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border bg-surface p-3">
+          <img alt="رمز QR للمصادقة متعددة العوامل" className="h-36 w-36" src={`data:image/svg+xml;utf-8,${encodeURIComponent(qr)}`} />
+          <div className="min-w-56 flex-1"><p className="text-xs font-semibold">امسح الرمز بتطبيق المصادقة أو أدخل السر يدوياً:</p><code dir="ltr" className="mt-1 block break-all rounded bg-slate-100 p-2 text-xs">{secret}</code></div>
+        </div>}
+        {!aal2 && factorId && <div className="mt-3 flex flex-wrap gap-2"><input aria-label="رمز تطبيق المصادقة" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} className="w-44 rounded-lg border bg-surface px-3 py-2 text-sm tracking-[0.25em]" placeholder="000000" /><button type="button" disabled={busy || code.length !== 6} onClick={() => void verify()} className="rounded-lg bg-brand px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{busy ? "جارٍ التحقق…" : "تأكيد الرمز"}</button></div>}
+        {error && <p role="alert" className="mt-2 text-xs text-rose-700">{error}</p>}
+      </div>
+    </div>
+  </section>
+}
+
+/* ---------------------------- server key ledger -------------------------- */
+
+type KeyRow = { id: string; plan: string; period: string; status: string; issued_to: string; redeemed_by: string | null; redeemed_at: string | null; starts_at: string | null; ends_at: string | null; created_at: string }
+
+function ActivationKeyLedger() {
+  const [rows, setRows] = useState<KeyRow[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+  async function refresh() {
+    const { data: assurance, error: assuranceError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    if (assuranceError) { setError(assuranceError.message); return }
+    if (assurance?.currentLevel !== "aal2") { setRows([]); setError("أكمل تحقق MFA (AAL2) لعرض سجل المفاتيح."); return }
+    const { data, error: queryError } = await supabase.from("activation_keys")
+      .select("id,plan,period,status,issued_to,redeemed_by,redeemed_at,starts_at,ends_at,created_at")
+      .order("created_at", { ascending: false }).limit(200)
+    if (queryError) setError(queryError.message)
+    else { setRows((data ?? []) as KeyRow[]); setError(null) }
+  }
+  useEffect(() => { void refresh() }, [])
+  async function revoke(row: KeyRow) {
+    if (row.status !== "unused" || !window.confirm("إلغاء هذا الرمز نهائياً؟")) return
+    setBusy(row.id)
+    const { error: updateError } = await supabase.from("activation_keys").update({ status: "revoked" }).eq("id", row.id)
+    if (updateError) setError(updateError.message)
+    else await refresh()
+    setBusy(null)
+  }
+  return <section className="rounded-2xl border bg-surface p-4 shadow-sm">
+    <div className="mb-3 flex items-center justify-between"><div><h2 className="text-[15px] font-bold">سجل مفاتيح التفعيل للخادم ({rows.length})</h2><p className="mt-1 text-[11px] text-muted">المفتاح الكامل لا يُخزَّن بعد إنشائه. يظهر هنا فقط ما إذا استُخدم والحساب الذي استرده.</p></div><button type="button" onClick={() => void refresh()} className="rounded-lg border px-3 py-1.5 text-xs font-semibold">تحديث</button></div>
+    {error && <p role="alert" className="mb-2 rounded-lg bg-rose-50 p-2 text-xs text-rose-700">{error}</p>}
+    {!rows.length ? <p className="py-4 text-center text-xs text-muted">لا توجد مفاتيح خادمية بعد. قد يلزم تطبيق ترحيل مفاتيح التفعيل أولاً.</p> : <div className="space-y-2">{rows.map((row) => <div key={row.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-xs"><div><strong>{row.plan.toUpperCase()} · {row.period}</strong><span className="ms-2 text-muted">{row.issued_to || "بدون اسم"}</span><p className="mt-1 text-muted">{row.status === "unused" ? "غير مستخدم" : row.status === "redeemed" ? `مستخدم · الحساب ${row.redeemed_by ?? "—"} · ${row.ends_at ?? ""}` : "ملغى"}</p></div>{row.status === "unused" && <button type="button" disabled={busy === row.id} onClick={() => void revoke(row)} className="rounded-md border border-rose-200 px-2 py-1 font-semibold text-rose-700 disabled:opacity-50">إلغاء المفتاح</button>}</div>)}</div>}
+  </section>
 }
 
 /* ------------------------------ code builder ----------------------------- */
@@ -162,22 +268,45 @@ function CodeBuilder() {
   const [created, setCreated] = useState<SubscriptionRecord | null>(null)
   const [copied, setCopied] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [generationError, setGenerationError] = useState<string | null>(null)
 
   async function generate() {
     if (!clientName.trim() || busy) return
     setBusy(true)
-    // A serial already handed out must never be minted twice.
-    let serial = randomSerial()
-    while (records.some((r) => r.serial === serial)) serial = randomSerial()
-    const code = await codeForSerial(plan, period, serial)
-    const record = issue({
-      code, serial, plan, period,
-      clientName: clientName.trim(), company: company.trim(), contact: contact.trim(),
-      source, note: note.trim(), issuedAt: new Date().toISOString().slice(0, 10),
-    })
-    setCreated(record)
-    setCopied(false)
-    setBusy(false)
+    setGenerationError(null)
+    try {
+      // The database stores only a digest. Unique random key material is
+      // generated per issue; redemption on the server atomically consumes it.
+      let serial = randomSerial()
+      while (records.some((r) => r.serial === serial)) serial = randomSerial()
+      const code = isSupabaseConfigured ? randomActivationKey(plan, period) : await codeForSerial(plan, period, serial)
+      if (isSupabaseConfigured) {
+        const key_hash = await activationKeyHash(code)
+        const { data: assurance, error: assuranceError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+        if (assuranceError) throw assuranceError
+        if (assurance?.currentLevel !== "aal2") throw new Error("أكمل تحقق MFA (AAL2) قبل إصدار مفاتيح التفعيل.")
+        const { error } = await supabase.rpc("issue_activation_key", {
+          p_key_hash: key_hash, p_plan: plan, p_period: period,
+          p_issued_to: [clientName.trim(), company.trim(), contact.trim()].filter(Boolean).join(" · "),
+        })
+        if (error) throw new Error(error.message)
+      }
+      const record = issue({
+        // In production, never persist the plaintext bearer key in the local
+        // CMS ledger. It remains only in component memory for the one-time
+        // copy/send flow below; Supabase receives its digest only.
+        code: isSupabaseConfigured ? "[key shown once]" : code,
+        serial, plan, period,
+        clientName: clientName.trim(), company: company.trim(), contact: contact.trim(),
+        source, note: note.trim(), issuedAt: new Date().toISOString().slice(0, 10),
+      })
+      setCreated({ ...record, code })
+      setCopied(false)
+    } catch (error) {
+      setGenerationError(error instanceof Error ? error.message : "تعذر إنشاء الرمز. تحقق من ترحيل قاعدة البيانات والصلاحيات.")
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function copyCode() {
@@ -233,8 +362,9 @@ function CodeBuilder() {
         <button type="button" onClick={() => void generate()} disabled={!clientName.trim() || busy} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-[13px] font-bold text-white transition-colors hover:bg-emerald-700 disabled:opacity-40">
           <KeyRound className="h-4 w-4" /> إنشاء رمز التفعيل
         </button>
-        <span className="text-[12px] text-muted">تبدأ المدة من يوم إدخال العميل للرمز، لا من يوم إنشائه.</span>
+        <span className="text-[12px] text-muted">تبدأ المدة من يوم إدخال العميل للرمز، لا من يوم إنشائه. الرمز صالح لحساب واحد فقط ويُستهلك عند أول تفعيل.</span>
       </div>
+      {generationError && <p role="alert" className="mt-2 rounded-lg bg-rose-50 p-3 text-[12px] text-rose-700">{generationError}</p>}
 
       {created && (
         <div className="mt-4 rounded-xl bg-ink p-4 text-white" dir="ltr">
