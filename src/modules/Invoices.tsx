@@ -23,7 +23,7 @@ type Copy = {
   exportPdf: string; preview: string; edit: string; seller: string; buyer: string; businessName: string;
   legalForm: string; address: string; city: string; country: string; phone: string; email: string;
   ice: string; taxId: string; rc: string; rcCity: string; patente: string; cnss: string;
-  useContact: string; selectContact: string; invoiceDetails: string; issueDate: string; dueDate: string;
+  useContact: string; selectContact: string; invoiceDetails: string; issueDate: string; operationDate: string; dueDate: string;
   subject: string; reference: string; lineItems: string; description: string; unit: string; quantity: string;
   unitPriceHT: string; vatRate: string; lineTotal: string; addLine: string; totals: string; subtotalHT: string;
   tax: string; totalTTC: string; payment: string; amountPaid: string; balanceDue: string; method: string;
@@ -32,7 +32,7 @@ type Copy = {
   classic: string; modern: string; friendly: string; accent: string; logo: string; removeLogo: string;
   templates: string; chooseTemplate: string; saveTemplate: string; templateName: string; saveTemplateConfirm: string;
   applyTemplate: string; deleteTemplate: string; saved: string; issueConfirm: string; missing: string;
-  missingSeller: string; missingAddress: string; missingDate: string; missingBuyer: string; missingLines: string;
+  missingSeller: string; missingAddress: string; missingDate: string; missingOperationDate: string; missingBuyer: string; missingLines: string;
   missingDescription: string; missingQuantity: string; missingPrice: string; missingVat: string; missingDueDate: string; missingDueBeforeIssue: string;
   draftSaved: string; issuedSuccess: string; paymentSaved: string; templateSaved: string; confirmDelete: string;
   localWarning: string; localDanger: string; corruptedWarning: string; readOnly: string; issueHelp: string;
@@ -53,7 +53,7 @@ const COPY: Record<"en" | "fr" | "ar", Copy> = {
     seller:"Your business", buyer:"Bill to", businessName:"Business / legal name", legalForm:"Legal form (optional)", address:"Address",
     city:"City", country:"Country", phone:"Phone", email:"Email", ice:"ICE", taxId:"Tax ID (IF)", rc:"Commercial Register (RC)",
     rcCity:"RC registration city", patente:"Professional tax (TP / patente)", cnss:"CNSS (if applicable)", useContact:"Fill from saved contact",
-    selectContact:"Choose a customer…", invoiceDetails:"Invoice details", issueDate:"Issue date", dueDate:"Due date", subject:"Subject / service",
+    selectContact:"Choose a customer…", invoiceDetails:"Invoice details", issueDate:"Issue date", operationDate:"Transaction date", dueDate:"Due date", subject:"Subject / service",
     reference:"Order / project reference", lineItems:"Items and services", description:"Description", unit:"Unit", quantity:"Qty",
     unitPriceHT:"Unit price HT", vatRate:"VAT %", lineTotal:"Line total TTC", addLine:"Add line", totals:"Summary", subtotalHT:"Subtotal HT",
     tax:"VAT", totalTTC:"Total TTC", payment:"Payment tracking", amountPaid:"Amount paid", balanceDue:"Balance due",
@@ -64,7 +64,7 @@ const COPY: Record<"en" | "fr" | "ar", Copy> = {
     templates:"Saved templates", chooseTemplate:"Choose a template…", saveTemplate:"Save as template", templateName:"Template name",
     saveTemplateConfirm:"Save template", applyTemplate:"Apply", deleteTemplate:"Delete", saved:"Saved", issueConfirm:"Issue this invoice and assign its final number?",
     missing:"Please correct these items before issuing:", missingSeller:"Add the seller's business name.", missingAddress:"Add the seller's address.",
-    missingDate:"Enter a valid issue date.", missingBuyer:"Add the customer's name.", missingLines:"Add at least one item.",
+    missingDate:"Enter a valid issue date.", missingOperationDate:"Enter a valid transaction date.", missingBuyer:"Add the customer's name.", missingLines:"Add at least one item.",
     missingDescription:"Enter a description for every line.", missingQuantity:"Each quantity must be greater than zero.",
     missingPrice:"Prices must be zero or greater.", missingVat:"VAT must be between 0 and 100.", missingDueDate:"Enter a valid due date.", missingDueBeforeIssue:"The due date cannot be earlier than the issue date.",
     draftSaved:"Draft saved in this browser.", issuedSuccess:"Invoice issued and saved in this browser.", paymentSaved:"Payment details saved.",
@@ -92,7 +92,7 @@ const COPY: Record<"en" | "fr" | "ar", Copy> = {
     seller:"Votre entreprise", buyer:"Facturer à", businessName:"Nom commercial / raison sociale", legalForm:"Forme juridique (facultatif)", address:"Adresse",
     city:"Ville", country:"Pays", phone:"Téléphone", email:"E-mail", ice:"ICE", taxId:"Identifiant fiscal (IF)", rc:"Registre du commerce (RC)",
     rcCity:"Ville d’immatriculation RC", patente:"Taxe professionnelle (TP / patente)", cnss:"CNSS (si applicable)", useContact:"Préremplir depuis un contact",
-    selectContact:"Choisir un client…", invoiceDetails:"Détails de la facture", issueDate:"Date d’émission", dueDate:"Date d’échéance", subject:"Objet / prestation",
+    selectContact:"Choisir un client…", invoiceDetails:"Détails de la facture", issueDate:"Date d’émission", operationDate:"Date de l’opération", dueDate:"Date d’échéance", subject:"Objet / prestation",
     reference:"Référence commande / projet", lineItems:"Articles et prestations", description:"Désignation", unit:"Unité", quantity:"Qté",
     unitPriceHT:"Prix unitaire HT", vatRate:"TVA %", lineTotal:"Total ligne TTC", addLine:"Ajouter une ligne", totals:"Récapitulatif", subtotalHT:"Sous-total HT",
     tax:"TVA", totalTTC:"Total TTC", payment:"Suivi du paiement", amountPaid:"Montant payé", balanceDue:"Solde restant",
@@ -103,7 +103,7 @@ const COPY: Record<"en" | "fr" | "ar", Copy> = {
     templates:"Modèles enregistrés", chooseTemplate:"Choisir un modèle…", saveTemplate:"Enregistrer comme modèle", templateName:"Nom du modèle",
     saveTemplateConfirm:"Enregistrer le modèle", applyTemplate:"Appliquer", deleteTemplate:"Supprimer", saved:"Enregistré", issueConfirm:"Émettre cette facture et lui attribuer son numéro définitif ?",
     missing:"Veuillez corriger les points suivants avant l’émission :", missingSeller:"Renseignez la raison sociale du vendeur.", missingAddress:"Renseignez l’adresse du vendeur.",
-    missingDate:"Saisissez une date d’émission valide.", missingBuyer:"Renseignez le nom du client.", missingLines:"Ajoutez au moins une ligne.",
+    missingDate:"Saisissez une date d’émission valide.", missingOperationDate:"Saisissez une date d’opération valide.", missingBuyer:"Renseignez le nom du client.", missingLines:"Ajoutez au moins une ligne.",
     missingDescription:"Renseignez la désignation de chaque ligne.", missingQuantity:"Chaque quantité doit être supérieure à zéro.",
     missingPrice:"Les prix doivent être positifs ou nuls.", missingVat:"La TVA doit être comprise entre 0 et 100.", missingDueDate:"Saisissez une échéance valide.", missingDueBeforeIssue:"La date d’échéance ne peut pas précéder la date d’émission.",
     draftSaved:"Brouillon enregistré dans ce navigateur.", issuedSuccess:"Facture émise et enregistrée dans ce navigateur.", paymentSaved:"Paiement enregistré.",
@@ -131,7 +131,7 @@ const COPY: Record<"en" | "fr" | "ar", Copy> = {
     seller:"معلومات منشأتك", buyer:"الفاتورة إلى", businessName:"اسم المنشأة / الاسم القانوني", legalForm:"الشكل القانوني (اختياري)", address:"العنوان",
     city:"المدينة", country:"البلد", phone:"الهاتف", email:"البريد الإلكتروني", ice:"ICE", taxId:"المعرف الضريبي IF", rc:"السجل التجاري RC",
     rcCity:"مدينة تسجيل السجل التجاري", patente:"الضريبة المهنية TP / patente", cnss:"CNSS (عند الاقتضاء)", useContact:"ملء البيانات من جهة اتصال محفوظة",
-    selectContact:"اختر عميلاً…", invoiceDetails:"تفاصيل الفاتورة", issueDate:"تاريخ الإصدار", dueDate:"تاريخ الاستحقاق", subject:"الموضوع / الخدمة",
+    selectContact:"اختر عميلاً…", invoiceDetails:"تفاصيل الفاتورة", issueDate:"تاريخ الإصدار", operationDate:"تاريخ العملية", dueDate:"تاريخ الاستحقاق", subject:"الموضوع / الخدمة",
     reference:"مرجع الطلب / المشروع", lineItems:"السلع والخدمات", description:"البيان", unit:"الوحدة", quantity:"الكمية",
     unitPriceHT:"سعر الوحدة دون الضريبة", vatRate:"TVA %", lineTotal:"إجمالي البند مع الضريبة", addLine:"إضافة بند", totals:"الملخص", subtotalHT:"المجموع دون الضريبة",
     tax:"الضريبة على القيمة المضافة", totalTTC:"المجموع شامل الضريبة", payment:"تتبع الأداء", amountPaid:"المبلغ المؤدى", balanceDue:"المبلغ المتبقي",
@@ -142,7 +142,7 @@ const COPY: Record<"en" | "fr" | "ar", Copy> = {
     templates:"القوالب المحفوظة", chooseTemplate:"اختر قالباً…", saveTemplate:"حفظ كقالب", templateName:"اسم القالب",
     saveTemplateConfirm:"حفظ القالب", applyTemplate:"تطبيق", deleteTemplate:"حذف", saved:"محفوظ", issueConfirm:"هل تريد إصدار هذه الفاتورة وتخصيص رقمها النهائي؟",
     missing:"يرجى تصحيح ما يلي قبل الإصدار:", missingSeller:"أدخل الاسم القانوني للبائع.", missingAddress:"أدخل عنوان البائع.",
-    missingDate:"أدخل تاريخ إصدار صحيحاً.", missingBuyer:"أدخل اسم العميل.", missingLines:"أضف بنداً واحداً على الأقل.",
+    missingDate:"أدخل تاريخ إصدار صحيحاً.", missingOperationDate:"أدخل تاريخاً صحيحاً للعملية.", missingBuyer:"أدخل اسم العميل.", missingLines:"أضف بنداً واحداً على الأقل.",
     missingDescription:"أدخل وصفاً لكل بند.", missingQuantity:"يجب أن تكون كل كمية أكبر من صفر.",
     missingPrice:"يجب أن تكون الأسعار صفراً أو أكثر.", missingVat:"يجب أن تكون الضريبة بين 0 و100.", missingDueDate:"أدخل تاريخ استحقاق صحيحاً.", missingDueBeforeIssue:"لا يمكن أن يكون تاريخ الاستحقاق قبل تاريخ الإصدار.",
     draftSaved:"تم حفظ المسودة في هذا المتصفح.", issuedSuccess:"تم إصدار الفاتورة وحفظها في هذا المتصفح.", paymentSaved:"تم حفظ بيانات الأداء.",
@@ -188,7 +188,7 @@ function newDraft(settings: Settings): InvoiceRecord {
   const today = todayIso();
   return {
     id: createInvoiceId(), number: null, stage: "draft", createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(), issueDate: today, dueDate: addDays(today, 30),
+    updatedAt: new Date().toISOString(), issueDate: today, operationDate: today, dueDate: addDays(today, 30),
     currency: settings.currency || "MAD", subject: "", reference: "",
     seller: {
       ...blankParty(), name: settings.company || "", address: settings.address || "", city: settings.city || "",
@@ -293,6 +293,7 @@ function InvoicePreview({ invoice, t, language }: { invoice: InvoiceRecord; t: C
           <p className="text-2xl font-black tracking-tight">{t.title.toUpperCase()}</p>
           <p className="mt-1 break-words font-mono text-sm font-bold" style={{ color: invoice.accentColor }}>{invoice.number || "DRAFT"}</p>
           <p className="mt-2 text-xs text-slate-600">{t.issueDate}: {formatDate(invoice.issueDate, language)}</p>
+          <p className="mt-1 text-xs text-slate-600">{t.operationDate}: {formatDate(invoice.operationDate, language)}</p>
           <p className="mt-1 text-xs text-slate-600">{t.dueDate}: {formatDate(invoice.dueDate, language)}</p>
           {invoice.reference && <p className="mt-1 break-words text-xs text-slate-600">{t.reference}: {invoice.reference}</p>}
         </div>
@@ -461,6 +462,7 @@ export default function Invoices() {
       if (key === "sellerName") return t.missingSeller;
       if (key === "sellerAddress") return t.missingAddress;
       if (key === "issueDate") return t.missingDate;
+      if (key === "operationDate") return t.missingOperationDate;
       if (key === "buyerName") return t.missingBuyer;
       if (key === "lines") return t.missingLines;
       if (key.startsWith("lineDescription:")) return t.missingDescription;
@@ -646,6 +648,7 @@ export default function Invoices() {
             <h2 className="mb-4 flex items-center gap-2 text-sm font-bold text-ink"><FileText className="h-4 w-4 text-brand" />{t.invoiceDetails}</h2>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label={t.issueDate} type="date" value={editor.issueDate} disabled={editor.stage === "issued"} required onChange={(v) => updateEditor({issueDate:v})} />
+              <Field label={t.operationDate} type="date" value={editor.operationDate} disabled={editor.stage === "issued"} required onChange={(v) => updateEditor({operationDate:v})} />
               <Field label={t.dueDate} type="date" value={editor.dueDate} disabled={editor.stage === "issued"} required onChange={(v) => updateEditor({dueDate:v})} />
               <Field label={t.subject} value={editor.subject} disabled={editor.stage === "issued"} onChange={(v) => updateEditor({subject:v})} />
               <Field label={t.reference} value={editor.reference} disabled={editor.stage === "issued"} onChange={(v) => updateEditor({reference:v})} />
