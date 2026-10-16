@@ -1019,10 +1019,31 @@ tooling was never the customer's plan to gate.
 
 ### 6.2.1 Codes per client, freeze and stop (CMS) — built
 
-The CMS page **الرموز والأسعار** (`/admin/subscription-editor`) is the subscription
-console:
+The issuance console (`admin/subscriptions/ActivationConsole.tsx`) has **two
+homes**, so an owner finds the generator whichever screen they open:
 
-- **Code builder.** Each paying client gets a unique per-client code —
+- **الاشتراكات** (`/admin/subscriptions`) — the platform subscriptions screen,
+  where the code builder sits above the account/plan tables.
+- **رموز التفعيل** (`/admin/subscription-editor`) — the same console plus the
+  local client registry and the prices/copy editor.
+
+Both render the one component (readiness banner, MFA panel, code builder, server
+key ledger), so the two pages cannot drift apart. The banner runs
+`probeIssuanceReadiness()` before the owner types anything and names the missing
+prerequisite — no Supabase pair in the build (local demo codes only), a
+non-secure origin (`crypto.subtle` is unavailable over plain HTTP), an account
+that is not in `platform_admins`, a session that has not reached MFA **AAL2**, or
+a database where the activation migrations were never applied (it names both
+files). `issuanceErrorMessage()` maps whatever the server still refuses onto the
+same plain language instead of a raw PostgREST string.
+
+The rest of the console:
+
+- **Code builder.** In a configured build the key is an opaque random
+  `PRO-1M-…` token issued through the `issue_activation_key` RPC — only its
+  SHA-256 digest is stored, and the plaintext is shown once for the copy /
+  WhatsApp send. In an unconfigured build each paying client gets a unique
+  per-client code —
   `PRO-1M-K7Q2-BF6VSEZJ` — where `K7Q2` is a random 4-character serial and the last
   segment is an HMAC checksum over the *serial-bound* payload
   (`fatorati:plan:v2:…`, `src/lib/planCodes.ts`). The builder records the client's
@@ -1161,13 +1182,19 @@ that this is UX only: *"Database RLS and protected RPCs remain authoritative;
 this route tree is UX only."* Unknown paths redirect to `/admin` (authenticated)
 or `/admin/login`.
 
+A signed-in **content editor** who follows a platform link is no longer bounced
+to `/admin/blogs` in silence — `PlatformAdminRoute` explains that the page needs
+the platform-operator role (and MFA AAL2 for issuing activation keys) and where
+to get it (`الأمان ← إدارة الوصول`). A feature that quietly disappears reads as a
+feature that does not exist.
+
 ### 7.2 Platform-admin routes (9)
 
 | Route | File | What it manages |
 |---|---|---|
 | `/admin/dashboard` | `platform/DashboardView.tsx` | Operator overview |
-| `/admin/subscriptions` | `platform/SubscriptionsView.tsx` | Account subscriptions (`account_subscriptions`, `plan_catalog`, `usage_monthly`, `purchase_requests`) |
-| `/admin/subscription-editor` | `subscriptions/SubscriptionEditor.tsx` | Edit plan records, export JSON |
+| `/admin/subscriptions` | `platform/SubscriptionsView.tsx` | Account subscriptions (`account_subscriptions`, `plan_catalog`, `usage_monthly`, `purchase_requests`) **and the activation-code console** |
+| `/admin/subscription-editor` | `subscriptions/SubscriptionEditor.tsx` | The same activation-code console, plus the local client registry (freeze/stop), prices & plan copy, JSON export |
 | `/admin/traffic` | `platform/AnalyticsView.tsx` | `site_page_views`, `site_analytics_events` |
 | `/admin/security` | `security/CmsSecurityControl.tsx` | Audit log, encrypted export, CSRF refresh, anomaly detection, password change, rate limits |
 | `/admin/notifications` | `platform/NotificationsView.tsx` | `system_notifications` |
