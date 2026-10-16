@@ -269,6 +269,7 @@ function StatusPill({ status, t }: { status: "draft" | "issued" | "unpaid" | "pa
 }
 function InvoicePreview({ invoice, t, language }: { invoice: InvoiceRecord; t: Copy; language: "en" | "fr" | "ar" }) {
   const totals = calculateInvoiceTotals(invoice.lines, invoice.amountPaid);
+  const paymentMethodLabel = invoice.paymentMethod === "transfer" ? t.transfer : invoice.paymentMethod === "cash" ? t.cash : invoice.paymentMethod === "check" ? t.check : invoice.paymentMethod === "card" ? t.card : t.other;
   const showTaxId = (party: InvoiceParty) => [
     party.ice ? t.ice + ": " + party.ice : "",
     party.taxId ? t.taxId + ": " + party.taxId : "",
@@ -345,6 +346,9 @@ function InvoicePreview({ invoice, t, language }: { invoice: InvoiceRecord; t: C
         </div>
       </div>
       {invoice.paymentTerms && <div className="mt-5"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{t.paymentTerms}</p><p className="mt-1 whitespace-pre-line text-xs">{invoice.paymentTerms}</p></div>}
+      {invoice.paymentMethod && <p className="mt-2 break-words text-xs text-slate-600">{t.method}: {paymentMethodLabel}</p>}
+      {invoice.paymentReference && <p className="mt-1 break-words text-xs text-slate-600">{t.paymentReference}: {invoice.paymentReference}</p>}
+      {invoice.stage === "issued" && invoice.paidAt && <p className="mt-1 text-xs text-slate-600">{t.paidDate}: {formatDate(invoice.paidAt, language)}</p>}
       {invoice.taxNote && <div className="mt-3"><p className="whitespace-pre-line text-xs text-slate-600">{invoice.taxNote}</p></div>}
       {invoice.notes && <div className="mt-3 border-t border-slate-200 pt-3"><p className="whitespace-pre-line text-xs text-slate-600">{invoice.notes}</p></div>}
       <div className="mt-7 border-t border-slate-200 pt-3 text-[9px] text-slate-400">
