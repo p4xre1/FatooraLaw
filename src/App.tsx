@@ -40,6 +40,7 @@ import {
 import { currentHistoryState, navigate, useRoutePath } from "./lib/router"
 
 const Dashboard = lazy(() => import("./modules/Dashboard"))
+const Invoices = lazy(() => import("./modules/Invoices"))
 const Projects = lazy(() => import("./modules/Projects"))
 const Contacts = lazy(() => import("./modules/Contacts"))
 const Procurement = lazy(() => import("./modules/Procurement"))
@@ -301,6 +302,7 @@ export default function App() {
           <Suspense key={auth.id} fallback={<Fallback />}>
             {locked && <PlanLock module={current} onNavigate={go} />}
             {!locked && current === "dashboard" && <Dashboard onNavigate={go} />}
+            {!locked && current === "invoices" && <Invoices />}
             {!locked && current === "projects" && <Projects />}
             {!locked && current === "contacts" && <Contacts />}
             {!locked && current === "procurement" && <Procurement />}

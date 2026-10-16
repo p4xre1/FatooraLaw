@@ -16,6 +16,7 @@ import type { Language } from "../lib/language/store.ts"
 const en = {
   modules: {
     dashboard: "Dashboard",
+    invoices: "Invoices",
     projects: "Projects",
     contacts: "Clients & Suppliers",
     procurement: "Purchases & Expenses",
@@ -55,6 +56,7 @@ type SharedCopy = typeof en
 const fr: SharedCopy = {
   modules: {
     dashboard: "Tableau de bord",
+    invoices: "Factures",
     projects: "Projets",
     contacts: "Clients & Fournisseurs",
     procurement: "Achats & Dépenses",
@@ -87,6 +89,7 @@ const fr: SharedCopy = {
 const ar: SharedCopy = {
   modules: {
     dashboard: "لوحة التحكم",
+    invoices: "الفواتير",
     projects: "المشاريع",
     contacts: "العملاء والموردون",
     procurement: "المشتريات والمصاريف",

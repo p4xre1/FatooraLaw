@@ -18,7 +18,7 @@ import { LANGUAGE_STORAGE_KEY, useLanguageStore } from "../src/lib/language/stor
  */
 
 const ALL = perms([
-  "dashboard", "projects", "contacts", "procurement", "inventory", "delivery", "verification", "calendar",
+  "dashboard", "invoices", "projects", "contacts", "procurement", "inventory", "delivery", "verification", "calendar",
   "risk", "tools", "legal", "reports", "team", "audit", "settings",
 ])
 
@@ -84,7 +84,7 @@ it("groups the rail into 'Au quotidien' then 'Gestion', with 'Plus d'outils' col
   expect(labels).toEqual(["Au quotidien", "Gestion", "Plus d'outils"])
 
   expect(navHrefs(nav)).toEqual([
-    modulePath("dashboard"), modulePath("contacts"),
+    modulePath("dashboard"), modulePath("invoices"), modulePath("contacts"),
     modulePath("procurement"), modulePath("calendar"),
     modulePath("projects"), modulePath("inventory"), modulePath("delivery"), modulePath("verification"), modulePath("reports"),
   ])
@@ -111,7 +111,7 @@ it("expands 'Plus d'outils' on click and exposes the three tools", () => {
   ])
   // The rest of the rail is untouched by the expansion.
   const hrefs = navHrefs(nav)
-  for (const key of ["dashboard", "contacts", "procurement", "calendar", "projects", "inventory", "delivery", "verification", "reports"] as ModuleKey[]) {
+  for (const key of ["dashboard", "invoices", "contacts", "procurement", "calendar", "projects", "inventory", "delivery", "verification", "reports"] as ModuleKey[]) {
     expect(hrefs).toContain(modulePath(key))
   }
 })
@@ -208,7 +208,7 @@ it("gives every collapsed-rail control an accessible name and hides the group la
   expect(within(nav).queryByText("Au quotidien")).toBeNull()
 
   // Every row is still named, and named identically to the expanded rail.
-  for (const name of ["Tableau de bord", "Clients & Fournisseurs", "Achats & Dépenses", "Calendrier", "Projets", "Stock & Matériel", "Rapports & Fiscalité", "Gestion des Risques", "Coffre juridique", "Abonnements & Outils"]) {
+  for (const name of ["Tableau de bord", "Factures", "Clients & Fournisseurs", "Achats & Dépenses", "Calendrier", "Projets", "Stock & Matériel", "Rapports & Fiscalité", "Gestion des Risques", "Coffre juridique", "Abonnements & Outils"]) {
     expect(within(nav).getByRole("link", { name }).getAttribute("title")).toBe(name)
   }
 

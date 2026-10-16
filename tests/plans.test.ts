@@ -30,7 +30,7 @@ describe("the plan matrix", () => {
 
   it("gives BOOST everything the app has", () => {
     const all: ModuleKey[] = [
-      "dashboard", "projects", "contacts", "procurement", "inventory", "delivery", "verification", "calendar",
+      "dashboard", "invoices", "projects", "contacts", "procurement", "inventory", "delivery", "verification", "calendar",
       "risk", "tools", "legal", "reports", "team", "audit", "settings",
     ]
     for (const key of all) expect(planIncludes("boost", key), key).toBe(true)

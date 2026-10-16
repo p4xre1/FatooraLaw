@@ -731,6 +731,7 @@ export const PRIVATE_TITLES: Record<string, string> = {
   [AUTH_PATHS.forgot]: "Mot de passe oublié | Fatorati",
   [AUTH_PATHS.reset]: "Nouveau mot de passe | Fatorati",
   [MODULE_PATHS.dashboard]: "Tableau de bord | Fatorati",
+  [MODULE_PATHS.invoices]: "Factures | Fatorati",
   [MODULE_PATHS.projects]: "Projets | Fatorati",
   [MODULE_PATHS.contacts]: "Clients & Fournisseurs | Fatorati",
   [MODULE_PATHS.procurement]: "Achats & Dépenses | Fatorati",
