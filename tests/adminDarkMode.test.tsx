@@ -91,24 +91,34 @@ it("removes the class when the CMS unmounts (back to the marketing pages)", () =
 
 /* ----------------------------- the CMS shell ------------------------------ */
 
-it("organises the destinations into role-filtered groups in a left sidebar", () => {
+it("organises the destinations into groups in a left sidebar, locking what the role cannot open", () => {
+  // The rule here changed deliberately. Platform destinations used to be
+  // filtered out of the sidebar for an account that is not a platform
+  // operator, which made «رموز التفعيل» invisible rather than forbidden — the
+  // reported symptom was an owner concluding the CMS has no code generator at
+  // all. They are now always listed and marked locked instead; the page behind
+  // the link explains the requirement. See tests/adminNav.test.tsx, which owns
+  // that behaviour, and PlatformAdminRoute.tsx.
+  const LOCKED = "يتطلب دور مشغّل المنصة"
+
   const view = renderLayout()
   // The shell lays the sidebar on the physical left even though the console
   // is RTL (row-reverse), and the single nav instance holds every group.
   expect(view.container.querySelector(".flex-row-reverse")).not.toBeNull()
   const nav = view.getByRole("navigation", { name: "التنقل الرئيسي" })
   const text = nav.textContent
-  // A content admin gets the content groups; the platform-only ones
-  // (overview, billing, security) are absent from the DOM entirely.
-  for (const label of ["المحتوى", "البريد والدعم", "النظام والسلامة"]) {
+  for (const label of ["عام", "المحتوى", "المبيعات والنمو", "البريد والدعم", "النظام والسلامة"]) {
     expect(text, label).toContain(label)
   }
   expect(text).toContain("المدونة")
   expect(text).toContain("المراقبة")
-  expect(text).not.toContain("عام")
-  expect(text).not.toContain("المبيعات والنمو")
-  expect(text).not.toContain("الاشتراكات")
-  expect(text).not.toContain("الأمان")
+  // Every platform destination is present, and every one of them is locked:
+  // overview, billing, activation codes, traffic, security, backups.
+  expect(text).toContain("رموز التفعيل")
+  expect(text).toContain("الاشتراكات")
+  expect(text).toContain("الأمان")
+  expect(view.getAllByLabelText(LOCKED)).toHaveLength(9)
+  expect(text).toContain("platform_admins")
   view.unmount()
 
   const platform: AdminAccess = { status: "authenticated", user: null, isContentAdmin: true, isPlatformAdmin: true }
@@ -121,9 +131,13 @@ it("organises the destinations into role-filtered groups in a left sidebar", () 
       </Routes>
     </MemoryRouter>,
   )
-  const platformText = platformView.getByRole("navigation", { name: "التنقل الرئيسي" }).textContent
-  expect(platformText).toContain("الاشتراكات")
-  expect(platformText).toContain("الأمان")
+  const platformNav = platformView.getByRole("navigation", { name: "التنقل الرئيسي" })
+  expect(platformNav.textContent).toContain("الاشتراكات")
+  expect(platformNav.textContent).toContain("الأمان")
+  expect(platformNav.textContent).toContain("رموز التفعيل")
+  // Same destinations, nothing marked, no "ask for the role" notice.
+  expect(platformView.queryAllByLabelText(LOCKED)).toHaveLength(0)
+  expect(platformNav.textContent).not.toContain("platform_admins")
   platformView.unmount()
 })
 

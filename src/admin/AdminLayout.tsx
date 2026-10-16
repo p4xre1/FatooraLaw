@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { NavLink, Outlet, useLocation, useNavigate, useOutletContext } from "react-router"
 import {
   Activity, BarChart3, Bell, BookOpenText, CreditCard, DatabaseBackup, FileText, Globe2, Headset, KeyRound,
-  LayoutDashboard, LogOut, Mail, Menu, MessageSquareWarning, Moon, ShieldCheck, SlidersHorizontal, Sun, X,
+  LayoutDashboard, Lock, LogOut, Mail, Menu, MessageSquareWarning, Moon, ShieldCheck, SlidersHorizontal, Sun, X,
 } from "lucide-react"
 import { supabase } from "../lib/supabase"
 import { IconBtn } from "../components/kit"
@@ -119,12 +119,24 @@ export default function AdminLayout() {
   }
 
   const canEditContent = access.isContentAdmin || access.isPlatformAdmin
+  // Platform destinations stay in the sidebar even for a content-only editor.
+  //
+  // They used to be filtered out, which produced the exact complaint this
+  // comment exists to prevent: an owner looking for the activation-code
+  // generator found no «رموز التفعيل» entry anywhere and concluded the CMS had
+  // no such page. A hidden link and a missing page are indistinguishable from
+  // the outside. The destination already explains the requirement and names
+  // the row to add (`PlatformAdminRoute`), so the honest fix is to keep the
+  // link, mark it locked, and let the page do the explaining.
   const visibleSections = SECTIONS
     .map((section) => ({
       ...section,
-      links: section.links.filter((link) => (link.kind === "content" ? canEditContent : access.isPlatformAdmin)),
+      links: section.links
+        .filter((link) => (link.kind === "content" ? canEditContent : true))
+        .map((link) => ({ ...link, locked: link.kind === "platform" && !access.isPlatformAdmin })),
     }))
     .filter((section) => section.links.length > 0)
+  const showsLockedLinks = visibleSections.some((section) => section.links.some((link) => link.locked))
 
   return (
     <div dir="rtl" lang="ar" className="min-h-screen bg-canvas font-arabic text-ink">
@@ -145,14 +157,24 @@ export default function AdminLayout() {
 
           {/* Grouped navigation */}
           <nav aria-label="التنقل الرئيسي" className="flex-1 overflow-y-auto px-3 pb-4">
+            {showsLockedLinks && (
+              <p className="mt-3 rounded-lg border border-line bg-canvas/70 px-3 py-2.5 text-[11px] leading-relaxed text-muted">
+                الصفحات المعلَّمة بـ
+                <Lock className="mx-1 inline h-3 w-3 align-[-1px]" aria-hidden="true" />
+                تتطلب دور «مشغّل المنصة» (صف في{" "}
+                <span dir="ltr" className="font-mono text-[10px]">platform_admins</span>
+                ) — بما فيها <span className="font-semibold text-ink">رموز التفعيل</span>. افتح الصفحة لترى الخطوات.
+              </p>
+            )}
             {visibleSections.map((section) => (
               <div key={section.label}>
                 <p className={GROUP_LABEL}>{section.label}</p>
                 <div className="flex flex-col gap-0.5">
                   {section.links.map((link) => (
-                    <NavLink key={link.to} to={link.to} end={link.to === "/admin/dashboard"} className={({ isActive }) => `flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-semibold transition-colors ${isActive ? "bg-brand-50 text-brand-700" : "text-muted hover:bg-canvas hover:text-ink"}`}>
+                    <NavLink key={link.to} to={link.to} end={link.to === "/admin/dashboard"} className={({ isActive }) => `flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-semibold transition-colors ${isActive ? "bg-brand-50 text-brand-700" : link.locked ? "text-faint hover:bg-canvas hover:text-muted" : "text-muted hover:bg-canvas hover:text-ink"}`}>
                       <link.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                      <span className="truncate">{link.label}</span>
+                      <span className="flex-1 truncate">{link.label}</span>
+                      {link.locked && <Lock className="h-3.5 w-3.5 shrink-0" aria-label="يتطلب دور مشغّل المنصة" />}
                     </NavLink>
                   ))}
                 </div>
