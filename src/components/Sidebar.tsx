@@ -44,7 +44,7 @@ import { useMizan } from "../store/useMizan"
  * primary/quick-actions button in the rail while it is off — the owner
  * asked for it gone, and the top bar keeps the same shortcuts.
  */
-const INVOICE_ROUTE_ENABLED = false
+const INVOICE_ROUTE_ENABLED = true
 
 /**
  * Sidebar-scoped preference. Same `mizan.*` convention as the dashboard's.
@@ -228,15 +228,9 @@ export default function Sidebar({
 
   // The invoice placeholder is never locked: facturation is in FREE (see
   // lib/plans), so when `/invoices` ships it opens for everyone.
-  const invoiceItem: Item | null = INVOICE_ROUTE_ENABLED && (!query || t.invoices.toLowerCase().includes(query))
-    ? { id: "invoices", href: "/invoices", icon: FileText, label: t.invoices, on: false, moduleKey: null, lockedBy: null }
-    : null
-
-  // 13 rows total — plain computation is cheaper and less error-prone than
-  // tracking memo dependencies across four derived lists.
-  const daily = invoiceItem
-    ? [...buildItems(["dashboard"]), invoiceItem, ...buildItems(["contacts", "procurement", "calendar"])]
-    : buildItems(["dashboard", "contacts", "procurement", "calendar"])
+  // Invoices is now a first-class module, so normal role, search and plan rules apply.
+  // The ordering keeps it immediately inside the Day to day group.
+  const daily = buildItems(["dashboard", "invoices", "contacts", "procurement", "calendar"])
   const management = buildItems(["projects", "inventory", "delivery", "verification", "reports"])
   const more = buildItems(MORE_MODULES)
   const accountItems = ACCOUNT_MODULES
