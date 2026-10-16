@@ -34,6 +34,7 @@ export type InvoiceRecord = {
   createdAt: string;
   updatedAt: string;
   issueDate: string;
+  operationDate: string;
   currency: "MAD" | "EUR" | "USD";
   dueDate: string;
   subject: string;
