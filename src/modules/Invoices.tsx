@@ -163,6 +163,11 @@ const COPY: Record<"en" | "fr" | "ar", Copy> = {
 
 type StoragePack = { version: 1; invoices: InvoiceRecord[]; templates: InvoiceTemplate[] };
 const inputClass = "mt-1.5 w-full rounded-lg border border-line bg-surface px-3 py-2.5 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:cursor-not-allowed disabled:opacity-60";
+const currencySummary = (rows: InvoiceRecord[], pick: (row: InvoiceRecord) => number, language: "en" | "fr" | "ar") => {
+  const grouped = new Map<InvoiceRecord["currency"], number>();
+  rows.forEach((row) => grouped.set(row.currency, (grouped.get(row.currency) || 0) + pick(row)));
+  return [...grouped.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([currency, value]) => amount(value, currency, language)).join(" · ") || "—";
+};
 const labelClass = "block min-w-0 text-xs font-semibold text-muted";
 const panelClass = "rounded-2xl border border-line bg-surface p-4 sm:p-5";
 const todayIso = () => {
@@ -270,13 +275,13 @@ function InvoicePreview({ invoice, t, language }: { invoice: InvoiceRecord; t: C
     party.patente ? t.patente + ": " + party.patente : "",
     party.cnss ? t.cnss + ": " + party.cnss : "",
   ].filter(Boolean);
-  return <div className="invoice-print-root overflow-hidden rounded-xl border border-line bg-white text-slate-900 shadow-sm" style={{ borderTop: "5px solid " + invoice.accentColor }}>
+  return <div className={"invoice-print-root invoice-theme-" + invoice.theme + " overflow-hidden rounded-xl border border-line bg-white text-slate-900 shadow-sm"} style={{ borderTop: "5px solid " + invoice.accentColor }}>
     <div className="p-5 sm:p-7">
       <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-5">
         <div className="flex min-w-0 items-start gap-3">
           {invoice.logoDataUrl && <img src={invoice.logoDataUrl} alt="" className="max-h-16 max-w-24 object-contain" />}
           <div className="min-w-0">
-            <h2 className="break-words text-xl font-extrabold" style={{ color: invoice.accentColor }}>{invoice.seller.name || t.seller}</h2>
+            <h2 className="invoice-seller-name break-words text-xl font-extrabold" style={{ color: invoice.accentColor }}>{invoice.seller.name || t.seller}</h2>
             {invoice.seller.legalForm && <p className="mt-0.5 text-xs text-slate-600">{invoice.seller.legalForm}</p>}
             <p className="mt-1 whitespace-pre-line text-xs text-slate-600">{[invoice.seller.address, invoice.seller.city, invoice.seller.country].filter(Boolean).join(", ")}</p>
             <p className="mt-1 text-xs text-slate-600">{[invoice.seller.phone, invoice.seller.email].filter(Boolean).join(" · ")}</p>
@@ -403,6 +408,11 @@ export default function Invoices() {
   const updateEditor = (patch: Partial<InvoiceRecord>) => {
     if (!editor || editor.stage === "issued") return;
     setEditor({ ...editor, ...patch, updatedAt: new Date().toISOString() });
+  };
+  const updatePaymentEditor = (patch: Partial<InvoiceRecord>) => {
+    if (!editor) return;
+    if (editor.stage === "issued") setEditor({ ...editor, ...patch, updatedAt: new Date().toISOString() });
+    else updateEditor(patch);
   };
   const updateParty = (kind: "seller" | "buyer", patch: Partial<InvoiceParty>) => {
     if (!editor || editor.stage === "issued") return;
@@ -563,7 +573,7 @@ export default function Invoices() {
     seller={kind === "seller"} onChange={(patch) => updateParty(kind, patch)} />;
 
   return <div className="mz-view space-y-5" dir={dir}>
-    <style>{".invoice-print-root{break-inside:avoid;color:#0f172a!important;background:#fff!important}@media print{@page{size:A4;margin:11mm}body *{visibility:hidden!important}.invoice-print-root,.invoice-print-root *{visibility:visible!important}.invoice-print-root{position:absolute!important;inset:0 auto auto 0!important;width:100%!important;max-width:none!important;margin:0!important;border:0!important;border-radius:0!important;box-shadow:none!important}.no-print{display:none!important}body{background:white!important}.invoice-print-root table{font-size:9pt!important}.invoice-print-root th,.invoice-print-root td{padding:5pt!important;break-inside:avoid}.invoice-print-root img{max-height:18mm!important}.invoice-print-root *{print-color-adjust:exact;-webkit-print-color-adjust:exact}}"} </style>
+    <style>{".invoice-print-root{break-inside:avoid;color:#0f172a!important;background:#fff!important}.invoice-theme-modern .invoice-seller-name{letter-spacing:-.04em;text-transform:uppercase}.invoice-theme-modern{border-radius:2px!important}.invoice-theme-friendly .invoice-seller-name{letter-spacing:0}.invoice-theme-friendly .invoice-print-root{font-family:Inter,Tajawal,sans-serif}@media print{@page{size:A4;margin:11mm}body *{visibility:hidden!important}.invoice-print-root,.invoice-print-root *{visibility:visible!important}.invoice-print-root{position:absolute!important;inset:0 auto auto 0!important;width:100%!important;max-width:none!important;margin:0!important;border:0!important;border-radius:0!important;box-shadow:none!important}.no-print{display:none!important}body{background:white!important}.invoice-print-root table{font-size:9pt!important}.invoice-print-root th,.invoice-print-root td{padding:5pt!important;break-inside:avoid}.invoice-print-root img{max-height:18mm!important}.invoice-print-root *{print-color-adjust:exact;-webkit-print-color-adjust:exact}}"} </style>
     {!editor ? <>
       <div className="no-print flex flex-wrap items-start justify-between gap-3">
         <div><div className="text-xs font-bold uppercase tracking-widest text-brand">Fatorati · {t.localOnly}</div><h1 className="mt-1 text-2xl font-bold text-ink">{t.title}</h1><p className="mt-1 max-w-2xl text-sm text-muted">{t.subtitle}</p></div>
@@ -573,8 +583,8 @@ export default function Invoices() {
       {storageError && <Notice text={t.localDanger} danger />}
       <div className="no-print grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Metric label={t.totalIssued} value={String(invoices.filter((i) => i.stage === "issued").length)} />
-        <Metric label={t.collected} value={amount(invoices.filter((i) => i.stage === "issued").reduce((sum, i) => sum + i.amountPaid, 0), settings.currency, language)} />
-        <Metric label={t.outstanding} value={amount(invoices.filter((i) => i.stage === "issued").reduce((sum, i) => sum + totalsFor(i).balanceDue, 0), settings.currency, language)} />
+        <Metric label={t.collected} value={currencySummary(invoices.filter((i) => i.stage === "issued"), (i) => i.amountPaid, language)} />
+        <Metric label={t.outstanding} value={currencySummary(invoices.filter((i) => i.stage === "issued"), (i) => totalsFor(i).balanceDue, language)} />
         <Metric label={t.drafts} value={String(invoices.filter((i) => i.stage === "draft").length)} />
       </div>
       <div className="no-print flex flex-wrap gap-3 rounded-xl border border-line bg-brand-50 p-3 text-xs leading-5 text-brand-700">
@@ -664,8 +674,8 @@ export default function Invoices() {
                   <Field label={t.unit} value={line.unit} disabled={editor.stage==="issued"} onChange={(v)=>updateLine(line.id,{unit:v})} />
                   <Field label={t.quantity} type="number" value={line.quantity} min={0.001} max={100000000} step={0.001} disabled={editor.stage==="issued"} onChange={(v)=>updateLine(line.id,{quantity:v===""?0:Number(v)})} />
                   <Field label={t.unitPriceHT} type="number" value={line.unitPriceHT} min={0} max={100000000000} step={0.01} disabled={editor.stage==="issued"} onChange={(v)=>updateLine(line.id,{unitPriceHT:v===""?0:Number(v)})} />
-                  <label className={labelClass}><span>{t.vatRate}</span><select className={inputClass} value={String(line.vatRate)} disabled={editor.stage==="issued"} onChange={(e)=>updateLine(line.id,{vatRate:Number(e.target.value)})}>
-                    <option value="0">0%</option><option value="7">7%</option><option value="10">10%</option><option value="14">14%</option><option value="20">20%</option>{![0,7,10,14,20].includes(line.vatRate) && <option value={line.vatRate}>{line.vatRate}%</option>}
+                  <label className={labelClass}><span>{t.vatRate}</span><select className={inputClass} value={String(line.vatRate)} disabled={editor.stage==="issued"} onChange={(e)=>{if(e.target.value==="custom"){const raw=window.prompt(t.customRate+" (0–100)",String(line.vatRate));if(raw!==null&&raw.trim()!==""){const rate=Number(raw);if(Number.isFinite(rate)&&rate>=0&&rate<=100)updateLine(line.id,{vatRate:rate});}}else updateLine(line.id,{vatRate:Number(e.target.value)});}}>
+                    <option value="0">0%</option><option value="7">7%</option><option value="10">10%</option><option value="14">14%</option><option value="20">20%</option>{![0,7,10,14,20].includes(line.vatRate) && <option value={line.vatRate}>{line.vatRate}%</option>}<option value="custom">{t.customRate}</option>
                   </select></label>
                 </div>
                 <div className="mt-3 flex items-center justify-between border-t border-line pt-2 text-xs"><span className="text-muted">{t.lineTotal}</span><strong className="tabular-nums text-ink">{amount(calculateInvoiceTotals([line]).totalTTC,editor.currency,language)}</strong></div>
@@ -683,13 +693,13 @@ export default function Invoices() {
           <section className={panelClass}>
             <h2 className="mb-4 text-sm font-bold text-ink">{t.payment}</h2>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label={t.amountPaid} type="number" value={editor.amountPaid} min={0} max={editorTotals?.totalTTC||0} step={0.01} disabled={false} onChange={(v)=>updateEditor({amountPaid:v===""?0:Number(v)})} />
+              <Field label={t.amountPaid} type="number" value={editor.amountPaid} min={0} max={editorTotals?.totalTTC||0} step={0.01} disabled={false} onChange={(v)=>updatePaymentEditor({amountPaid:v===""?0:Number(v)})} />
               <div className="flex items-end"><div className="w-full rounded-lg bg-canvas px-3 py-2.5"><p className="text-xs text-muted">{t.balanceDue}</p><p className="mt-1 font-bold tabular-nums text-ink">{amount(editorTotals?.balanceDue||0,editor.currency,language)}</p></div></div>
               <Field label={t.paymentReference} value={editor.paymentReference} disabled={editor.stage==="issued"} onChange={(v)=>updateEditor({paymentReference:v})} />
-              <Field label={t.paidDate} type="date" value={editor.paidAt} onChange={(v)=>updateEditor({paidAt:v})} />
+              <Field label={t.paidDate} type="date" value={editor.paidAt} onChange={(v)=>updatePaymentEditor({paidAt:v})} />
               <div className="sm:col-span-2"><Field label={t.paymentTerms} value={editor.paymentTerms} disabled={editor.stage==="issued"} onChange={(v)=>updateEditor({paymentTerms:v})} /></div>
               {editor.stage==="issued" && <button onClick={savePayment} className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand px-3 py-2.5 text-sm font-bold text-white hover:bg-brand-700"><Save className="h-4 w-4"/>{t.savePayment}</button>}
-              {editor.stage==="issued" && <button onClick={()=>{updateEditor({amountPaid:editorTotals?.totalTTC||0,paidAt:todayIso()});setTimeout(()=>{const total=calculateInvoiceTotals(editor.lines).totalTTC;const updated={...editor,amountPaid:total,paidAt:todayIso(),updatedAt:new Date().toISOString()};const next=invoices.map((i)=>i.id===editor.id?updated:i);if(persist(next)){setEditor(updated);setFeedback(t.paymentSaved);}},0);}} className="inline-flex items-center justify-center gap-2 rounded-lg border border-line px-3 py-2.5 text-sm font-bold text-ink hover:bg-canvas"><CheckCircle2 className="h-4 w-4"/>{t.markPaid}</button>}
+              {editor.stage==="issued" && <button onClick={()=>{const total=calculateInvoiceTotals(editor.lines).totalTTC;const updated={...editor,amountPaid:total,paidAt:todayIso(),updatedAt:new Date().toISOString()};const next=invoices.map((i)=>i.id===editor.id?updated:i);if(persist(next)){setEditor(updated);setFeedback(t.paymentSaved);}}} className="inline-flex items-center justify-center gap-2 rounded-lg border border-line px-3 py-2.5 text-sm font-bold text-ink hover:bg-canvas"><CheckCircle2 className="h-4 w-4"/>{t.markPaid}</button>}
             </div>
           </section>
           <section className={panelClass}>
