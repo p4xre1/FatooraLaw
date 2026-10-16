@@ -8,7 +8,7 @@ import {
 function invoice(overrides: Partial<InvoiceRecord> = {}): InvoiceRecord {
   return {
     id: "draft-1", number: null, stage: "draft", createdAt: "2026-10-16T09:00:00.000Z",
-    updatedAt: "2026-10-16T09:00:00.000Z", issueDate: "2026-10-16", currency: "MAD",
+    updatedAt: "2026-10-16T09:00:00.000Z", issueDate: "2026-10-16", operationDate: "2026-10-16", currency: "MAD",
     dueDate: "2026-11-15", subject: "Web design", reference: "",
     seller: { name: "Seller SARL", legalForm: "SARL", address: "Tangier", city: "Tangier", country: "Morocco", phone: "", email: "", ice: "", taxId: "", rc: "", rcCity: "", patente: "", cnss: "" },
     buyer: { name: "Client", legalForm: "", address: "Rabat", city: "Rabat", country: "Morocco", phone: "", email: "", ice: "", taxId: "", rc: "", rcCity: "", patente: "", cnss: "" },
