@@ -300,7 +300,7 @@ grant usage, select on all sequences in schema public to authenticated;
 -- These tables let you cap resource usage before traffic can affect availability.
 
 do $$ begin
-  create type public.subscription_plan as enum ('starter', 'pro', 'business', 'enterprise');
+  create type public.subscription_plan as enum ('starter', 'pro', 'business', 'enterprise', 'boost');
 exception when duplicate_object then null; end $$;
 
 do $$ begin
@@ -719,7 +719,7 @@ begin;
 -- platform plans. On installations that already ran schema.sql, every CREATE
 -- below is a no-op; on a core-only schema, this supplies the control layer.
 do $$ begin
-  create type public.subscription_plan as enum ('starter', 'pro', 'business', 'enterprise');
+  create type public.subscription_plan as enum ('starter', 'pro', 'business', 'enterprise', 'boost');
 exception when duplicate_object then null; end $$;
 do $$ begin
   create type public.subscription_status as enum ('trialing', 'active', 'past_due', 'paused', 'canceled');
@@ -746,7 +746,8 @@ values
   ('starter','Starter',0,1,100,10,250,'{"reports":false,"audit":false}'::jsonb),
   ('pro','Pro',199,5,1000,100,2048,'{"reports":true,"audit":true}'::jsonb),
   ('business','Business',499,20,5000,500,10240,'{"reports":true,"audit":true,"priority_support":true}'::jsonb),
-  ('enterprise','Enterprise',0,1000,100000,10000,102400,'{"reports":true,"audit":true,"priority_support":true,"custom_limits":true}'::jsonb)
+  ('enterprise','Enterprise',0,1000,100000,10000,102400,'{"reports":true,"audit":true,"priority_support":true,"custom_limits":true}'::jsonb),
+  ('boost','BOOST',499,20,5000,500,10240,'{"reports":true,"audit":true,"priority_support":true}'::jsonb)
 on conflict (code) do nothing;
 
 create table if not exists public.account_subscriptions (
@@ -1381,7 +1382,7 @@ create table if not exists public.cms_products (
 
 create table if not exists public.cms_support_requests (
   id uuid primary key default gen_random_uuid(),
-  category text not null check (category in ('contact', 'bug', 'feedback', 'feature_request')),
+  category text not null check (category in ('contact', 'bug', 'feedback', 'feature_request', 'investor', 'partner')),
   name text not null check (char_length(name) between 1 and 120),
   email text not null check (char_length(email) between 3 and 254),
   subject text not null check (char_length(subject) between 1 and 180),
@@ -1533,7 +1534,7 @@ set search_path = public
 as $$
 declare request_id uuid;
 begin
-  if p_category not in ('contact', 'bug', 'feedback', 'feature_request') then raise exception 'invalid_support_category' using errcode = 'check_violation'; end if;
+  if p_category not in ('contact', 'bug', 'feedback', 'feature_request', 'investor', 'partner') then raise exception 'invalid_support_category' using errcode = 'check_violation'; end if;
   if length(btrim(coalesce(p_name, ''))) not between 1 and 120 or length(btrim(coalesce(p_email, ''))) not between 3 and 254 or
      length(btrim(coalesce(p_subject, ''))) not between 1 and 180 or length(btrim(coalesce(p_message, ''))) not between 10 and 10000 then
     raise exception 'invalid_support_request' using errcode = 'check_violation';
@@ -1813,4 +1814,405 @@ do $$ begin
   end if;
 end $$;
 
+
+-- Optional, account-owned second copy of each local business workspace.
+-- This table stores readable records protected by RLS (not end-to-end encrypted).
+create table if not exists public.business_backup_mirrors (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  device_id uuid not null,
+  snapshot jsonb not null,
+  schema_version integer not null default 1 check (schema_version = 1),
+  enabled boolean not null default true,
+  updated_at timestamptz not null default now(),
+  constraint business_backup_snapshot_object check (jsonb_typeof(snapshot) = 'object'),
+  constraint business_backup_snapshot_size check (pg_column_size(snapshot) <= 5242880),
+  constraint business_backup_user_device_unique unique (user_id, device_id)
+);
+create index if not exists business_backup_mirrors_enabled_updated_idx
+  on public.business_backup_mirrors (user_id, updated_at desc) where enabled = true;
+alter table public.business_backup_mirrors enable row level security;
+alter table public.business_backup_mirrors force row level security;
+drop policy if exists business_backup_mirrors_own_select on public.business_backup_mirrors;
+drop policy if exists business_backup_mirrors_own_insert on public.business_backup_mirrors;
+drop policy if exists business_backup_mirrors_own_update on public.business_backup_mirrors;
+drop policy if exists business_backup_mirrors_own_delete on public.business_backup_mirrors;
+create policy business_backup_mirrors_own_select on public.business_backup_mirrors for select to authenticated using (user_id = (select auth.uid()));
+create policy business_backup_mirrors_own_insert on public.business_backup_mirrors for insert to authenticated with check (user_id = (select auth.uid()));
+create policy business_backup_mirrors_own_update on public.business_backup_mirrors for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+create policy business_backup_mirrors_own_delete on public.business_backup_mirrors for delete to authenticated using (user_id = (select auth.uid()));
+revoke all on public.business_backup_mirrors from public, anon, authenticated;
+grant select, insert, update, delete on public.business_backup_mirrors to authenticated;
+
 commit;
+
+
+-- Single-use plan activation codes; see migration 20261017 for full rationale.
+-- Server-authoritative single-use activation codes (also in incremental migration).
+
+create table if not exists public.activation_keys (
+  id uuid primary key default gen_random_uuid(),
+  key_hash text not null unique check (key_hash ~ '^[0-9a-f]{64}$'),
+  plan text not null check (plan in ('pro', 'boost')),
+  period text not null check (period in ('1M', '1Y')),
+  status text not null default 'unused' check (status in ('unused', 'redeemed', 'revoked')),
+  issued_to text not null default '',
+  issued_by uuid not null references auth.users(id),
+  redeemed_by uuid references auth.users(id) on delete set null,
+  redeemed_at timestamptz,
+  starts_at date,
+  ends_at date,
+  created_at timestamptz not null default now(),
+  constraint activation_key_redemption_consistency check (
+    (status = 'unused' and redeemed_by is null and redeemed_at is null)
+    or (status = 'redeemed' and redeemed_by is not null and redeemed_at is not null)
+    or status = 'revoked'
+  )
+);
+
+alter table public.activation_keys enable row level security;
+drop policy if exists activation_keys_admin_read on public.activation_keys;
+create policy activation_keys_admin_read on public.activation_keys
+  for select to authenticated using (public.is_platform_admin());
+drop policy if exists activation_keys_admin_insert on public.activation_keys;
+create policy activation_keys_admin_insert on public.activation_keys
+  for insert to authenticated with check (public.is_platform_admin() and issued_by = auth.uid());
+drop policy if exists activation_keys_admin_update on public.activation_keys;
+create policy activation_keys_admin_update on public.activation_keys
+  for update to authenticated using (public.is_platform_admin()) with check (public.is_platform_admin());
+revoke all on public.activation_keys from anon, public;
+grant select, insert, update on public.activation_keys to authenticated;
+
+create or replace function public.redeem_activation_key(p_key text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_user uuid := auth.uid();
+  v_key public.activation_keys%rowtype;
+  v_today date := (now() at time zone 'Africa/Casablanca')::date;
+  v_start date := v_today;
+  v_end date;
+  v_current_plan text;
+  v_current_end timestamptz;
+begin
+  if v_user is null then raise exception 'authentication_required' using errcode = '28000'; end if;
+  if p_key is null or length(p_key) > 100 then raise exception 'invalid_activation_key' using errcode = '22023'; end if;
+
+  select * into v_key from public.activation_keys
+    where key_hash = encode(digest(upper(regexp_replace(trim(p_key), '[[:space:]._-]', '', 'g')), 'sha256'), 'hex')
+    for update;
+  if not found then raise exception 'invalid_activation_key' using errcode = '22023'; end if;
+  if v_key.status = 'revoked' then raise exception 'activation_key_revoked' using errcode = '22023'; end if;
+  if v_key.status = 'redeemed' then
+    if v_key.redeemed_by = v_user then raise exception 'activation_key_already_used_by_this_account' using errcode = '22023';
+    else raise exception 'activation_key_already_used' using errcode = '22023'; end if;
+  end if;
+
+  select plan::text, current_period_end into v_current_plan, v_current_end
+    from public.account_subscriptions where user_id = v_user for update;
+  if v_current_plan = v_key.plan and v_current_end is not null
+    and v_current_end > now() then
+    v_start := greatest(v_today, (v_current_end at time zone 'Africa/Casablanca')::date);
+  end if;
+  v_end := case when v_key.period = '1Y' then (v_start + interval '1 year')::date else (v_start + interval '1 month')::date end;
+  update public.activation_keys set status = 'redeemed', redeemed_by = v_user,
+    redeemed_at = now(), starts_at = v_start, ends_at = v_end where id = v_key.id;
+  insert into public.account_subscriptions(user_id, plan, status, current_period_end, updated_at)
+  values (v_user, v_key.plan::public.subscription_plan, 'active', (v_end + 1)::timestamp at time zone 'Africa/Casablanca', now())
+  on conflict (user_id) do update set plan = excluded.plan, status = 'active',
+    current_period_end = excluded.current_period_end, updated_at = now();
+
+  return jsonb_build_object('ok', true, 'plan', v_key.plan, 'period', v_key.period,
+    'started_at', v_today, 'ends_at', v_end, 'serial', v_key.id);
+end;
+$$;
+revoke all on function public.redeem_activation_key(text) from public, anon;
+grant execute on function public.redeem_activation_key(text) to authenticated;
+
+-- Activation key and plan-management security hardening (20261018).
+-- Harden activation-key operations: platform-admin MFA gates, audit trail,
+-- generic failures, and short-window account/source rate limits.
+
+create table if not exists public.activation_key_attempt_limits (
+  scope text not null check (scope in ('account', 'source')),
+  scope_hash text not null check (char_length(scope_hash) between 1 and 128),
+  window_started_at timestamptz not null default now(),
+  attempts integer not null default 0 check (attempts >= 0),
+  updated_at timestamptz not null default now(),
+  primary key (scope, scope_hash)
+);
+alter table public.activation_key_attempt_limits enable row level security;
+revoke all on public.activation_key_attempt_limits from public, anon, authenticated;
+
+create or replace function public.activation_admin_mfa()
+returns boolean language sql stable security definer set search_path = public, auth
+as $$
+  select public.is_platform_admin() and coalesce(auth.jwt()->>'aal', 'aal1') = 'aal2';
+$$;
+revoke all on function public.activation_admin_mfa() from public, anon;
+grant execute on function public.activation_admin_mfa() to authenticated;
+
+drop policy if exists activation_keys_admin_read on public.activation_keys;
+create policy activation_keys_admin_read on public.activation_keys
+  for select to authenticated using (public.activation_admin_mfa());
+drop policy if exists activation_keys_admin_insert on public.activation_keys;
+create policy activation_keys_admin_insert on public.activation_keys
+  for insert to authenticated with check (public.activation_admin_mfa() and issued_by = auth.uid());
+drop policy if exists activation_keys_admin_update on public.activation_keys;
+create policy activation_keys_admin_update on public.activation_keys
+  for update to authenticated using (public.activation_admin_mfa()) with check (public.activation_admin_mfa());
+
+create or replace function public.issue_activation_key(
+  p_key_hash text, p_plan text, p_period text, p_issued_to text default ''
+) returns uuid
+language plpgsql security definer set search_path = public, auth
+as $$
+declare v_id uuid;
+begin
+  if auth.uid() is null or not public.activation_admin_mfa() then
+    raise exception 'platform_admin_mfa_required' using errcode = '42501';
+  end if;
+  if p_key_hash !~ '^[0-9a-f]{64}$' or p_plan not in ('pro','boost')
+    or p_period not in ('1M','1Y') or char_length(coalesce(p_issued_to,'')) > 240 then
+    raise exception 'invalid_activation_key_request' using errcode = '22023';
+  end if;
+  insert into public.activation_keys(key_hash,plan,period,issued_to,issued_by)
+  values (p_key_hash,p_plan,p_period,coalesce(p_issued_to,''),auth.uid()) returning id into v_id;
+  return v_id;
+end;
+$$;
+revoke all on function public.issue_activation_key(text,text,text,text) from public, anon;
+grant execute on function public.issue_activation_key(text,text,text,text) to authenticated;
+
+create or replace function public.audit_activation_key_change()
+returns trigger language plpgsql security definer set search_path = public, auth
+as $$
+declare v_actor uuid := auth.uid(); v_action text;
+begin
+  if v_actor is null then
+    if tg_op = 'INSERT' then v_actor := new.issued_by; else v_actor := coalesce(new.redeemed_by, old.redeemed_by, new.issued_by); end if;
+  end if;
+  if tg_op = 'INSERT' then v_action := 'activation_key_issued';
+  elsif old.status is distinct from new.status and new.status = 'redeemed' then v_action := 'activation_key_redeemed';
+  elsif old.status is distinct from new.status and new.status = 'revoked' then v_action := 'activation_key_revoked';
+  else return new; end if;
+  insert into public.admin_audit_events(actor_id,action,target,details)
+  values (v_actor,v_action,new.id::text,jsonb_build_object('plan',new.plan,'period',new.period,'status',new.status,'redeemed_by',new.redeemed_by));
+  return new;
+end;
+$$;
+drop trigger if exists activation_key_audit on public.activation_keys;
+create trigger activation_key_audit after insert or update on public.activation_keys
+for each row execute function public.audit_activation_key_change();
+
+create or replace function public.audit_account_plan_change()
+returns trigger language plpgsql security definer set search_path = public, auth
+as $$
+declare v_actor uuid := auth.uid();
+begin
+  if tg_op = 'UPDATE' and (old.plan is distinct from new.plan or old.status is distinct from new.status or old.current_period_end is distinct from new.current_period_end) then
+    if v_actor is not null then
+      insert into public.admin_audit_events(actor_id,action,target,details)
+      values (v_actor,'account_plan_changed',new.user_id::text,jsonb_build_object(
+        'from_plan',old.plan,'to_plan',new.plan,'from_status',old.status,'to_status',new.status,
+        'current_period_end',new.current_period_end));
+    end if;
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists account_plan_audit on public.account_subscriptions;
+create trigger account_plan_audit after update on public.account_subscriptions
+for each row execute function public.audit_account_plan_change();
+
+create or replace function public.redeem_activation_key(p_key text)
+returns jsonb language plpgsql security definer set search_path = public, extensions, auth
+as $$
+declare
+  v_user uuid := auth.uid();
+  v_key public.activation_keys%rowtype;
+  v_today date := (now() at time zone 'Africa/Casablanca')::date;
+  v_start date := (now() at time zone 'Africa/Casablanca')::date;
+  v_end date;
+  v_current_plan text;
+  v_current_end timestamptz;
+  v_headers jsonb := coalesce(nullif(current_setting('request.headers',true),'')::jsonb,'{}'::jsonb);
+  v_ip text;
+  v_source_hash text;
+  v_bucket timestamptz := date_trunc('minute',now()) - (extract(minute from now())::integer % 15) * interval '1 minute';
+  v_account_attempts integer;
+  v_source_attempts integer;
+  v_account_hash text;
+begin
+  if v_user is null then return jsonb_build_object('ok',false); end if;
+  -- Use only a short-lived digest of the gateway-provided client address. Never
+  -- persist the raw address or the submitted activation key.
+  v_ip := coalesce(v_headers->>'cf-connecting-ip',split_part(coalesce(v_headers->>'x-forwarded-for','unknown'),',',1),'unknown');
+  v_source_hash := encode(digest(trim(v_ip)||':'||to_char(v_bucket,'YYYYMMDDHH24MI'),'sha256'),'hex');
+  v_account_hash := v_user::text;
+
+  delete from public.activation_key_attempt_limits where updated_at < now() - interval '1 day';
+  insert into public.activation_key_attempt_limits(scope,scope_hash,window_started_at,attempts,updated_at)
+  values ('account',v_account_hash,now(),1,now())
+  on conflict (scope,scope_hash) do update set
+    attempts = case when public.activation_key_attempt_limits.window_started_at <= now()-interval '15 minutes' then 1 else public.activation_key_attempt_limits.attempts+1 end,
+    window_started_at = case when public.activation_key_attempt_limits.window_started_at <= now()-interval '15 minutes' then now() else public.activation_key_attempt_limits.window_started_at end,
+    updated_at = now()
+  returning attempts into v_account_attempts;
+  insert into public.activation_key_attempt_limits(scope,scope_hash,window_started_at,attempts,updated_at)
+  values ('source',v_source_hash,now(),1,now())
+  on conflict (scope,scope_hash) do update set attempts = public.activation_key_attempt_limits.attempts+1, updated_at=now()
+  returning attempts into v_source_attempts;
+
+  if v_account_attempts >= 8 or v_source_attempts >= 20 then
+    if v_account_attempts = 8 or v_source_attempts = 20 then
+      insert into public.admin_audit_events(actor_id,action,target,details)
+      values (v_user,'activation_key_attempt_threshold',v_user::text,jsonb_build_object('account_attempts',v_account_attempts,'source_attempts',v_source_attempts));
+      insert into public.system_notifications(severity,title,message,created_by)
+      values ('warning','Repeated activation-code failures','An account or source reached the activation-code failure threshold. Review the platform audit log.',v_user);
+    end if;
+    return jsonb_build_object('ok',false);
+  end if;
+  if p_key is null or length(p_key) > 100 then return jsonb_build_object('ok',false); end if;
+
+  select * into v_key from public.activation_keys
+    where key_hash = encode(digest(upper(regexp_replace(trim(p_key), '[[:space:]._-]', '', 'g')), 'sha256'), 'hex')
+    for update;
+  if not found or v_key.status <> 'unused' then return jsonb_build_object('ok',false); end if;
+
+  select plan::text,current_period_end into v_current_plan,v_current_end
+    from public.account_subscriptions where user_id=v_user for update;
+  if v_current_plan=v_key.plan and v_current_end is not null and v_current_end>now() then
+    v_start := greatest(v_today,(v_current_end at time zone 'Africa/Casablanca')::date);
+  end if;
+  v_end := case when v_key.period='1Y' then (v_start+interval '1 year')::date else (v_start+interval '1 month')::date end;
+  update public.activation_keys set status='redeemed',redeemed_by=v_user,redeemed_at=now(),starts_at=v_start,ends_at=v_end where id=v_key.id;
+  insert into public.account_subscriptions(user_id,plan,status,current_period_end,updated_at)
+  values (v_user,v_key.plan::public.subscription_plan,'active',(v_end+1)::timestamp at time zone 'Africa/Casablanca',now())
+  on conflict (user_id) do update set plan=excluded.plan,status='active',current_period_end=excluded.current_period_end,updated_at=now();
+  return jsonb_build_object('ok',true,'plan',v_key.plan,'period',v_key.period,'started_at',v_start,'ends_at',v_end,'serial',v_key.id);
+end;
+$$;
+revoke all on function public.redeem_activation_key(text) from public, anon;
+grant execute on function public.redeem_activation_key(text) to authenticated;
+-- 30-day account recovery window. Workspace deletion is an explicit, irreversible choice.
+alter table public.profiles add column if not exists deletion_requested_at timestamptz;
+alter table public.profiles add column if not exists workspace_erased_at timestamptz;
+
+alter table public.cms_support_requests drop constraint if exists cms_support_requests_category_check;
+alter table public.cms_support_requests add constraint cms_support_requests_category_check
+  check (category in ('contact', 'bug', 'feedback', 'feature_request', 'investor', 'partner'));
+
+create or replace function public.request_account_deletion(p_erase_workspace boolean default false)
+returns timestamptz language plpgsql security definer set search_path = public as $$
+declare due_at timestamptz;
+begin
+  if auth.uid() is null then raise exception 'authentication_required' using errcode = '28000'; end if;
+  update public.profiles set deletion_requested_at = coalesce(deletion_requested_at, now())
+    where id = auth.uid() returning deletion_requested_at + interval '30 days' into due_at;
+  if due_at is null then raise exception 'account_profile_missing' using errcode = 'P0002'; end if;
+  if p_erase_workspace then
+    delete from public.business_backup_mirrors where user_id = auth.uid();
+    delete from public.company_settings where user_id = auth.uid();
+    delete from public.contacts where user_id = auth.uid();
+    delete from public.projects where user_id = auth.uid();
+    delete from public.expenses where user_id = auth.uid();
+    delete from public.stock_items where user_id = auth.uid();
+    delete from public.contracts where user_id = auth.uid();
+    delete from public.team_members where user_id = auth.uid();
+    delete from public.audit_events where user_id = auth.uid();
+    delete from public.subscriptions where user_id = auth.uid();
+    delete from public.calendar_events where user_id = auth.uid();
+    update public.profiles set workspace_erased_at = now() where id = auth.uid();
+  end if;
+  return due_at;
+end; $$;
+revoke all on function public.request_account_deletion(boolean) from public, anon;
+grant execute on function public.request_account_deletion(boolean) to authenticated;
+
+create or replace function public.reactivate_account()
+returns boolean language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null then raise exception 'authentication_required' using errcode = '28000'; end if;
+  update public.profiles set deletion_requested_at = null where id = auth.uid()
+    and deletion_requested_at > now() - interval '30 days';
+  return found;
+end; $$;
+revoke all on function public.reactivate_account() from public, anon;
+grant execute on function public.reactivate_account() to authenticated;
+
+-- Remove workspace access for pending accounts while preserving profile access for recovery.
+do $$ declare table_name text; begin
+  foreach table_name in array array['company_settings','contacts','projects','expenses','stock_items','contracts','team_members','audit_events','subscriptions','calendar_events'] loop
+    execute format('drop policy if exists %I on public.%I', table_name || '_select_own', table_name);
+    execute format('create policy %I on public.%I for select to authenticated using (user_id = auth.uid() and not exists (select 1 from public.profiles p where p.id = auth.uid() and p.deletion_requested_at is not null))', table_name || '_select_own', table_name);
+    execute format('drop policy if exists %I on public.%I', table_name || '_insert_own', table_name);
+    execute format('create policy %I on public.%I for insert to authenticated with check (user_id = auth.uid() and not exists (select 1 from public.profiles p where p.id = auth.uid() and p.deletion_requested_at is not null))', table_name || '_insert_own', table_name);
+    execute format('drop policy if exists %I on public.%I', table_name || '_update_own', table_name);
+    execute format('create policy %I on public.%I for update to authenticated using (user_id = auth.uid() and not exists (select 1 from public.profiles p where p.id = auth.uid() and p.deletion_requested_at is not null)) with check (user_id = auth.uid() and not exists (select 1 from public.profiles p where p.id = auth.uid() and p.deletion_requested_at is not null))', table_name || '_update_own', table_name);
+    execute format('drop policy if exists %I on public.%I', table_name || '_delete_own', table_name);
+    execute format('create policy %I on public.%I for delete to authenticated using (user_id = auth.uid() and not exists (select 1 from public.profiles p where p.id = auth.uid() and p.deletion_requested_at is not null))', table_name || '_delete_own', table_name);
+  end loop;
+end $$;
+
+-- Pending accounts also lose access to the optional JSON workspace mirror.
+drop policy if exists business_backup_mirrors_own_select on public.business_backup_mirrors;
+drop policy if exists business_backup_mirrors_own_insert on public.business_backup_mirrors;
+drop policy if exists business_backup_mirrors_own_update on public.business_backup_mirrors;
+drop policy if exists business_backup_mirrors_own_delete on public.business_backup_mirrors;
+create policy business_backup_mirrors_own_select on public.business_backup_mirrors for select to authenticated
+  using (user_id = auth.uid() and not exists (select 1 from public.profiles p where p.id = auth.uid() and p.deletion_requested_at is not null));
+create policy business_backup_mirrors_own_insert on public.business_backup_mirrors for insert to authenticated
+  with check (user_id = auth.uid() and not exists (select 1 from public.profiles p where p.id = auth.uid() and p.deletion_requested_at is not null));
+create policy business_backup_mirrors_own_update on public.business_backup_mirrors for update to authenticated
+  using (user_id = auth.uid() and not exists (select 1 from public.profiles p where p.id = auth.uid() and p.deletion_requested_at is not null))
+  with check (user_id = auth.uid() and not exists (select 1 from public.profiles p where p.id = auth.uid() and p.deletion_requested_at is not null));
+create policy business_backup_mirrors_own_delete on public.business_backup_mirrors for delete to authenticated
+  using (user_id = auth.uid() and not exists (select 1 from public.profiles p where p.id = auth.uid() and p.deletion_requested_at is not null));
+
+-- Hard purge/redact function used by the trusted daily cron job.
+create or replace function public.purge_deleted_accounts()
+returns integer language plpgsql security definer set search_path = public, auth as $$
+declare expired record; purged integer := 0;
+begin
+  for expired in
+    select u.id, u.email from auth.users u join public.profiles p on p.id = u.id
+    where p.deletion_requested_at <= now() - interval '30 days'
+  loop
+    update public.cms_support_requests set name = 'Deleted user',
+      email = 'deleted+' || id::text || '@example.invalid', subject = 'Deleted account request', message = '[redacted]'
+      where lower(email) = lower(expired.email);
+    delete from auth.users where id = expired.id;
+    purged := purged + 1;
+  end loop;
+  return purged;
+end; $$;
+revoke all on function public.purge_deleted_accounts() from public, anon, authenticated;
+
+-- Schedule the hard purge where Supabase's pg_cron extension is enabled.
+do $$
+begin
+  if exists (select 1 from pg_extension where extname = 'pg_cron') then
+    perform cron.unschedule(jobid) from cron.job where jobname = 'fatorati-purge-deleted-accounts';
+    perform cron.schedule('fatorati-purge-deleted-accounts', '*/15 * * * *', 'select public.purge_deleted_accounts()');
+  end if;
+end $$;
+
+
+-- Close remaining self-service billing/usage reads and prohibit new authenticated
+-- purchase requests while an account is pending deletion.
+drop policy if exists account_subscriptions_owner_read on public.account_subscriptions;
+create policy account_subscriptions_owner_read on public.account_subscriptions for select to authenticated
+  using ((user_id = auth.uid() and not exists (select 1 from public.profiles p where p.id = auth.uid() and p.deletion_requested_at is not null)) or public.is_platform_admin());
+drop policy if exists usage_monthly_owner_read on public.usage_monthly;
+create policy usage_monthly_owner_read on public.usage_monthly for select to authenticated
+  using ((user_id = auth.uid() and not exists (select 1 from public.profiles p where p.id = auth.uid() and p.deletion_requested_at is not null)) or public.is_platform_admin());
+drop policy if exists purchase_requests_public_insert on public.purchase_requests;
+create policy purchase_requests_public_insert on public.purchase_requests for insert to anon, authenticated
+  with check (user_id is null or (user_id = auth.uid() and not exists (select 1 from public.profiles p where p.id = auth.uid() and p.deletion_requested_at is not null)));
+drop policy if exists purchase_requests_owner_read on public.purchase_requests;
+create policy purchase_requests_owner_read on public.purchase_requests for select to authenticated
+  using ((user_id = auth.uid() and not exists (select 1 from public.profiles p where p.id = auth.uid() and p.deletion_requested_at is not null)) or public.is_platform_admin());

@@ -21,6 +21,7 @@ import { usePlan, usePlanStatus } from "./store/usePlan"
 import { planIncludes } from "./lib/plans"
 import { applyThemeClass, useResolvedTheme } from "./lib/theme"
 import { useToday } from "./hooks/useToday"
+import { startSupabaseBackupSync } from "./lib/supabaseBackup"
 import Landing, { BlogArticlePage } from "./marketing/Landing"
 import { readPrerenderedBlogPost, readPrerenderedBlogPosts } from "./lib/blogPrerender"
 import { readPrerenderedSiteCmsData } from "./lib/siteCmsPrerender"
@@ -54,6 +55,7 @@ const Tools = lazy(() => import("./modules/Tools"))
 const Team = lazy(() => import("./modules/Team"))
 const AuditLog = lazy(() => import("./modules/AuditLog"))
 const Settings = lazy(() => import("./modules/Settings"))
+const Invoices = lazy(() => import("./modules/Invoices"))
 
 function Fallback() {
   return (
@@ -187,6 +189,13 @@ export default function App() {
     usePlan.getState().forAccount(auth?.id ?? null)
   }, [auth?.id])
 
+  // The Supabase mirror is opt-in; this listener does nothing until the owner
+  // explicitly enables it in Settings. Each account session gets its own scope.
+  useEffect(() => {
+    if (!auth?.id) return
+    return startSupabaseBackupSync(auth.id)
+  }, [auth?.id])
+
   // Redirects, never a silent swap of screen for URL: the address bar always
   // shows the page actually being rendered.
   useEffect(() => {
@@ -302,6 +311,7 @@ export default function App() {
             {locked && <PlanLock module={current} onNavigate={go} />}
             {!locked && current === "dashboard" && <Dashboard onNavigate={go} />}
             {!locked && current === "projects" && <Projects />}
+            {!locked && current === "invoices" && <Invoices />}
             {!locked && current === "contacts" && <Contacts />}
             {!locked && current === "procurement" && <Procurement />}
             {!locked && current === "inventory" && <Inventory />}

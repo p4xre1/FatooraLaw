@@ -12,6 +12,8 @@ using real financial or client data.
 | Document | What it covers |
 | --- | --- |
 | [docs/FEATURES_AND_TOOLS.md](docs/FEATURES_AND_TOOLS.md) | functional reference for every tool: the 13 signed-in modules, auth, plan gating, the admin CMS, the public site, the storage engine, exports and known limitations |
+| [docs/ADS_ANALYTICS.md](docs/ADS_ANALYTICS.md) | paid-ads CSV import, metric definitions, attribution cautions, privacy boundaries and a safe path to Meta/Google API integrations |
+| [docs/BACKUP_AUTOMATION_ROADMAP.md](docs/BACKUP_AUTOMATION_ROADMAP.md) | multi-section exports, local encrypted backups and the server requirements for scheduled monthly backups and email notifications |
 | [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md) | every source of `VITE_SUPABASE_*`, why a deployed site can still be unconfigured, and how to verify a live bundle |
 | [docs/SEO_GEO_AIO_SXO.md](docs/SEO_GEO_AIO_SXO.md) | crawlability, per-page metadata, structured data, AI-answer-engine readiness and conversion/site-experience recommendations and backlog |
 | [docs/COMPETITOR_INEO.md](docs/COMPETITOR_INEO.md) | full scan of ineo.ma (72 URLs, 28 features, published pricing) and a gap analysis against this repository |

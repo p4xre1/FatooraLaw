@@ -11,6 +11,9 @@ const cms = sql("migrations/2026_add_cms_posts.sql")
 const onboarding = sql("migrations/2026_add_onboarding_responses.sql")
 const controlCenter = sql("migrations/20261013_cms_control_center.sql")
 const siteOperations = sql("migrations/20261014_cms_site_operations.sql")
+const businessBackupMirror = sql("migrations/20261016_business_backup_mirror.sql")
+const activationKeys = sql("migrations/20261017_single_use_activation_codes.sql")
+const activationKeySecurity = sql("migrations/20261018_activation_key_security.sql")
 const user = "11111111-1111-4111-8111-111111111111"
 const admin = "22222222-2222-4222-8222-222222222222"
 const operator = "33333333-3333-4333-8333-333333333333"
@@ -39,6 +42,9 @@ beforeAll(async () => {
     create function auth.uid() returns uuid language sql stable as $$
       select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid;
     $$;
+    create function auth.jwt() returns jsonb language sql stable as $$
+      select coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb, '{}'::jsonb);
+    $$;
     grant usage on schema auth to anon, authenticated;
   `)
   await db.exec(schema)
@@ -52,6 +58,23 @@ it("creates CMS and onboarding tables with the documented single-script setup", 
   expect(rows[0]).toEqual({ posts: "posts", onboarding: "onboarding_responses", cms_pages: "cms_pages", cms_products: "cms_products", site_events: "site_analytics_events" })
 })
 
+describe("server activation keys", () => {
+  it("uses a server-hashed one-use key ledger and hardens it with MFA, auditing, and limits", () => {
+    expect(activationKeys).toContain("create table if not exists public.activation_keys")
+    expect(activationKeys).toContain("key_hash text not null unique")
+    expect(activationKeys).toContain("for update")
+    expect(activationKeys).toContain("redeemed_by = v_user")
+    expect(activationKeys).toContain("redeem_activation_key")
+    expect(activationKeys).toContain("add value if not exists 'boost'")
+    expect(activationKeySecurity).toContain("auth.jwt()->>'aal'")
+    expect(activationKeySecurity).toContain("issue_activation_key")
+    expect(activationKeySecurity).toContain("activation_key_attempt_limits")
+    expect(activationKeySecurity).toContain("activation_key_attempt_threshold")
+    expect(activationKeySecurity).toContain("audit_account_plan_change")
+    expect(activationKeySecurity).toContain("return jsonb_build_object('ok',false)")
+  })
+})
+
 describe("CMS access control", () => {
   beforeAll(async () => {
     // Existing installations also use these incremental scripts.
@@ -61,6 +84,24 @@ describe("CMS access control", () => {
     await db.exec(`update public.profiles set is_admin = true where id = '${admin}'; insert into public.platform_admins(user_id) values ('${operator}');`)
     await db.exec(controlCenter)
     await db.exec(siteOperations)
+  })
+
+  it("isolates opt-in business backup snapshots by authenticated account", async () => {
+    await db.exec(businessBackupMirror)
+    await db.exec(businessBackupMirror) // applying the migration twice must stay safe
+    await asUser(user, async () => {
+      await db.exec(`insert into public.business_backup_mirrors(user_id,device_id,snapshot) values ('${user}','44444444-4444-4444-8444-444444444444','{"contacts":[{"name":"Private client"}]}'::jsonb);`)
+      const { rows } = await db.query("select user_id::text, snapshot from public.business_backup_mirrors")
+      expect(rows).toHaveLength(1)
+      await expect(db.exec(`insert into public.business_backup_mirrors(user_id,device_id,snapshot) values ('${admin}','55555555-5555-4555-8555-555555555555','{}'::jsonb)`)).rejects.toThrow()
+    })
+    await asUser(admin, async () => {
+      const { rows } = await db.query("select * from public.business_backup_mirrors")
+      expect(rows).toEqual([])
+    })
+    await asAnon(async () => {
+      await expect(db.query("select * from public.business_backup_mirrors")).rejects.toThrow()
+    })
   })
 
   it("rejects a regular user's attempt to promote their own profile to admin", async () => {

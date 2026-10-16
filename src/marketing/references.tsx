@@ -256,7 +256,7 @@ const LEADS: Record<RefLang, Record<string, PageLead>> = {
     about: {
       eyebrow: "À propos",
       title: "Qui est Fatorati, et pour qui ?",
-      lead: "Fatorati est édité pour les artisans, freelances et TPE au Maroc qui veulent une gestion claire, en français et en arabe, sans logiciel de comptabilité lourd. L'équipe est joignable à Tanger, à bonjour@fatorati.tech.",
+      lead: "Fatorati est édité pour les artisans, freelances et TPE au Maroc qui veulent une gestion claire, en français et en arabe, sans logiciel de comptabilité lourd. L'équipe est joignable à Tanger, à contact@fatorati.tech.",
     },
     benefits: {
       eyebrow: "Avantages",
@@ -281,7 +281,7 @@ const LEADS: Record<RefLang, Record<string, PageLead>> = {
     contact: {
       eyebrow: "Contact",
       title: "Comment contacter l'équipe Fatorati ?",
-      lead: "Écrivez à bonjour@fatorati.tech pour une question sur les tarifs, la mise en route ou la conformité. L'équipe est à Tanger, au Maroc. La page À propos décrit le produit ; cette page sert à écrire.",
+      lead: "Écrivez à contact@fatorati.tech pour une question sur les tarifs, la mise en route ou la conformité. L'équipe est à Tanger, au Maroc. La page À propos décrit le produit ; cette page sert à écrire.",
     },
     privacy: {
       eyebrow: "Confidentialité",
@@ -313,7 +313,7 @@ const LEADS: Record<RefLang, Record<string, PageLead>> = {
     about: {
       eyebrow: "About",
       title: "Who is Fatorati for?",
-      lead: "Fatorati is built for artisans, freelancers and small businesses in Morocco who want clear management, in French and Arabic, without a heavy accounting suite. The team can be reached in Tangier at bonjour@fatorati.tech.",
+      lead: "Fatorati is built for artisans, freelancers and small businesses in Morocco who want clear management, in French and Arabic, without a heavy accounting suite. The team can be reached in Tangier at contact@fatorati.tech.",
     },
     benefits: {
       eyebrow: "Benefits",
@@ -338,7 +338,7 @@ const LEADS: Record<RefLang, Record<string, PageLead>> = {
     contact: {
       eyebrow: "Contact",
       title: "How do you contact the Fatorati team?",
-      lead: "Write to bonjour@fatorati.tech about pricing, rollout or compliance. The team is in Tangier, Morocco. The About page describes the product; this page is for writing to us.",
+      lead: "Write to contact@fatorati.tech about pricing, rollout or compliance. The team is in Tangier, Morocco. The About page describes the product; this page is for writing to us.",
     },
     privacy: {
       eyebrow: "Privacy",
@@ -370,7 +370,7 @@ const LEADS: Record<RefLang, Record<string, PageLead>> = {
     about: {
       eyebrow: "عن فاتورتي",
       title: "من هي فاتورتي، ولمن؟",
-      lead: "صُممت فاتورتي للحرفيين والمستقلين والمقاولات الصغيرة في المغرب الذين يريدون إدارة واضحة بالفرنسية والعربية، دون برنامج محاسبة ثقيل. يمكن مراسلة الفريق في طنجة على bonjour@fatorati.tech.",
+      lead: "صُممت فاتورتي للحرفيين والمستقلين والمقاولات الصغيرة في المغرب الذين يريدون إدارة واضحة بالفرنسية والعربية، دون برنامج محاسبة ثقيل. يمكن مراسلة الفريق في طنجة على contact@fatorati.tech.",
     },
     benefits: {
       eyebrow: "المزايا",
@@ -395,7 +395,7 @@ const LEADS: Record<RefLang, Record<string, PageLead>> = {
     contact: {
       eyebrow: "تواصل معنا",
       title: "كيف تتواصل مع فريق فاتورتي؟",
-      lead: "اكتب إلى bonjour@fatorati.tech لسؤال عن الأسعار أو الانطلاق أو الامتثال. الفريق في طنجة، المغرب. صفحة «عن فاتورتي» تصف المنتج؛ هذه الصفحة للكتابة إلينا.",
+      lead: "اكتب إلى contact@fatorati.tech لسؤال عن الأسعار أو الانطلاق أو الامتثال. الفريق في طنجة، المغرب. صفحة «عن فاتورتي» تصف المنتج؛ هذه الصفحة للكتابة إلينا.",
     },
     privacy: {
       eyebrow: "الخصوصية",

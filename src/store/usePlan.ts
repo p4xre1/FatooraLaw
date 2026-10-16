@@ -4,6 +4,7 @@ import { planStatus, type PlanActivation, type PlanStatus } from "../lib/plans"
 import { redeemPlanCode } from "../lib/planCodes"
 import { controlForSerial, useSubscriptions } from "./useSubscriptions"
 import { todayISO } from "../lib/calendarDates"
+import { supabase, isSupabaseConfigured } from "../lib/supabase"
 
 /**
  * Which plan the signed-in account is on.
@@ -59,17 +60,65 @@ export const usePlan = create<State>()(
         set({ account: userId, activation: null })
         usePlan.persist.setOptions({ name: planStorageKey(userId) })
         void usePlan.persist.rehydrate()
+        if (userId && isSupabaseConfigured) {
+          try {
+            void supabase.from("account_subscriptions")
+              .select("plan,status,current_period_end,created_at")
+              .eq("user_id", userId).maybeSingle()
+              .then(({ data, error }) => {
+                if (error || get().account !== userId) return
+                const row = data as { plan?: string; status?: string; current_period_end?: string | null; created_at?: string } | null
+                const plan = row?.plan === "business" || row?.plan === "boost" ? "boost" : row?.plan === "pro" ? "pro" : null
+                if (!plan || row?.status !== "active" || !row.current_period_end) {
+                  set({ activation: null })
+                  return
+                }
+                const dateParts = new Intl.DateTimeFormat("en", { timeZone: "Africa/Casablanca", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(row.current_period_end))
+                const part = (type: string) => dateParts.find((item) => item.type === type)?.value ?? "00"
+                const end = new Date(Date.UTC(Number(part("year")), Number(part("month")) - 1, Number(part("day")) - 1))
+                const expiresAt = `${end.getUTCFullYear()}-${String(end.getUTCMonth() + 1).padStart(2, "0")}-${String(end.getUTCDate()).padStart(2, "0")}`
+                const startedAt = row.created_at?.slice(0, 10) ?? todayISO()
+                const period: PlanActivation["period"] = new Date(row.current_period_end).getTime() - Date.now() > 180 * 86_400_000 ? "1Y" : "1M"
+                set({ activation: { code: "SERVER-ACCOUNT-PLAN", plan, period, startedAt, expiresAt, serial: null } })
+              })
+          } catch {
+            // A test/client stub may not implement table access; keep app boot safe.
+          }
+        }
       },
 
       redeem: async (code, today) => {
-        const result = await redeemPlanCode(code, get().activation, today)
-        if (result.ok) {
-          set({ activation: result.activation })
-          // Tell the CMS ledger: this serial is live, and these are the real
-          // start/end dates the owner asked to see.
-          useSubscriptions.getState().markRedeemed(result.activation)
+        // Entitlement is decided by the server. Never fall back to the old
+        // bundle-embedded checksum: that would let a key be reused on another
+        // account or minted by inspecting the JavaScript bundle.
+        if (!get().account) return { ok: false, reason: "checksum" }
+        if (!isSupabaseConfigured) {
+          // Local preview/development has no real authenticated accounts or
+          // server ledger. Keep its legacy demo behavior isolated to this
+          // unconfigured mode; production-configured builds never use it.
+          const demo = await redeemPlanCode(code, get().activation, today)
+          if (demo.ok) {
+            set({ activation: demo.activation })
+            useSubscriptions.getState().markRedeemed(demo.activation)
+          }
+          return demo
         }
-        return result
+        const { data, error } = await supabase.rpc("redeem_activation_key", { p_key: code })
+        if (error || !data || typeof data !== "object" || !(data as { ok?: boolean }).ok) {
+          return { ok: false, reason: "checksum" }
+        }
+        const result = data as { plan: "pro" | "boost"; period: "1M" | "1Y"; started_at: string; ends_at: string; serial: string }
+        const activation: PlanActivation = {
+          code: code.trim().toUpperCase(),
+          plan: result.plan,
+          period: result.period,
+          startedAt: result.started_at,
+          expiresAt: result.ends_at,
+          serial: result.serial,
+        }
+        set({ activation })
+        useSubscriptions.getState().markRedeemed(activation)
+        return { ok: true, activation }
       },
 
       clear: () => set({ activation: null }),

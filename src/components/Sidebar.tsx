@@ -38,13 +38,9 @@ import { useMizan } from "../store/useMizan"
  */
 
 /**
- * There is no `/invoices` route yet (see docs/FEATURES_AND_TOOLS.md §11: no
- * invoicing module exists). Flip this when it ships and the "Factures" rail
- * item starts opening it; nothing else changes. There is deliberately no
- * primary/quick-actions button in the rail while it is off — the owner
- * asked for it gone, and the top bar keeps the same shortcuts.
+ * Invoices is enabled as a normal Day to day module.
  */
-const INVOICE_ROUTE_ENABLED = false
+const INVOICE_ROUTE_ENABLED = true
 
 /**
  * Sidebar-scoped preference. Same `mizan.*` convention as the dashboard's.
@@ -226,12 +222,10 @@ export default function Sidebar({
   const buildItems = (keys: ModuleKey[]): Item[] =>
     rows(keys).filter((item) => matches(item.moduleKey!, item.label))
 
-  // The invoice placeholder is never locked: facturation is in FREE (see
-  // lib/plans), so when `/invoices` ships it opens for everyone.
+  // Invoicing is included in the FREE plan.
   const invoiceItem: Item | null = INVOICE_ROUTE_ENABLED && (!query || t.invoices.toLowerCase().includes(query))
-    ? { id: "invoices", href: "/invoices", icon: FileText, label: t.invoices, on: false, moduleKey: null, lockedBy: null }
+    ? rows(["invoices"])[0] ?? null
     : null
-
   // 13 rows total — plain computation is cheaper and less error-prone than
   // tracking memo dependencies across four derived lists.
   const daily = invoiceItem

@@ -133,7 +133,7 @@ export function getSeoRoutePath(page: LandingPage): string {
 }
 
 export async function submitCmsSupportRequest(input: {
-  category: "contact" | "bug" | "feedback" | "feature_request"
+  category: "contact" | "bug" | "feedback" | "feature_request" | "investor" | "partner"
   name: string
   email: string
   subject: string

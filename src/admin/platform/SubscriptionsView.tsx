@@ -34,6 +34,7 @@ export default function SubscriptionsView() {
   const [planDraft, setPlanDraft] = useState<Plan | null>(null)
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<"all" | SubscriptionStatus>("all")
+  const [planFilter, setPlanFilter] = useState<"all" | "free" | "pro" | "boost" | "enterprise">("all")
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -62,8 +63,10 @@ export default function SubscriptionsView() {
 
   const filtered = useMemo(() => accounts.filter((account) => {
     const matchesSearch = `${account.name} ${account.email} ${account.user_id}`.toLowerCase().includes(search.trim().toLowerCase())
+    const normalizedPlan = account.plan === "starter" ? "free" : account.plan === "business" ? "boost" : account.plan
     return matchesSearch && (statusFilter === "all" || account.status === statusFilter)
-  }), [accounts, search, statusFilter])
+      && (planFilter === "all" || normalizedPlan === planFilter)
+  }), [accounts, search, statusFilter, planFilter])
 
   function patchAccount(id: string, patch: Partial<DraftAccount>) {
     setDrafts((current) => ({ ...current, [id]: { ...current[id], ...patch } }))
@@ -128,6 +131,13 @@ export default function SubscriptionsView() {
       {loading && <div className="grid min-h-28 place-items-center text-[13px] text-muted"><Loader2 className="h-5 w-5 animate-spin" /></div>}
 
       {!loading && <>
+        <section aria-label="ملخص الحسابات حسب الخطة" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {([['all', 'كل الحسابات', accounts.length], ['free', 'FREE', accounts.filter((a) => a.plan === 'starter').length], ['pro', 'PRO', accounts.filter((a) => a.plan === 'pro').length], ['boost', 'BOOST', accounts.filter((a) => a.plan === 'boost' || a.plan === 'business').length]] as const).map(([key, label, count]) => (
+            <button key={key} type="button" aria-pressed={planFilter === key} onClick={() => setPlanFilter(key)} className={`rounded-xl border p-4 text-start transition-colors ${planFilter === key ? 'border-brand bg-brand-50' : 'bg-surface hover:bg-canvas'}`}>
+              <span className="block text-[11px] font-bold text-muted">{label}</span><span className="mt-1 block text-2xl font-extrabold text-ink">{count}</span>
+            </button>
+          ))}
+        </section>
         <section aria-label="كتالوج الخطط" className="space-y-3">
           <div><h2 className="text-[15px] font-bold text-ink">كتالوج الخطط</h2><p className="mt-1 text-[12px] text-muted">الأسعار بالدرهم المغربي شهرياً. حدود الاستخدام مُسجلة في قاعدة البيانات، لكنها لا تُطبق على بيانات مساحة العمل المحلية غير المتزامنة سحابياً.</p></div>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

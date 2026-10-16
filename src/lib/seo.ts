@@ -65,6 +65,10 @@ export const PAGE_SEO: Record<LandingPage, PageSeo> = {
   privacy: { path: "/privacy", priority: 0.3, changefreq: "yearly", index: true },
   terms: { path: "/terms", priority: 0.3, changefreq: "yearly", index: true },
   cookies: { path: "/cookies", priority: 0.3, changefreq: "yearly", index: true },
+  refund: { path: "/refund", priority: 0.4, changefreq: "yearly", index: true },
+  investors: { path: "/investors", priority: 0.4, changefreq: "monthly", index: true },
+  partners: { path: "/partners", priority: 0.5, changefreq: "monthly", index: true },
+  docs: { path: "/docs", priority: 0.6, changefreq: "monthly", index: true },
 }
 
 /**
@@ -283,6 +287,26 @@ export const PAGE_COPY: Record<LandingPage, Record<LocaleId, LocaleCopy>> = {
       description:
         "Strictly necessary cookies, and Google Analytics only after you consent: what Fatorati sets, why, and how to change your choice at any time.",
     },
+  },
+  refund: {
+    fr: { title: "Remboursements et achats Fatorati | Fatorati", description: "Découvrez les conditions de remboursement volontaire de Fatorati, le délai de demande et les droits impératifs du consommateur marocain lors de tout achat." },
+    ar: { title: "سياسة الاسترداد وشروط الشراء | فاتورتي في المغرب", description: "تعرف على شروط الاسترداد الطوعي لدى فاتورتي ومهلة الطلب وحقوق المستهلك الإلزامية في المغرب وكيفية إرسال طلبك إلى فريق الدعم بكل وضوح وشفافية." },
+    en: { title: "Refund policy and purchase terms for Fatorati customers", description: "Review Fatorati’s voluntary refund terms, request window, and mandatory Moroccan consumer rights that continue to apply to your purchase and account." },
+  },
+  investors: {
+    fr: { title: "Investir dans Fatorati : propositions et offres", description: "Présentez une proposition d’investissement, d’acquisition ou de financement stratégique pour Fatorati via notre formulaire de contact dédié aux investisseurs." },
+    ar: { title: "فرص الاستثمار والتمويل الاستراتيجي في مشروع فاتورتي", description: "قدّم عرضاً للاستثمار أو الاستحواذ أو التمويل الاستراتيجي لفاتورتي عبر النموذج المخصص مع التفاصيل الأساسية والجدول الزمني والشروط المقترحة للتعاون." },
+    en: { title: "Invest in Fatorati | Submit a business proposal", description: "Submit a serious investment, acquisition, or strategic financing proposal for Fatorati through our inquiry form, including the amount, structure, and timeline." },
+  },
+  partners: {
+    fr: { title: "Partenaires, publicité et offres sur Fatorati", description: "Proposez une fiche partenaire modérée sur le site public de Fatorati, avec image, vidéo ou présentation. Aucun placement dans l’application connectée." },
+    ar: { title: "الشراكات والإعلانات التجارية على فاتورتي", description: "اقترح بطاقة شريك خاضعة للمراجعة على موقع فاتورتي العام، بفيديو أو صورة أو وصف للنشاط؛ ولا إعلانات داخل التطبيق بعد الدخول. نراجع المقترحات بعناية." },
+    en: { title: "Partners and website advertising | Fatorati", description: "Propose a moderated partner listing on Fatorati’s public website using a video, image, or short business description. No ads appear in the logged-in app." },
+  },
+  docs: {
+    fr: { title: "Docs Fatorati : guide et fonctionnalités", description: "Guide d’accès et d’utilisation des fonctions Fatorati : gestion, outils, exports, sauvegardes, support et conditions d’éligibilité des utilisateurs au Maroc." },
+    ar: { title: "وثائق فاتورتي ودليل استخدام المنصة وإدارة الأعمال", description: "دليل الوصول إلى وظائف فاتورتي واستخدامها: الإدارة والأدوات والتصدير والنسخ الاحتياطي والدعم وشروط الأهلية للمستخدمين في المغرب. اقرأ التفاصيل هنا." },
+    en: { title: "Fatorati Docs | Product and workspace guide", description: "Learn who can access Fatorati and how to use its workspace, tools, exports, backups, and support, with clear eligibility and account requirements." },
   },
 }
 
@@ -604,7 +628,7 @@ ${languages}
 - Pricing is published in Moroccan dirhams (MAD) on ${origin}/pricing.
 - The signed-in application (/dashboard, /projects, …) and the CMS (/admin)
   are private: they are marked \`noindex\` and require an account.
-- Contact: bonjour@fatorati.tech
+- Contact: contact@fatorati.tech\n- Support: support@fatorati.tech
 - Official figures cited on the pages (VAT 20%, CGI article 208, Law 09-08)
   come from the Direction Générale des Impôts (https://www.tax.gov.ma/) and
   the CNDP (https://www.cndp.ma/). Demo dashboard numbers are labelled as fictional.

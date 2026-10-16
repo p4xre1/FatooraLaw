@@ -365,3 +365,12 @@ body {
     background: #fff;
   }
 }
+
+@media print {
+  body { background: #fff !important; }
+  body * { visibility: hidden !important; }
+  #invoice-preview, #invoice-preview * { visibility: visible !important; }
+  #invoice-preview { position: absolute !important; inset: 0 auto auto 0 !important; width: 100% !important; border: 0 !important; box-shadow: none !important; }
+  .invoice-paper { break-inside: avoid; }
+  @page { size: A4; margin: 12mm; }
+}

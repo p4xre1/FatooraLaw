@@ -1,7 +1,7 @@
 import { supabase } from "../../lib/supabase"
 import type { LocaleId } from "../../lib/locales"
 
-export type PlanCode = "starter" | "pro" | "business" | "enterprise"
+export type PlanCode = "starter" | "pro" | "business" | "enterprise" | "boost"
 export type SubscriptionStatus = "trialing" | "active" | "past_due" | "paused" | "canceled"
 export type PurchaseStatus = "new" | "contacted" | "paid" | "rejected"
 export type Severity = "info" | "warning" | "critical"
@@ -117,15 +117,25 @@ export async function savePlan(code: PlanCode, patch: Pick<Plan, "monthly_price"
 }
 
 export async function listSubscriptions(): Promise<AccountSubscription[]> {
-  const [subscriptionsResult, profilesResult] = await Promise.all([
-    supabase.from("account_subscriptions").select("*").order("updated_at", { ascending: false }).limit(500),
-    supabase.from("profiles").select("id,name,email"),
-  ])
-  unwrapError(subscriptionsResult.error)
-  unwrapError(profilesResult.error)
-  const subscriptions = (subscriptionsResult.data ?? []) as Record<string, unknown>[]
-  const profiles = new Map(((profilesResult.data ?? []) as { id: string; name: string; email: string }[]).map((profile) => [profile.id, profile]))
+  // PostgREST caps each response. Page so the operator sees every registered
+  // account instead of an arbitrary first 500.
+  const subscriptions: Record<string, unknown>[] = []
+  for (let from = 0; ; from += 500) {
+    const result = await supabase.from("account_subscriptions").select("*")
+      .order("updated_at", { ascending: false }).range(from, from + 499)
+    unwrapError(result.error)
+    const page = (result.data ?? []) as Record<string, unknown>[]
+    subscriptions.push(...page)
+    if (page.length < 500) break
+  }
   const ids = subscriptions.map((row) => String(row.user_id))
+  const profileRows: { id: string; name: string; email: string }[] = []
+  for (let from = 0; from < ids.length; from += 500) {
+    const result = await supabase.from("profiles").select("id,name,email").in("id", ids.slice(from, from + 500))
+    unwrapError(result.error)
+    profileRows.push(...((result.data ?? []) as typeof profileRows))
+  }
+  const profiles = new Map(profileRows.map((profile) => [profile.id, profile]))
   const currentMonth = new Date()
   const monthStart = new Date(Date.UTC(currentMonth.getUTCFullYear(), currentMonth.getUTCMonth(), 1)).toISOString().slice(0, 10)
   const usageResult = ids.length
@@ -282,8 +292,9 @@ export const PLAN_STATUS_LABELS: Record<SubscriptionStatus, string> = {
   canceled: "ملغاة",
 }
 export const PLAN_LABELS: Record<PlanCode, string> = {
-  starter: "أساسي",
-  pro: "Pro",
-  business: "Business",
+  starter: "FREE",
+  pro: "PRO",
+  business: "BOOST",
+  boost: "BOOST",
   enterprise: "Enterprise",
 }

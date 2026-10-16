@@ -6,10 +6,8 @@ import site from "../../.figma/make/site.json"
  * section, the footer, the auth screen, the JSON-LD `Organization` node,
  * `llms.txt` — goes through this module.
  *
- * Why: the same site used to publish `contact@fatorati.tech` on the marketing
- * pages and `bonjour@fatorati.tech` in its structured data, "Tanger" in the
- * contact section and "Casablanca" in the footer and the entity schema, plus a
- * placeholder telephone number (`+212 0 20 00 00 00`) as a real `tel:` link.
+ * Public general contact and help/support addresses are configured separately,
+ * alongside the verified Tangier location and supplied support telephone.
  * Inconsistent name/address/phone data is a documented local-SEO and
  * entity-verification problem (search engines and AI assistants reconcile
  * those signals against each other), and a fake phone number is worse than no
@@ -19,6 +17,7 @@ import site from "../../.figma/make/site.json"
 type SiteConfig = {
   organization?: {
     email?: string
+    supportEmail?: string
     telephone?: string
     addressLocality?: string
     addressCountry?: string
@@ -38,8 +37,10 @@ function realPhone(value: string | undefined): string {
   return trimmed
 }
 
-/** `bonjour@fatorati.tech`, or an empty string when nothing valid is configured. */
+/** Public/general contact address. */
 export const CONTACT_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(organization.email ?? "") ? organization.email!.trim() : ""
+/** Help and support address. */
+export const SUPPORT_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(organization.supportEmail ?? "") ? organization.supportEmail!.trim() : ""
 
 /** Empty unless a real number is configured — never a placeholder. */
 export const CONTACT_PHONE = realPhone(organization.telephone)

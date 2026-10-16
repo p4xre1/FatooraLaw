@@ -43,6 +43,10 @@ export const LANDING_PAGES = [
   "privacy",
   "terms",
   "cookies",
+  "refund",
+  "investors",
+  "partners",
+  "docs",
 ] as const
 
 export type LandingPage = (typeof LANDING_PAGES)[number]
@@ -64,6 +68,7 @@ export type AuthScreen = keyof typeof AUTH_PATHS
 export const MODULE_PATHS: Record<ModuleKey, string> = {
   dashboard: "/dashboard",
   projects: "/projects",
+  invoices: "/invoices",
   contacts: "/contacts",
   procurement: "/procurement",
   inventory: "/inventory",
