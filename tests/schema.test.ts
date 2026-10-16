@@ -59,20 +59,127 @@ it("creates CMS and onboarding tables with the documented single-script setup", 
 })
 
 describe("server activation keys", () => {
-  it("uses a server-hashed one-use key ledger and hardens it with MFA, auditing, and limits", () => {
-    expect(activationKeys).toContain("create table if not exists public.activation_keys")
-    expect(activationKeys).toContain("key_hash text not null unique")
-    expect(activationKeys).toContain("for update")
-    expect(activationKeys).toContain("redeemed_by = v_user")
-    expect(activationKeys).toContain("redeem_activation_key")
-    expect(activationKeys).toContain("add value if not exists 'boost'")
-    expect(activationKeySecurity).toContain("auth.jwt()->>'aal'")
-    expect(activationKeySecurity).toContain("issue_activation_key")
-    expect(activationKeySecurity).toContain("activation_key_attempt_limits")
-    expect(activationKeySecurity).toContain("activation_key_attempt_threshold")
-    expect(activationKeySecurity).toContain("audit_account_plan_change")
-    expect(activationKeySecurity).toContain("return jsonb_build_object('ok',false)")
+  it("splits the new enum value from its first use and hardens one-use keys", () => {
+    expect(activationKeys).toContain("alter type public.subscription_plan add value if not exists 'boost'")
+    expect(activationKeys).not.toContain("insert into public.plan_catalog")
+    expect(activationKeys).not.toContain("create table if not exists public.activation_keys")
+    const securitySql = activationKeySecurity.toLowerCase()
+    expect(securitySql).toContain("insert into public.plan_catalog")
+    expect(securitySql).toContain("create table if not exists public.activation_keys")
+    expect(securitySql).toContain("key_hash text not null unique")
+    expect(securitySql).toContain("for update")
+    expect(securitySql).toContain("redeemed_by=v_user")
+    expect(securitySql).toContain("redeem_activation_key")
+    expect(securitySql).toContain("auth.jwt()->>'aal'")
+    expect(securitySql).toContain("issue_activation_key")
+    expect(securitySql).toContain("activation_key_attempt_limits")
+    expect(securitySql).toContain("activation_key_attempt_threshold")
+    expect(securitySql).toContain("audit_account_plan_change")
+    expect(securitySql).toContain("return jsonb_build_object('ok',false)")
   })
+})
+
+it("applies activation migrations in committed stages and recovers the missing ledger", async () => {
+  const migrationDb = new PGlite()
+  try {
+    await migrationDb.exec(`
+      create role anon;
+      create role authenticated;
+      create schema auth;
+      create table auth.users (id uuid primary key, email text);
+      create function auth.uid() returns uuid language sql stable as $$
+        select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid;
+      $$;
+      create function auth.jwt() returns jsonb language sql stable as $$
+        select coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb, '{}'::jsonb);
+      $$;
+      create type public.subscription_plan as enum ('starter', 'pro', 'business', 'enterprise');
+      create type public.subscription_status as enum ('trialing', 'active', 'past_due', 'paused', 'canceled');
+      create table public.plan_catalog (
+        code public.subscription_plan primary key,
+        name text not null,
+        monthly_price numeric not null default 0,
+        max_users integer not null,
+        max_contacts integer not null,
+        max_projects integer not null,
+        max_storage_mb integer not null,
+        features jsonb not null default '{}'::jsonb
+      );
+      create table public.account_subscriptions (
+        user_id uuid primary key references auth.users(id),
+        plan public.subscription_plan not null,
+        status public.subscription_status not null,
+        current_period_end timestamptz,
+        updated_at timestamptz not null default now()
+      );
+      create table public.platform_admins (user_id uuid primary key references auth.users(id));
+      create function public.is_platform_admin() returns boolean
+        language sql stable security definer set search_path = public
+        as $$ select exists (select 1 from public.platform_admins where user_id = auth.uid()); $$;
+      create table public.admin_audit_events (
+        actor_id uuid not null,
+        action text not null,
+        target text not null,
+        details jsonb not null default '{}'::jsonb,
+        created_at timestamptz not null default now()
+      );
+      create table public.system_notifications (
+        severity text not null,
+        title text not null,
+        message text not null,
+        created_by uuid not null references auth.users(id),
+        created_at timestamptz not null default now()
+      );
+    `)
+
+    await expect(migrationDb.exec(activationKeySecurity)).rejects.toThrow(
+      "Missing subscription_plan enum value boost",
+    )
+    const { rows: rejectedOutOfOrder } = await migrationDb.query<{ table: string | null }>(
+      "select to_regclass('public.activation_keys')::text as table",
+    )
+    expect(rejectedOutOfOrder[0].table).toBeNull()
+
+    // PGlite omits pgcrypto. Removing its extension declaration still exercises
+    // the enum transaction boundary in PostgreSQL.
+    const enumStage = activationKeys.replace("create extension if not exists pgcrypto;", "")
+    await migrationDb.exec(enumStage)
+    await migrationDb.exec(enumStage) // the enum migration is safe to re-run
+
+    const { rows: enumRows } = await migrationDb.query<{ exists: boolean }>(
+      "select exists (select 1 from pg_enum e join pg_type t on t.oid=e.enumtypid join pg_namespace n on n.oid=t.typnamespace where n.nspname='public' and t.typname='subscription_plan' and e.enumlabel='boost') as exists",
+    )
+    expect(enumRows[0].exists).toBe(true)
+    const { rows: beforeSecurity } = await migrationDb.query<{ table: string | null }>(
+      "select to_regclass('public.activation_keys')::text as table",
+    )
+    expect(beforeSecurity[0].table).toBeNull()
+
+    // A separate exec commits the enum value before migration 18 first uses it.
+    await migrationDb.exec(activationKeySecurity)
+    await migrationDb.exec(activationKeySecurity) // safe retry after a partial/manual rollout
+
+    const { rows: installed } = await migrationDb.query<{
+      plan: string | null
+      activation_keys: string | null
+      attempt_limits: string | null
+      redeem_function: string | null
+    }>(`
+      select
+        (select code::text from public.plan_catalog where code::text = 'boost') as plan,
+        to_regclass('public.activation_keys')::text as activation_keys,
+        to_regclass('public.activation_key_attempt_limits')::text as attempt_limits,
+        to_regprocedure('public.redeem_activation_key(text)')::text as redeem_function
+    `)
+    expect(installed[0]).toEqual({
+      plan: "boost",
+      activation_keys: "activation_keys",
+      attempt_limits: "activation_key_attempt_limits",
+      redeem_function: "redeem_activation_key(text)",
+    })
+  } finally {
+    await migrationDb.close()
+  }
 })
 
 describe("CMS access control", () => {

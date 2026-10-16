@@ -1,7 +1,56 @@
+-- Phase 2 of the single-use activation-key rollout. Apply this only after
+-- 20261017_single_use_activation_codes.sql has completed and committed.
+-- The enum label 'boost' is first used here, in a later transaction.
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_type AS t
+    JOIN pg_namespace AS n ON n.oid = t.typnamespace
+    JOIN pg_enum AS e ON e.enumtypid = t.oid
+    WHERE n.nspname = 'public'
+      AND t.typname = 'subscription_plan'
+      AND e.enumlabel = 'boost'
+  ) THEN
+    RAISE EXCEPTION 'Missing subscription_plan enum value boost. Apply and commit 20261017_single_use_activation_codes.sql first.';
+  END IF;
+END;
+$$;
+
+INSERT INTO public.plan_catalog(code, name, monthly_price, max_users, max_contacts, max_projects, max_storage_mb, features)
+VALUES ('boost', 'BOOST', 499, 20, 5000, 500, 10240, '{"reports":true,"audit":true,"priority_support":true}'::jsonb)
+ON CONFLICT (code) DO NOTHING;
+
+-- Create the base ledger here so this migration also repairs installations
+-- where the earlier version of migration 20261017 rolled back before creating it.
+CREATE TABLE IF NOT EXISTS public.activation_keys (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  key_hash text NOT NULL UNIQUE CHECK (key_hash ~ '^[0-9a-f]{64}$'),
+  plan text NOT NULL CHECK (plan IN ('pro', 'boost')),
+  period text NOT NULL CHECK (period IN ('1M', '1Y')),
+  status text NOT NULL DEFAULT 'unused' CHECK (status IN ('unused', 'redeemed', 'revoked')),
+  issued_to text NOT NULL DEFAULT '',
+  issued_by uuid NOT NULL REFERENCES auth.users(id),
+  redeemed_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  redeemed_at timestamptz,
+  starts_at date,
+  ends_at date,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT activation_key_redemption_consistency CHECK (
+    (status = 'unused' AND redeemed_by IS NULL AND redeemed_at IS NULL)
+    OR (status = 'redeemed' AND redeemed_by IS NOT NULL AND redeemed_at IS NOT NULL)
+    OR status = 'revoked'
+  )
+);
+ALTER TABLE public.activation_keys ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.activation_keys FROM anon, public;
+GRANT SELECT, INSERT, UPDATE ON public.activation_keys TO authenticated;
+
 -- Harden activation-key operations: platform-admin MFA gates, audit trail,
 -- generic failures, and short-window account/source rate limits.
 
-create table if not exists public.activation_key_attempt_limits (
+CREATE TABLE IF NOT EXISTS public.activation_key_attempt_limits (
   scope text not null check (scope in ('account', 'source')),
   scope_hash text not null check (char_length(scope_hash) between 1 and 128),
   window_started_at timestamptz not null default now(),
