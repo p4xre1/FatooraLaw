@@ -1,0 +1,642 @@
+FATORATI.TECH — MOROCCAN INVOICING TOOL
+REPOSITORY CODE AUDIT, LEGAL/UX REQUIREMENTS, PRIORITIZED RECOMMENDATIONS & BUILD SPECIFICATION
+
+Audit date: 16 October 2026
+Repository: p4xre1/FatooraLaw
+Target route: /invoices
+Target placement: Signed-in dashboard → Day to day / Au quotidien
+Document purpose: Record the current invoice implementation, compare it with the supplied research brief, identify risks and value-adding changes, and define a safe implementation plan.
+
+============================================================
+0. EXECUTIVE SUMMARY AND SCOPE
+============================================================
+
+IMPORTANT: The supplied research brief describes the invoice feature as not yet implemented. The repository inspected for this document is newer than that description: a basic invoice module already exists, is mounted at /invoices, is linked from the signed-in sidebar, and is included in the FREE plan. The old statement “no invoice module / no route” is no longer accurate for this checkout.
+
+The current module is a useful proof of concept, not the full invoice workflow described in the research brief. It can edit an invoice-like document, calculate simple line totals, store templates/recent records in browser localStorage, show a live preview, and invoke the browser print dialog. It does not have a reliable draft-versus-issued lifecycle, issue-time numbering, immutable issued documents, structured payment records, adequate validation, seller snapshots, robust rounding, currency support, customer selection, complete multilingual UI, or visible invoice-storage failure handling. There are no invoice-specific automated tests in the test directory.
+
+Release posture:
+- Safe to describe today as a basic, browser-local invoice document builder with a print/save-as-PDF convenience.
+- Not safe to describe as DGI-certified, DGI-connected, a guaranteed compliant invoice, a legal archive, a full accounting ledger, or a tax-filing system.
+- Do not use the current UI to imply that an invoice has been formally “issued” or that its number is immutable. The code assigns a number before saving and allows editing/deleting saved documents.
+- Address the P0 lifecycle, data validation, arithmetic, copy, and persistence gaps before positioning this as a dependable business invoicing workflow.
+
+Scope and limitations:
+- This is a static source-code and documentation scan of the current working tree. It is not a browser/print smoke test, penetration test, legal opinion, or verification of every Moroccan tax rule.
+- The legal framework and current e-invoicing status below are based on the research supplied with the task. They were not independently verified against the Bulletin Officiel or an accountant/lawyer during this code scan. Re-check the official sources before release and after legal changes.
+- The supplied competitor notes are treated as UX references from the brief, not as independently re-inspected competitor products.
+- No application source code was changed for this task. This file is the requested audit/specification deliverable.
+
+============================================================
+1. CURRENT REPOSITORY SCAN — WHAT EXISTS NOW
+============================================================
+
+1.1 Main files and integration points
+
+- src/modules/Invoices.tsx — the current invoice editor, recent invoice list, templates, logo controls and live preview. It is a compact, single-component implementation with inline TypeScript types and calculations.
+- src/App.tsx — lazy-loads the module and renders it when the current authorized module is “invoices”.
+- src/lib/routes.ts — maps ModuleKey “invoices” to /invoices.
+- src/store/types.ts — includes “invoices” in ModuleKey, so permissions can represent it.
+- src/components/nav.tsx and src/components/Sidebar.tsx — include an Invoices navigation row under the daily/day-to-day section; a separate prominent “New invoice” shortcut is also rendered.
+- src/lib/plans.ts — includes invoices in the FREE entitlement.
+- src/lib/permissions.ts — role/team module permissions can include invoices; invoice visibility in the normal sidebar row is permission-filtered.
+- src/i18n/shared.ts and src/i18n/shell.ts — translate the module/rail label in French, English and Arabic. Most invoice page copy itself is not translated.
+- src/index.css — contains print rules that target #invoice-preview and set an A4 page with 12 mm margins.
+- src/store/types.ts / src/store/defaults.ts / src/store/useMizan.ts — provide seller settings such as company name, ICE, IF/tax ID, RC, address, city, currency, tax rate, logo and footer note. Production defaults are blank for business identity fields; the default currency is MAD and default tax rate is an editable 20% assumption.
+- src/lib/logoValidation.ts — validates PNG, JPEG, WebP and GIF image data, raster signatures and a 512 KiB limit. updateSettings calls validateLogoDataURL.
+- src/lib/supabaseBackup.ts — supports an optional mirror of the main Zustand business snapshot. The invoice module stores its data separately, so invoices/templates are not part of that snapshot.
+
+1.2 Existing functionality that is genuinely present
+
+- /invoices is a signed-in module route. Module routes are included in privatePaths(), so they receive noindex handling.
+- The FREE plan includes invoices. The main navigation row is in the “Au quotidien” / “Day to day” group and is filtered by role permissions.
+- New users see an empty state rather than seeded sample invoices.
+- An editor has an issue date, optional due date, free-text payment method, customer name/address/ICE, seller identifiers drawn from business settings, editable line items and a color choice.
+- Line items accept description, quantity, unit price HT and VAT rates 0%, 10%, 14% or 20%. A new line uses the Settings tax-rate value.
+- A live preview shows seller/customer blocks, the invoice number and dates, line HT values, a single combined VAT total, TTC total, payment method and notes.
+- A user can save a template with lines, payment method, color and notes; templates can be applied or deleted.
+- Recent saved documents are stored locally and can be opened or deleted.
+- Logo upload is ultimately subject to data-URL validation via updateSettings; the file-input “accept” attribute is only a hint, not validation.
+- The invoice can be printed through window.print(). The CSS hides non-preview content and uses A4/12 mm print settings.
+- A French “Mentions & repères Maroc” panel has a disclaimer that the tool does not certify fiscal compliance and links to a CGI 2026 PDF.
+- The privacy text currently discloses that invoice records/templates are stored in this browser, are not synchronized to Supabase, are not cleared by sign-out, and that PDFs are generated through the browser print function.
+
+1.3 Current data and numbering behavior
+
+- Inline types in Invoices.tsx are Line, Invoice, Template and SavedInvoice. They are not a domain model shared with other modules and have no schema version or lifecycle state.
+- The storage key is “fatorati.invoices.v1.<auth-id>”. This is account-scoped in the browser, but the ID is not URL-encoded, there is no invoice-specific export/restore path, and the key is separate from the main account workspace key.
+- Storage reads use JSON.parse with a try/catch, but parsed objects are not runtime-validated. Malformed JSON silently falls back to defaults. The subsequent effect can write the defaults back over the original bad value. Storage write errors are swallowed and do not appear in the shared LocalSaveNotice.
+- One in-progress invoice object is stored alongside templates and savedInvoices. It is not shown as a visible draft in the home list; starting another invoice replaces this current object.
+- New invoices receive FAC-<current-year>-001 or the next number found by scanning saved local records. This happens when the user starts a new draft, not when the user confirms issue. The user can edit the number. The app therefore cannot guarantee uniqueness, chronology, team-wide sequencing or that a document has actually been issued.
+- saveInvoice stores the record without a draft/issued status or confirmation step. It matches an existing record by invoice number, not by a stable edit target, so a manually repeated number can replace another record; changing a number while editing may instead create a second record and leave the old one.
+- Saved records remain editable and deletable. Seller details such as company name/address/ICE/IF/RC are read from live Settings when the preview renders, not snapshotted on the invoice. A later settings change can therefore change an old invoice’s printed seller identity.
+
+1.4 Current calculation, field and output limitations
+
+- Subtotal/VAT are computed directly with JavaScript floating-point numbers. No explicit money-rounding policy or decimal-safe arithmetic is present.
+- VAT is not grouped by rate; the preview shows one VAT total. There is no VAT amount per line, separate rate summary, exemption/legal-basis field or custom rate.
+- The helper choices omit the 7% rate mentioned in the supplied research. The choices are not an authoritative list and should remain editable helpers, not tax advice.
+- An input of 0% is shown as “TVA 0%”; it does not distinguish zero-rated, exempt or non-taxable cases.
+- The price display is hard-coded to fr-MA and MAD. Settings supports MAD/EUR/USD but the invoice formatter ignores it. The issue date is built from `new Date().toISOString().slice(0, 10)`, which is UTC-based and can differ from the user's Morocco-local date near midnight; use the app's local-date helper or an explicitly chosen timezone.
+- Input controls have min=0, but there is no issue/save validation gate or form submission validation. Empty or invalid numeric values can become zero; negative/corrupt values are not rejected by the calculation engine because there is no separate engine/validator.
+- There is no unit field, buyer email/phone/country, client reference/PO, project reference, issuer phone/email/country/legal form/CNSS, bank instructions, amount-paid value, payment date/reference, outstanding balance or payment history. Existing Settings has both headerNote and footerNote, but only footerNote is currently shown on the invoice preview.
+- The customer is typed manually; the existing contacts list is not connected to the invoice editor.
+- The module has only one preview theme layout with a fixed palette (currently beginning with teal). It does not provide the requested Standard/Modern/Friendly layout choices or an accent picker. Its generated PDF is styled separately from the shared Fatorati blue tokens (brand blues include #3a88ea, #2b68bf and #2563eb), so align the default invoice accent with the product brand while keeping customer-selected colors legible.
+- The UI is largely hard-coded in French. The app-wide language system supports French, English and Arabic/RTL, but invoice page copy, date/money formats and invoice labels are not fully localized. Some physical-direction utilities also need review for Arabic.
+- The output button says “Exporter en PDF”, although the implementation opens the browser print dialog; a clearer label is “Imprimer / Enregistrer en PDF”. No verified browser print smoke test was run for this audit. Long invoices, multi-page output, RTL, clipping and the print dialog need real-browser tests.
+- “Total TTC” is derived from raw sums, and saved-list TTC recomputes independently from the preview. Both should use one tested calculation engine.
+
+1.5 Access and navigation findings
+
+- Route: present and covered by the generic route map. It is noindex, but src/lib/seo.ts has no dedicated PRIVATE_TITLES entry for /invoices; the fallback private title is the 404 title until the in-app title effect runs. Add a correct private title.
+- Authentication: the signed-in app redirects unauthenticated visitors who open a module route to login.
+- Role permissions: allowedModules contains the “invoices” permission. The regular sidebar invoice row is permission-filtered.
+- Plan: invoices are in FREE, as the supplied brief requested.
+- Navigation bug: the prominent “New invoice” CTA is rendered whenever INVOICE_ROUTE_ENABLED is true, without checking allowed.invoices. A team member lacking invoice permission can see/click it. The route renderer then falls back to the first allowed module rather than showing a clear invoice-specific denial/redirect. Hide or permission-gate the CTA and test direct-route behavior.
+- Several comments/docs still state that invoices have no route or are “once it ships”. Update these stale comments after the implementation is brought to the intended release state.
+
+1.6 Brand, policies and documentation findings
+
+- The basic marketing feature card accurately describes logo, line items, VAT, templates and print/PDF as product capabilities, but the Assistant marketing card in src/marketing/Landing.tsx still says “Facture conforme ICE + TVA 20%” / “Invoice compliant ICE + VAT 20%” and pairs it with a “verified” claim. That is not supported by this implementation and should be removed or rewritten before promotion.
+- The invoice editor has a disclaimer panel, but there is no always-visible plain-language warning next to a real issue/export workflow explaining no DGI transmission, browser-local storage and user tax responsibility.
+- Privacy copy is unusually detailed and already covers many invoice data/storage points in French, English and Arabic. It should remain aligned with actual code and explain localStorage accurately as browser storage, not a cookie.
+- Terms are general and do not yet contain the invoice-specific responsibility, no-certification, local-numbering, correction and prohibited-use provisions required in the supplied brief.
+- Cookie policy copy discusses consent/analytics and basic preferences but does not clearly distinguish localStorage used by invoices from cookies.
+- Refund policy already has a voluntary seven-day initial-purchase promise and mandatory-rights caveat. Preserve it; do not create a per-invoice refund promise.
+- Documentation is stale relative to this checkout: docs/FEATURES_AND_TOOLS.md §2/§6/§8/§11, docs/SITE_AND_DASHBOARD_SCAN.txt and docs/COMPETITOR_INEO.md describe invoices as absent. src/lib/plans.ts and Sidebar.tsx also contain stale “no route yet / once it ships” comments. The current code and all status documents should agree.
+- The Assistant card is live marketing copy with an unsupported “compliant / verified” invoice claim. A test-only blog fixture in tests/blogCategories.test.tsx also contains strong compliance and e-invoicing statements; it is not evidence that the content is live, but it should not be copied into production without legal review. Before publication, separately inspect actual CMS/blog content and localized SEO copy.
+
+1.7 Test coverage found
+
+- No invoice-specific test file or invoice engine tests were found.
+- Generic route and plan tests mention the invoices module/entitlement. Those do not test invoice behavior.
+- The Sidebar.test.tsx permission fixture used for the normal navigation contract does not grant the invoice permission, so it does not prove the invoice row/CTA works for an authorized user.
+- No tests were found for totals/rounding, VAT rates, issue numbering, draft/issued immutability, payment status, duplicate-to-draft, account isolation, corrupted invoice storage, write failures, localized copy/RTL, or print output.
+- This document does not claim that typecheck, unit tests, production build or browser printing passed. Those checks should be run after implementation changes.
+
+============================================================
+2. PRIORITIZED CHANGES — WHAT TO ADD FROM THE RESEARCH
+============================================================
+
+PRIORITY KEY
+P0 = required before claiming a dependable issue-ready invoice workflow.
+P1 = high-value MVP usability and trust improvements.
+P2 = valuable follow-on work, dependent on legal/backend review.
+DO NOT FAKE = do not add as a decorative front-end button or imply that it is live.
+
+P0 — correctness, safe lifecycle and user trust
+
+1. Add a versioned invoice data model and a tested invoice engine.
+   Proposed modules: src/lib/invoiceTypes.ts, src/lib/invoiceEngine.ts, and a storage adapter. Keep calculations out of the React component. Validate finite numbers, allowed ranges, date format, line completeness, text length, VAT rate range and currency. Use cents/decimal-safe arithmetic and document whether tax is rounded per line or per rate/aggregate; agree the policy with a Moroccan accountant and test centime edge cases. Use the same engine for editor totals, saved-list totals, payment status and print preview.
+   Value/impact: avoids inconsistent invoices, visible one-cent discrepancies and invalid values reaching exported documents. Effort: medium-high; priority: P0.
+
+2. Implement an explicit draft → issue workflow.
+   Drafts have an internal ID but no final invoice number. Saving a draft must not make it an issued invoice. Before issue, show a checklist of missing required/applicable information and a confirmation. Assign the next number only at issue, in a user-selected year/series, and persist a stable issued snapshot. Do not silently allow edits/deletion to issued document identity, seller/buyer data, lines or tax amounts. Payment metadata may be changed separately. Until proper credit notes exist, show a correction limitation and refer the user to their accountant. A duplicated issued invoice becomes a new, unnumbered draft.
+   Value/impact: prevents premature numbers, accidental overwrites, backdating/duplicate confusion and makes the output’s state understandable. Effort: high; priority: P0.
+
+3. Be honest about local numbering.
+   In a local-only MVP, issue numbering can only be local to that browser/account data set. It cannot guarantee uniqueness across browsers, team members, cleared storage or devices. Clearly disclose this limitation and provide a warning to verify the sequence. Do not call it an official number or audit-grade global sequence. For server-grade sequencing, use a transaction/locking mechanism on the server and enforce account ownership/RLS.
+   Value/impact: prevents false assurance and numbering conflicts. Effort: low for disclosure; high for durable solution; priority: P0.
+
+4. Snapshot seller and buyer data on each issue.
+   Seller snapshot should include name/legal name, legal form if known, address/city/country, applicable ICE/IF/RC and registration city, TP, CNSS, phone/email, bank instructions, logo, legal/tax note, header/footer note and selected currency. Buyer snapshot should include name, address/city/country, applicable professional ICE, contact details and optional client/project/PO reference. Snapshot data, logo, lines, totals, VAT breakdown, issue date, due date, terms and selected visual theme at issue time. Old invoices must not change when Settings or the contact record changes.
+   Value/impact: reliable historical documents and fewer repeated entries. Effort: medium; priority: P0.
+
+5. Add required-field checks with useful errors.
+   Block issue until required seller identity/address and invoice date, buyer identity where required, one or more complete lines, valid quantity/price/rate, and valid year/series state are present. Because applicability varies, support optional identifiers and an accountant-reviewed checklist; do not make every identifier universally mandatory. Show a field-level checklist instead of a generic toast. Validate nonnegative finite values and reasonable upper bounds; date checks should flag due-before-issue and invalid dates.
+   Value/impact: catches common mistakes at the point of issue. Effort: medium; priority: P0.
+
+6. Show a VAT breakdown by selected line rate.
+   Keep a rate per line; provide editable helper choices 0%, 7%, 10%, 14%, 20% and only add custom rate if bounds and behavior are defined. Group taxable base and VAT by rate in preview/PDF. Explicitly differentiate 0% from “exempt” and “not subject”. Let the user/accountant add the exact legal basis when applicable; never auto-write an exemption phrase based solely on business form or 0% selection. User remains responsible for choosing the correct rate.
+   Value/impact: improves clarity for buyers and accountants; reduces mixed-rate mistakes. Effort: medium; priority: P0.
+
+7. Add payment metadata without pretending to verify settlement.
+   Store amount paid, outstanding amount derived from TTC minus payments, payment status (unpaid/partial/paid), payment date, method and reference. Prefer separate payment events if users can record multiple payments. “Mark as paid” should capture a user-stated amount/date and say it is manual, not bank-confirmed. Do not add RAS, stamp duty or other silent calculations.
+   Value/impact: gives small businesses a meaningful receivables view and supports reminders later. Effort: medium; priority: P0/P1 depending on scope.
+
+8. Harden local persistence and recovery.
+   Use a typed key such as fatorati.invoices.v1.<encodeURIComponent(userId)> and a schemaVersion. Parse untrusted JSON defensively and runtime-validate every record. Handle corrupt data without silently overwriting the original; show a recovery/export warning. Catch quota/unavailable writes and display a truthful invoice-specific save error. Keep account A and account B isolated. Add invoice export/backup (JSON and accountant-friendly CSV as separate capabilities) before users rely on local records. Explain that browser storage can be erased, altered, evicted or accessed by someone with the device/browser.
+   Value/impact: reduces data-loss risk and support incidents. Effort: medium; priority: P0.
+
+9. Fix role/access and marketing trust issues.
+   Hide or gate the sidebar “New invoice” action when the user lacks invoice permission. Ensure a direct unauthorized /invoices request produces a clear denial or redirects to an allowed route. Add invoice to module counts, plan/nav/policy tests. Add the correct private noindex title. Remove “compliant / DGI verified / ICE + 20% compliant” claims unless reviewed and narrowly supportable. Add the user warning near issue/export.
+   Value/impact: avoids confusing team members and misleading product claims. Effort: low-medium; priority: P0.
+
+P1 — usability and Moroccan small-business value
+
+10. Build a real invoice dashboard.
+    Keep empty state; do not fabricate records. Add cards for issued count, paid, outstanding and drafts, computed only from stored records. Add searchable/filterable invoice list by number, customer, date and status. Actions: open/view, duplicate as a fresh draft, record payment, print/export. State the data scope and local-only limitation. Search and totals should ignore corrupt/invalid rows only with a visible warning.
+    Value/impact: turns a generator into a useful daily workflow and makes outstanding balances visible without implying a bank balance. Effort: medium; priority: P1.
+
+11. Prefill existing contacts; improve seller profile once.
+    Add a contact picker for existing clients, with editable values and no guessing of missing address/ICE. Use existing seller Settings as defaults, but take an immutable snapshot on issue. Consider adding country, phone, email and applicable identifiers to Settings if not already available. Keep blank defaults; never use demo-company IDs.
+    Value/impact: less retyping, fewer customer spelling/ICE mistakes. Effort: low-medium; priority: P1.
+
+12. Localize the complete signed-in invoice UI.
+    Add English, French and Arabic strings for every title, field, error, confirmation, empty state, warning and print label. Use the language store and right-to-left direction. Test Arabic typography and mixed LTR numbers/identifiers. Format currency/date using the selected invoice currency and locale rather than hard-coded fr-MA/MAD. Keep numbers readable in Arabic and avoid physical-direction CSS where logical CSS works.
+    Value/impact: serves multilingual Moroccan users and improves accessibility. Effort: medium; priority: P1.
+
+13. Improve print/PDF output and templates.
+    Keep browser print as the MVP exporter and state exactly that it opens the print dialog, where the user may choose “Save as PDF”. Use an A4 print-only root, hide dashboard chrome and controls, preserve usable accent contrast, show seller/buyer details, number/date/due date, line table, HT/VAT/TTC breakdown, payment terms and notes. Test one-page and multi-page invoices, long descriptions, logo sizes, Arabic, narrow mobile editor and clipping. Add Standard/Classic, Modern and Friendly layouts; editable accent color with contrast checks. Save/reuse templates without retroactively changing issued invoices. Support template rename/edit/delete, prevent empty names and define duplicate-name behavior.
+    Value/impact: professional output and recognizable branding without pretending the browser PDF is a certified archive. Effort: medium; priority: P1.
+
+14. Surface legal references as guidance, not an automatic compliance engine.
+    Keep concise field explanations and a checklist, with source/version/date and a reminder that legal applicability depends on activity, legal form, tax regime, transaction and buyer. Avoid presenting the checklist as a declaration of universal mandatory fields. A legal-content owner should review changes before publication.
+    Value/impact: provides locally relevant guidance while reducing legal overclaim. Effort: medium; priority: P1.
+
+P2 — only after legal and technical validation
+
+15. Server-side persistence, team sharing and durable backups.
+    For multi-device/team use, create tenant/account-scoped Supabase tables with RLS, server-side validation, transactional numbering, immutable issued records, audit events, secure logo/document handling, export/delete/retention workflows, scheduled backups and tested restore. Never put service-role credentials in browser code. The existing optional business backup is a snapshot mirror, not live sync and currently excludes invoices.
+    Value/impact: enables reliable collaboration and retention; very high effort and security/legal review needed. Priority: P2 before promising shared/durable invoice history.
+
+16. Accountant exports and reporting.
+    Add CSV/XLSX after model/rounding settles. Export invoice headers, line items, currency, VAT bases by rate, amounts paid, outstanding and payment events. Clearly state this is not a tax return and does not establish collected/deductible TVA for every legal regime. Reconcile dashboard revenue only after a dated invoice/payment ledger is reliable.
+    Value/impact: reduces bookkeeping work. Effort: medium; priority: P2.
+
+17. Credit notes/avoirs, proformas and quotes.
+    Implement a correction chain referencing the original invoice, with accountant-reviewed legal and number rules. A credit note is not implemented today; do not simulate one as a negative line or silently edit the issued invoice. Quotes/proformas should remain distinct document types and convert to invoices with traceability.
+    Value/impact: handles real correction and sales workflows. Effort: high; priority: P2.
+
+18. Reminders, email, WhatsApp and payment integrations.
+    Only add after backend ownership, secure share links, consent/privacy, delivery logs and provider configuration are in place. Browser print is not email delivery; a WhatsApp deep link is not proof of sending; a payment status is not bank settlement. Do not add front-end-only buttons that claim to send, collect or clear invoices.
+    Value/impact: faster collections, but significant privacy/security/provider work. Priority: P2 / DO NOT FAKE.
+
+19. Multi-currency, RAS, stamp duty, exports and DGI integration.
+    These require accountant/legal validation, dated exchange rates and explicit assumptions where applicable. For DGI e-invoicing, wait for the official technical framework, APIs, authorization requirements and production endpoints. Do not generate fake QR codes, signatures, stamps, clearance messages or a “DGI-certified” badge.
+    Value/impact: potentially substantial for advanced businesses, but high legal and technical dependency. Priority: P2 / DO NOT FAKE.
+
+============================================================
+3. MOROCCAN LEGAL AND POLICY REQUIREMENTS FROM THE SUPPLIED RESEARCH
+============================================================
+
+This section is a product-design checklist based on the supplied research. It is not legal advice, does not independently confirm the current law, and must be validated against official current texts and the user’s exact activity, legal form, tax regime, buyer and transaction.
+
+3.1 CGI 2026 — Article 145
+
+The supplied brief identifies Article 145, especially paragraph III, as the starting point for usual invoice particulars. The system should support applicable fields rather than declare each one mandatory for every taxpayer. Typical fields to support include:
+- invoice/transaction date;
+- unique sequential invoice number and coherent series;
+- seller name/legal name and address;
+- seller tax/commercial identifiers as applicable: ICE, IF, RC and other relevant IDs;
+- buyer identity/address, and professional customer ICE where legally required;
+- clear goods/services description;
+- quantity/unit and unit HT price where relevant;
+- taxable base, applicable VAT rate and VAT amount shown distinctly where applicable;
+- HT, VAT and TTC totals;
+- exemption/non-taxation explanation only when the issuer has confirmed a legal basis;
+- payment method/reference/terms as applicable.
+
+Article 145 paragraph VIII and related provisions: verify ICE requirements for issuer and B2B buyer in the user’s situation. Do not demand an ICE from every retail customer by default.
+
+Article 145 paragraph IX: the supplied brief describes a statutory direction for computerized invoicing for categories of taxpayers, with technical/modal conditions left to regulation. This does not prove a local browser-generated PDF is connected to or certified by the DGI.
+
+E-invoicing status at the supplied research cut-off (16 October 2026): the research brief reports that secondary legal/accounting commentary dated 9–12 October 2026 said no implementing decree had been published in the Bulletin Officiel at that time and no definitive official rollout dates, thresholds, format or approved-provider list were established by a published instrument. This has not been independently rechecked for this audit. Re-check the Bulletin Officiel and official DGI/MEF sources immediately before launch. Never market the current feature as DGI-certified, clearance-approved, signed or transmitted.
+
+3.2 Preservation — CGI Article 211
+
+The supplied brief cites a commonly applicable ten-year preservation period subject to exact conditions/exceptions. Confirm the duty for each user/document with the current official CGI. Current invoice data is browser localStorage; it is not a durable legal archive. Users must download and securely retain copies. Do not promise ten-year retention until durable storage, backups, integrity controls, security, export and retention workflows exist and have been reviewed.
+
+3.3 VAT (TVA)
+
+- Do not hard-code every transaction to 20%.
+- Suggested selectable helper rates in the supplied brief: 0%, 7%, 10%, 14%, 20%; allow a custom rate only if validation and UX are defined. These are not a complete legal list and must be reviewed against the current CGI.
+- The user/accountant chooses the legally correct treatment. A 0% line does not itself mean exempt or not subject to VAT.
+- Provide an optional exemption/legal-basis note, but never infer or fabricate one.
+- Calculate HT, VAT and TTC consistently; show a grouped VAT breakdown when multiple rates appear. Choose a documented, tested centime-rounding policy after accountant review.
+- RAS/withholding, stamp duties, discounts, deposits, exchange-rate conversions, exports, intra-group transactions and special regimes are outside the MVP unless separately implemented and validated.
+
+3.4 Commercial law and payment deadlines
+
+- Code de commerce, Law 15-95, Article 49: use the current official text and amendments. Include RC number and registration city/tribunal where applicable to the issuer; confirm exact wording for legal form.
+- Law 69-21 changes commercial payment deadlines/declarations/penalties for categories based on turnover thresholds, parties, dates and transitional rules. It does not establish one universal due date for every invoice. Let users enter agreed terms and due date; do not claim their selected date satisfies the law without case-specific analysis.
+
+3.5 Personal data — Law 09-08 / CNDP
+
+Invoices may contain personal and business-identifying data: individual and company names, addresses, email/phone, ICE/IF/RC/CNSS, item descriptions, amounts, VAT rates, payment references and notes. Product requirements:
+- truthful privacy notice, defined purpose, proportionality, data quality, access controls and deletion/retention disclosure;
+- minimize data and do not send invoice fields to analytics, advertising, support logs, diagnostics or external AI unless explicitly disclosed and lawfully configured;
+- review CNDP notification/authorization/transfer requirements for actual processing and hosting location;
+- explain localStorage is browser-side storage, not server sync and not app-level encryption;
+- document what account deletion/“erase workspace” does and does not remove; PDFs downloaded to the user or sent to customers are outside the app’s control;
+- update the privacy policy before adding server persistence or a third-party PDF/communications service.
+
+3.6 E-transactions and signatures — Law 53-05 and later amendments
+
+Check official current rules before adding signatures, acceptance links, timestamps, evidence workflows or electronic archives. The current print-to-PDF flow does not provide a qualified electronic signature, timestamp, proof of receipt/acceptance or DGI clearance.
+
+3.7 Consumer law — Law 31-08
+
+A generic invoice PDF does not automatically satisfy consumer-specific invoice, distance-sale, disclosure, price, refund or delivery obligations. The tool is a document-preparation/payment-tracking feature, not a determination of all supplier obligations in a consumer transaction.
+
+3.8 Simplified regimes, auto-entrepreneurs and sector-specific exceptions
+
+Do not assume identical fields, VAT or exemption wording for every auto-entrepreneur, company, professional, exempt transaction, sector, export, public-procurement or withholding case. Support optional user-configured notes and refer the user to their accountant. Do not auto-select a tax exemption based only on a business label or regime name.
+
+============================================================
+4. RECOMMENDED INVOICE DATA MODEL AND RULES
+============================================================
+
+4.1 Document lifecycle
+
+- Document types for initial MVP: standard invoice only. Do not present quotes, proformas or credit notes as available until implemented.
+- Draft: internal ID, editable, no final invoice number. It may have a clearly labelled temporary draft reference only if that reference cannot be confused with an issued number.
+- Issue confirmation: show the validation checklist, legal warning and final preview.
+- Issue: generate number within the chosen series/year, record issue timestamp, freeze document identity/issuer/buyer/lines/taxes/totals/template/legal note as an issued snapshot.
+- Issued invoice: do not silently edit or delete its legal/body data. Allow payment metadata changes. Corrections should use an accountant-validated correction process; complete credit-note logic is future work.
+- Duplicate: always create a new draft with a new internal ID and no final number.
+- Local-only numbering is not globally unique and may be altered if browser data is edited/removed. Disclose this limitation until server-side transactional numbering exists.
+
+4.2 Issuer snapshot
+
+Fields to support, with applicability controlled by the issuer/accountant:
+- legal/business name and optional legal form;
+- street/postal address, city and country;
+- ICE, IF, RC plus registration city/tribunal where applicable;
+- TP/patente and CNSS where applicable;
+- phone and email;
+- optional bank instructions provided by the business owner;
+- validated logo (PNG/JPEG/WebP/GIF; max 512 KiB; reuse validateLogoFile and validateLogoDataURL, catch errors visibly, reject SVG/script payloads);
+- optional header/footer note and validated legal/tax note.
+
+Store a snapshot per invoice. Settings can be a prefill source only; changing Settings must not change issued documents.
+
+4.3 Buyer snapshot
+
+- individual or company name;
+- billing address, city and country;
+- ICE for professional buyers where applicable;
+- email and phone only when needed;
+- optional client, purchase-order, order or project reference.
+- Allow a prefill from the existing contacts list. Keep fields editable. Never invent missing address/ICE values.
+
+4.4 Invoice body and payment
+
+- document number/status, issue date and optional due date;
+- optional subject/order/project/PO reference;
+- lines: description, unit, quantity, unit HT price, VAT rate and calculated line totals;
+- subtotal HT, VAT bases/amounts grouped by rate and TTC;
+- amount paid, outstanding and derived status;
+- payment events where appropriate: amount/date/method/reference;
+- payment terms, service/delivery information, notes and user-entered exemption basis where applicable.
+- Total in words is future work unless correct French, Arabic and English spell-out algorithms are implemented and tested.
+
+4.5 Calculation and validation rules
+
+- Internally represent money in cents or use a decimal-safe library/algorithm. Quantity may be fractional; define its supported precision and safe upper bounds.
+- Line base = quantity × unit HT price. VAT = base × selected rate / 100. Round with one documented policy. Reuse the same engine throughout UI, saved list and print output.
+- Recalculate immediately when fields change. Show selected invoice currency with HT/VAT/TTC labels.
+- Reject non-finite, negative or out-of-range values at the domain boundary, even if controls have min attributes.
+- Payment status: unpaid when amount paid is zero; partial when between zero and TTC; paid when at least TTC. Avoid negative balances unless a separately validated overpayment/refund model exists.
+- A “Mark as paid” control records a manual statement; it is not bank verification.
+- Issue checklist: applicable seller identity/address, issue date, buyer identity when required, at least one complete line, valid quantities/prices/rates, valid year/series/number state and any business-required fields configured by the issuer.
+
+4.6 Templates and design
+
+- Initial themes: Standard/Classic (restrained), Modern (stronger header band, print-friendly) and Friendly (clear plain-language labels, professional).
+- Allow accent color only with contrast/legibility checks; retain Fatorati blue/white as the primary brand direction and do not clone competitor layouts or text.
+- Save template name, layout/color, default notes/payment terms/tax rate and optional line-item defaults. Allow edit/delete/rename/reuse.
+- A template may set appearance/defaults but never overwrite issued invoice data or retroactively alter old documents.
+
+============================================================
+5. SCREEN AND USER WORKFLOW SPECIFICATION
+============================================================
+
+5.1 Invoice dashboard
+
+- Route /invoices, protected by the same authentication, role and plan rules as other signed-in modules; noindex.
+- Sidebar placement under “Day to day / Au quotidien”. Preserve the FREE entitlement unless the business owner changes the policy.
+- Empty state with “Create your first invoice” and a brief honest explanation. No fabricated invoice rows or sample company IDs.
+- Summary cards: issued count, paid total, outstanding total and drafts. Calculate only from validated real user records. Do not present local records as bank balances or a tax ledger.
+- Search by number/customer/date; filters for draft, issued, unpaid, partial and paid.
+- Actions: open/view, duplicate as new draft, create from template, record manual payment and print/save-as-PDF.
+
+5.2 Builder
+
+- Desktop: editor form plus sticky live preview. Mobile: explicit Edit/Preview switch so the document remains readable.
+- Top row: document type, draft/issued badge, issue date and due date.
+- Seller block: profile prefill, applicable IDs, logo and snapshot behavior.
+- Customer block: saved contact picker or manual entry.
+- Invoice/project/PO references; line editor with description, unit, quantity, unit HT price, per-line VAT, computed amount and add/remove controls.
+- Tax summary by rate: HT, VAT and TTC; currency and rounding must match the print view.
+- Payment section: amount paid, date, mode/reference, terms and outstanding balance. Status derived from the amount; never allow conflicting manual status.
+- Notes/footer: optional delivery/service details, legal/tax notes and user-entered exemption basis.
+- Preview updates immediately when data, theme, logo or color changes.
+
+5.3 Save, issue and export
+
+- Save draft: no final number, editable, visible on dashboard.
+- Issue: validate, confirm, assign local number only on issue, snapshot and freeze legal/body data.
+- Correcting issued documents: do not overwrite/delete; show limitation and accountant guidance until proper credit note/correction chain exists.
+- Print: browser print dialog, accurately labelled “Print / Save as PDF”; show the browser may ask the user where to save. Do not claim email delivery or archive.
+- Print page: A4, 12 mm margins, invoice only; logo, issuer/customer, number/dates, rows, VAT summary, totals, terms and notes; no editor/navigation controls.
+- Do not add fake signature, digital stamp, DGI QR, clearance badge or certified label.
+
+============================================================
+6. REQUIRED POLICY AND USER WARNING UPDATES
+============================================================
+
+Do not silently replace or contradict the primary Terms, Privacy, Cookie or Refund Policy. Add invoice-specific sections to the existing policies and cross-link them. Keep the three language versions aligned and have final wording reviewed by counsel/privacy specialists.
+
+6.1 Terms of Service — required invoice section
+
+State that:
+- Users are responsible for truth, completeness and legal accuracy of seller/customer information, ICE/IF/RC/CNSS, descriptions, quantities, prices, VAT rate, exemptions and payment terms.
+- Fatorati is a document-preparation and internal manual payment-tracking tool, not the user’s accountant, lawyer, payment processor, invoice recipient, bank or tax authority.
+- PDFs are generated from user-entered data; output is not a guarantee of validity for every activity/regime and is not evidence that DGI received, validated, cleared, signed or certified it.
+- Current MVP is not integrated with a DGI e-invoicing platform, does not file tax returns and is not a certified accounting/ERP system.
+- Drafts are editable. Issued invoice body should not be overwritten/deleted; corrections should follow an accountant-reviewed process (typically a credit note/avoir and replacement where appropriate). Do not offer credit-note functionality until implemented and validated.
+- Numbering is local in this MVP. Users must verify uniqueness and retain required records; local storage is alterable/erasable and cannot guarantee a central, tamper-proof, multi-device sequence.
+- Users must not create fraudulent, deceptive, backdated, fictitious, duplicate or illegal documents, evade tax, launder money, commit fraud or facilitate prohibited activity.
+- The final PDF must be reviewed before it is issued or sent.
+
+6.2 Privacy Policy — required invoice section
+
+Disclose possible invoice data: business/customer names, addresses, contact details, ICE, IF, RC/CNSS or other IDs, descriptions, amounts, VAT rates, payment references, terms and notes.
+
+State accurately that in this architecture invoices/templates are stored under an account-scoped localStorage key in the current browser/device, not live server sync. Local data is not encrypted by the app and may be accessible to someone with browser/device access or a malicious extension. Browser storage may be erased, altered or evicted. The present invoice key is separate from the core account workspace key and is not included in the optional Supabase business snapshot; the policy/product must not imply invoice cloud backup.
+
+PDF export uses browser print/save; the user controls destination and subsequent sharing. Downloaded PDFs and customer copies are not removed when app records are deleted. Explain account deletion/erase-workspace behavior honestly and provide user-controlled export and deletion where implemented. Do not send invoice fields to analytics, ads, external AI, support logs or diagnostics without lawful disclosure/configuration. Reassess Law 09-08/CNDP formalities and transfer/hosting if architecture changes.
+
+6.3 Cookie Policy / Storage Notice
+
+Editing, calculating, printing and saving invoices locally does not require an extra analytics tracker. If localStorage is needed, describe it as browser-side storage, not necessarily a cookie, and document it accurately in the Privacy Policy or a storage notice. Respect the current cookie consent behavior; do not add analytics to invoice editing without honoring it.
+
+6.4 Refund Policy
+
+A free invoice generator feature alone is not a financial transaction or paid invoice-management service. If invoicing is part of a paid subscription, preserve the existing refund terms, including the voluntary seven-calendar-day initial-purchase promise and mandatory legal rights. Do not promise a separate refund per invoice, customer payment, or reimbursement of an unpaid invoice. Paid plans do not guarantee revenue, collection, payment speed, tax deductions or invoice acceptance.
+
+6.5 User-facing warning — suggested wording
+
+English:
+“Fatorati prepares a PDF from the details you enter. You are responsible for checking the invoice, the applicable tax rate and the legal particulars for your activity. This tool does not submit invoices to the DGI or certify compliance. Invoice data in this version is saved in this browser for your account; download and securely store copies. Ask your accountant if you are unsure.”
+
+French:
+“Fatorati prépare un PDF à partir des informations que vous saisissez. Il vous appartient de vérifier la facture, le taux de TVA applicable et les mentions légales correspondant à votre activité. Cet outil ne transmet pas les factures à la DGI et ne certifie pas leur conformité. Dans cette version, les données de facturation sont enregistrées dans ce navigateur pour votre compte ; téléchargez-en des copies et conservez-les en lieu sûr. En cas de doute, demandez conseil à votre expert-comptable.”
+
+Arabic:
+“تُعدّ فاتوراتي ملف PDF اعتماداً على المعلومات التي تُدخلها. أنت مسؤول عن مراجعة الفاتورة ومعدل الضريبة المطبق والبيانات القانونية المناسبة لنشاطك. لا يرسل هذا النظام الفواتير إلى المديرية العامة للضرائب ولا يصادق على امتثالها. في هذه النسخة، تُحفظ بيانات الفواتير في هذا المتصفح لحسابك؛ نزّل نسخاً منها واحتفظ بها بأمان. إذا لم تكن متأكداً، فاستشر محاسبك.”
+
+Place the warning near issue/export and in the print/export flow, not only behind an optional legal-info disclosure. Review Arabic terminology with a fluent legal translator before launch.
+
+============================================================
+7. SECURITY, STORAGE AND IMPLEMENTATION CHECKLIST
+============================================================
+
+- Use typed, versioned invoice types and a pure calculation/validation engine.
+- Use account-scoped key `fatorati.invoices.v1.<encodeURIComponent(Supabase user id)>`; use a separate explicit local-dev namespace where needed.
+- Treat localStorage as untrusted input; runtime-validate every field and enum, handle schema migrations and preserve corrupt source data pending recovery.
+- Catch localStorage get/set/remove failures and show an invoice-specific honest warning. Do not claim “saved” when persistence failed. The existing top-level LocalSaveNotice tracks the main Zustand store, not this separate invoice key.
+- Keep invoice data isolated between accounts, including switching auth sessions in the same browser.
+- Reuse `validateLogoFile` and `validateLogoDataURL`; catch errors in the UI. Validate before FileReader to avoid reading huge/disallowed uploads; do not accept arbitrary SVG/script content.
+- Do not load or seed sample invoices or fabricated business identifiers.
+- Prefill from the authenticated account’s Settings and saved contacts only; snapshot at issue.
+- Protect the route using the existing auth/role/plan architecture. Include invoice permission in user/team presets and ensure the primary sidebar CTA respects it.
+- Maintain FREE access if that remains the agreed entitlement.
+- Print CSS should be scoped to a dedicated `.invoice-print-root`; `@page { size: A4; margin: 12mm; }`; hide shell/editor controls; avoid ink-heavy backgrounds; verify multi-page, RTL and mixed LTR identifiers.
+- Do not treat the existing optional Supabase mirror as invoice sync, backup or restoration. If moving invoices server-side: tables with RLS and tenant ownership, server validation, transactional numbering, immutable issued snapshots, audit events, secure file handling, retention/export/deletion, scheduled backups and tested restore. Never use service-role credentials in frontend code.
+- Do not claim durable archive or ten-year retention before these controls exist and have legal review.
+- No DGI integration, QR, signature, stamp, email delivery, WhatsApp delivery, payment collection, cloud archive or bank settlement without a real validated implementation.
+
+============================================================
+8. TEST PLAN AND ACCEPTANCE CRITERIA
+============================================================
+
+8.1 Automated tests to add
+
+Calculation and validation:
+- HT/VAT/TTC for one line and multiple lines; multiple VAT rates and grouped summaries.
+- 0% line remains distinguishable from exemption/non-taxable status.
+- centime rounding edge cases, fractional quantities and documented policy.
+- reject negative, NaN, infinite, out-of-range quantity/price/rate, invalid dates and incomplete lines.
+- selected currency and locale formatting.
+
+Lifecycle and sequence:
+- new draft has no final invoice number;
+- issue assigns the next number for selected series/year;
+- year boundary and sequence increment;
+- duplicate number/collision detection and concurrency limitation disclosure;
+- issued body remains immutable; payment metadata can change separately;
+- duplicate issued document creates a new draft with no number;
+- deleting a draft is allowed, deleting an issued invoice is blocked or follows a validated correction workflow.
+
+Payments:
+- unpaid / partial / paid status from amount paid vs TTC;
+- multiple payment events, dates, manual “mark as paid”, overpayment policy and outstanding amount.
+
+Storage:
+- account A/B isolation in one browser;
+- valid versioned parse and migration;
+- malformed/corrupt JSON does not silently overwrite the original;
+- quota/security exceptions show a truthful warning;
+- sign-out/account deletion behavior is accurately disclosed;
+- invoices are not accidentally claimed to be inside the Supabase backup snapshot.
+
+Integration and UX:
+- route/auth/role/plan gating and CTA visibility;
+- navigation under Day to day, direct unauthorized route behavior and noindex/title;
+- contact prefill with editable data and no inferred fields;
+- English/French/Arabic strings, Arabic RTL and mixed-direction identifiers;
+- print view contains invoice only, excludes form/dashboard controls, handles long/multi-page invoices and stays legible.
+
+Logo:
+- valid PNG/JPEG/WebP/GIF under limit accepted;
+- oversized, empty, invalid MIME, SVG and mismatched raster signature rejected with a visible error.
+
+8.2 Acceptance criteria for a safe, useful MVP
+
+1. Authenticated users with the correct role/plan can open /invoices under “Day to day / Au quotidien”; unauthorized users receive a clear outcome.
+2. The route is noindex and has an accurate private title.
+3. A new account sees no fabricated invoices or business identifiers.
+4. A new draft uses editable seller defaults and a clear local issue date but has no final number.
+5. Users can add/remove line items and select a VAT helper rate per line.
+6. Totals and grouped VAT update immediately and accurately using one tested engine.
+7. Users can select a saved contact or enter buyer details manually; missing values are not guessed.
+8. Users can upload a validated logo, choose one of the supported layouts and accent color, and see a live preview.
+9. Users can save, rename/edit, reuse and delete named templates; templates do not change issued invoices.
+10. Draft save creates an editable, visible draft without an official/final number.
+11. Issue confirmation shows a missing-field checklist, assigns a local series number at issue only, and freezes issuer/buyer/lines/tax snapshot.
+12. Issued invoice body cannot be overwritten or deleted through ordinary edit flows; corrections are clearly deferred to a validated credit-note flow.
+13. Payment status follows manual amount paid; partial payment and outstanding amounts are correct and are not described as bank-verified.
+14. Print/save-as-PDF produces an A4 invoice only, with no editor/navigation controls or clipping; multi-page output is tested.
+15. Arabic layout is RTL and legible; numbers and IDs remain readable. English/French/Arabic interface labels are covered.
+16. Account A data is not visible to account B in the same browser.
+17. Corrupt localStorage and storage write failures produce honest warnings and do not silently claim success.
+18. Product warning/policies describe user tax responsibility, local browser storage, lack of DGI submission/certification and archive limitations.
+19. No fake QR, signature, stamp, DGI status, payment collection, emailing, WhatsApp sending or cloud archive is exposed.
+20. Automated tests, typecheck, production build and browser print/export smoke tests pass before release; failures are reported exactly.
+
+============================================================
+9. COMPETITOR UX REVIEW — BASED ON THE SUPPLIED BRIEF
+============================================================
+
+These are product-pattern references, not legal sources. Use general usability ideas only; do not copy proprietary text, branding or layout.
+
+1. FactureGo — https://facturego.ma/
+Feature overview: https://facturego.ma/fonctionnalites
+Moroccan invoice detail: https://facturego.ma/creation-facture-maroc
+Reported useful patterns: draft/issued distinction, numbering after issue, issue/due dates, document category, client selection, live HT/TVA/TTC totals, preview/PDF, logo/brand color, configurable seller identifiers, VAT per line, payment state and clear save-draft/issue actions. Its stated caution that users must check their actual circumstances is a useful honesty pattern.
+
+2. ComptaBee — https://comptabee.ma/lp/factures-devis/
+Reported useful patterns: clear issuer/buyer blocks, identifiers where applicable (ICE/IF/RC/CNSS), dates, line quantity/unit-price/VAT, VAT summary, payment status/action, PDF preview, client history, templates/colors and possible future sending/credit-note workflows.
+
+3. YanCommerce — https://www.yancommerce.com/
+Reported patterns: client/line item selection, user-friendly PDF, WhatsApp sharing, delivery-note and payment-tracking concepts. Fatorati should not claim a message was sent; consider safe sharing only after secure link, expiry and privacy controls exist.
+
+4. Bravico Facture Express — https://bravico.ma/efacture-express.html
+Reported sample: logo/brand area, issuer/client blocks, identifiers, date/reference, itemized HT/VAT and totals. Do not add a QR merely for visual credibility; add one only with a defined valid payload and verifier/issuer framework.
+
+Common usability pattern worth adopting: one editor plus live preview/totals, beginner-friendly standard template and optional visual choices, reusable seller profile, quick add/remove lines, clear draft/issue actions, PDF print, named templates, payment tracking, mobile design and Arabic RTL.
+
+Fatorati’s opportunity: make a low-friction, French/Arabic/English invoice document builder for Moroccan freelancers, tradespeople and small businesses, with conservative legal wording, reusable contacts, accurate totals and accessible export. Do not promise cloud history, email delivery, payment collection, tax filing, DGI transmission or certified archives until they exist.
+
+============================================================
+10. BRAND AND REPOSITORY FIT
+============================================================
+
+- Technical system in the repository: React + TypeScript + Vite, Tailwind CSS v4, React 19, Zustand, custom URL router, Supabase Auth/CMS and Cloudflare Pages deployment.
+- The app has French, English and Arabic dictionaries and an Arabic RTL direction mechanism. The Invoice page needs to use those dictionaries rather than hard-coded French.
+- Existing dashboard patterns include SectionTitle, Card, Btn, Badge, Table, Modal and shared icons. Use those and existing spacing/color tokens.
+- Visual direction: Fatorati blue/white, restrained surfaces, subtle borders, responsive layout, bundled fonts (Inter/Sora/Tajawal). The invoice palette should feel part of Fatorati rather than a clone of another invoicing product.
+- Existing Settings has blank business identity defaults, ICE, IF/tax ID, RC, address, city, MAD/EUR/USD currency, editable default tax rate, logo and header/footer notes. Reuse as prefill only; snapshot on issue. Do not import demo/seed company data.
+- Existing logo validation helper is suitable; call its file validation before reading and data URL validation before persistence, and present failures visibly.
+- Routing is centralized in src/lib/routes.ts and App.tsx. The actual invoice route now exists. Add private title coverage, route access tests and remove stale route-disabled comments/docs.
+- The invoice module uses a separate localStorage key. Main workspace Supabase backup, account-scoped deletion and generic local-save warning do not automatically manage this key. Keep user-facing statements consistent or deliberately unify storage.
+- Invoice entitlement is already FREE. Keep this unless the product owner explicitly changes it; avoid accidental new paywall.
+- Correct all marketing/product claims globally, including Assistant card, product docs, SEO/blog copy and this repository’s feature audits. The current output is an editable PDF document, not a legally determined “compliant invoice”.
+
+============================================================
+11. IMPLEMENTATION PHASES
+============================================================
+
+PHASE A — audit cleanup and safety base (P0)
+- Update stale docs/comments to say the basic module exists and accurately list what it cannot do.
+- Add types, schema version, runtime validation, tested calculation engine and locale/currency rules.
+- Add error-aware local persistence, account isolation and recovery/export path.
+- Fix navigation permission CTA and private title.
+- Replace unsupported compliance claims and add the trilingual warning.
+
+PHASE B — lifecycle MVP (P0/P1)
+- Implement visible drafts, issue confirmation/checklist, issue-time local sequence and frozen snapshots.
+- Implement seller/buyer snapshots, tax breakdown, validated line editor, payment records and status.
+- Add dashboard list/search/filters, contact prefill, templates management and responsive editor/preview.
+- Localize all invoice UI in French, English and Arabic; verify RTL.
+- Produce print-only A4 layout and run real-browser smoke tests.
+
+PHASE C — durable business workflow (P2)
+- Server tables with RLS, tenant ownership, server validation, transactional numbering, immutable issued fields and audit events.
+- Secure storage, scheduled backups, restore tests, retention/deletion and account data export. Update privacy/CNDP review before launch.
+- Accountant export, credit-note chain, quote/proforma conversion and customer/product catalogue after domain/legal design.
+
+PHASE D — integrations (P2, only if real)
+- Reminders, email, WhatsApp share links, payment provider, bank reconciliation, multi-currency/RAS and DGI e-invoicing only after provider/official framework, privacy, security and legal validation. No front-end-only simulations.
+
+============================================================
+12. SOURCE INDEX
+============================================================
+
+PRIMARY MOROCCAN GOVERNMENT SOURCES (RE-CHECK BEFORE RELEASE)
+- Ministry of Economy and Finance, CGI 2026 publication list:
+  https://www.finances.gov.ma/fr/lbc/Pages/publications0.aspx
+- Ministry of Economy and Finance, legal texts (including Law 69-21):
+  https://www.finances.gov.ma/fr/Pages/textes-juridiques.aspx
+- DGI/MEF payment-deadline notice, 21 March 2025:
+  https://www.finances.gov.ma/fr/pages/detail-actualite.aspx?fiche=7218
+- CNDP official French text of Law 09-08:
+  https://www.cndp.ma/images/lois/Loi-09-08-Fr.pdf
+- CNDP official Arabic text/listing:
+  https://www.cndp.ma/wp-content/uploads/2022/08/Loi-09-08-Ar.pdf
+- CNDP guidance on lawful purpose, proportionality and data quality:
+  https://www.cndp.ma/conditions/
+- Official Bulletin Officiel search portal:
+  https://bo.ai.mmsp.gov.ma/
+- DGI CGI 2026 PDF linked by current Invoice UI:
+  https://www.tax.gov.ma/wps/wcm/connect/08712531-1e81-4e28-a38b-2bd9edf8e09e/CGI+2026+FR.pdf?MOD=AJPERES&CACHEID=ROOTWORKSPACE-08712531-1e81-4e28-a38b-2bd9edf8e09e-pM5DEs1
+
+CURRENT E-INVOICING STATUS REFERENCES (SECONDARY; VERIFY OFFICIAL BO)
+- Updated 12 Oct 2026:
+  https://la-caisse.ma/fr/blog/facturation-electronique-maroc/
+- Updated 9 Oct 2026:
+  https://deadline.ma/conseils/systemes-erp-crm/facturation-electronique-dgi-maroc-2026
+- Updated 7–9 Oct 2026:
+  https://lineprod.ma/conseils/conformite-fiscale/facturation-electronique-maroc-decret
+
+COMPETITOR / UX REFERENCES
+- FactureGo: https://facturego.ma/
+- FactureGo features: https://facturego.ma/fonctionnalites
+- FactureGo Morocco invoice checklist: https://facturego.ma/creation-facture-maroc
+- ComptaBee invoices/quotes: https://comptabee.ma/lp/factures-devis/
+- YanCommerce: https://www.yancommerce.com/
+- Bravico Facture Express: https://bravico.ma/efacture-express.html
+
+REPOSITORY FILES SCANNED
+- src/modules/Invoices.tsx
+- src/App.tsx
+- src/lib/routes.ts
+- src/lib/seo.ts
+- src/components/nav.tsx
+- src/components/Sidebar.tsx
+- src/store/types.ts
+- src/store/defaults.ts
+- src/store/useMizan.ts
+- src/lib/permissions.ts
+- src/lib/plans.ts
+- src/lib/logoValidation.ts
+- src/lib/localSaveStatus.ts
+- src/lib/supabaseBackup.ts
+- src/i18n/shared.ts
+- src/i18n/shell.ts
+- src/marketing/Landing.tsx
+- src/index.css
+- docs/FEATURES_AND_TOOLS.md
+- docs/SITE_AND_DASHBOARD_SCAN.txt
+- docs/COMPETITOR_INEO.md
+- tests/* (searched for invoice-specific coverage)
+
+============================================================
+13. FINAL RECOMMENDATION
+============================================================
+
+Treat the current /invoices code as a functional prototype, not a completed compliance feature. The highest-value next work is not more decorative invoice templates: it is a truthful draft/issue lifecycle, safe local numbering, stable snapshots, a validated and rounded tax engine, explicit storage/error warnings, real payment metadata, and trilingual user guidance. Then build a searchable invoice list and contact prefill. Server-side retention, team collaboration, automated sending, credit notes and DGI integration belong to later phases with their own legal/security review.
+
+Before release, reconcile code, privacy/terms/cookie/refund policy, marketing and old audit docs; run the complete automated test suite, typecheck, production build and real-browser A4/RTL print smoke tests. Keep the DGI and tax-compliance claims conservative and verify all legal language against the official current source and the user’s own accountant.
