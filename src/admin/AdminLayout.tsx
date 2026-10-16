@@ -56,7 +56,7 @@ const SECTIONS: { label: string; links: AdminLink[] }[] = [
     label: "المبيعات والنمو",
     links: [
       { to: "/admin/subscriptions", label: "الاشتراكات", icon: CreditCard, kind: "platform" },
-      { to: "/admin/subscription-editor", label: "الرموز والأسعار", icon: KeyRound, kind: "platform" },
+      { to: "/admin/subscription-editor", label: "رموز التفعيل", icon: KeyRound, kind: "platform" },
       { to: "/admin/traffic", label: "الزيارات", icon: Activity, kind: "platform" },
     ],
   },

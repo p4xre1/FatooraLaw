@@ -139,8 +139,18 @@ applied to the production Supabase project.
 
 Apply `supabase/migrations/20261018_activation_key_security.sql` after the
 single-use key migration. It requires Supabase MFA AAL2 for activation-key
-issuance, listing, and revocation; the CMS subscription editor includes a TOTP
+issuance, listing, and revocation; the CMS issuance console includes a TOTP
 enrollment/challenge panel. Issue via the `issue_activation_key` RPC only.
+
+The console (`admin/subscriptions/ActivationConsole.tsx`) renders on
+`/admin/subscriptions` and `/admin/subscription-editor` and checks its own
+prerequisites before the owner types a client's name: platform-operator role,
+AAL2 session, secure origin (`crypto.subtle`) and — by reading one row of
+`activation_keys` — that these two migrations were actually applied. A missing
+migration is reported as the two file names to run, in order, instead of a raw
+`Could not find the function … in the schema cache`. `tests/activationKeysSql.test.ts`
+runs issuance and redemption against the shipped SQL, and
+`tests/activationCodeIssuance.test.tsx` covers the browser half.
 
 The redemption RPC returns the same generic failure for malformed, unknown,
 revoked, already-used, and rate-limited keys. It counts attempts per account

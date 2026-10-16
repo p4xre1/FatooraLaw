@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react"
-import { Check, Loader2, Pencil, Save, X } from "lucide-react"
+import { Check, KeyRound, Loader2, Pencil, Save, X } from "lucide-react"
 import { Badge, Btn, Card, Input, SectionTitle, Select, Table, Td, Th } from "../../components/kit"
 import { FormAlert } from "../../modules/auth/components/FormAlert"
-import { useOutletContext } from "react-router"
+import ActivationConsole from "../subscriptions/ActivationConsole"
+import { Link, useOutletContext } from "react-router"
 import type { AdminAccess } from "../lib/adminAuth"
 import {
   PLAN_LABELS,
@@ -128,6 +129,26 @@ export default function SubscriptionsView() {
       <SectionTitle title="الاشتراكات والخطط" sub="إدارة الخطط وحالات الحسابات والطلبات. لا تُعالج هذه الشاشة المدفوعات؛ حالة «مدفوع» في الطلبات تُسجل يدوياً ولا تؤكدها بوابة دفع." />
       {error && <FormAlert kind="error">{error}</FormAlert>}
       {notice && <div role="status" className="rounded-lg border border-good/20 bg-good-50 px-4 py-3 text-[13px] text-emerald-800">{notice}</div>}
+
+      {/* Issuing codes belongs on this screen too: an owner who comes here to
+          manage plans should not have to know the generator lives on another
+          page. Same component as /admin/subscription-editor, so the two cannot
+          drift apart. */}
+      <section aria-label="رموز التفعيل" className="space-y-3">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-[15px] font-bold text-ink">رموز التفعيل</h2>
+            <p className="mt-1 max-w-3xl text-[12px] text-muted">
+              أنشئ رمزاً لكل عميل بعد التوصل بالدفع وأرسله له على واتساب. يظهر الرمز كاملاً مرة واحدة هنا، ولا يُحفظ في الخادم سوى بصمته؛ الاسترداد يستهلكه لحساب واحد.
+            </p>
+          </div>
+          <Link to="/admin/subscription-editor" className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-[12px] font-semibold text-ink hover:bg-canvas">
+            <KeyRound className="h-3.5 w-3.5" /> السجل المحلي والأسعار
+          </Link>
+        </div>
+        <ActivationConsole />
+      </section>
+
       {loading && <div className="grid min-h-28 place-items-center text-[13px] text-muted"><Loader2 className="h-5 w-5 animate-spin" /></div>}
 
       {!loading && <>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
-import { Activity, Bell, CreditCard, FileText, ShieldCheck, TrendingUp, Users } from "lucide-react"
+import { Activity, Bell, CreditCard, FileText, KeyRound, ShieldCheck, TrendingUp, Users } from "lucide-react"
+import { Link } from "react-router"
 import { Badge, Card, SectionTitle } from "../../components/kit"
 import {
   PLAN_LABELS,
@@ -67,6 +68,18 @@ export default function AdminDashboardView() {
     <div className="mz-view space-y-6">
       <SectionTitle title="مركز التحكم" sub="نظرة عامة على الاشتراكات والمحتوى والزيارات وإشعارات المنصة." />
       {error && <div role="alert" className="rounded-lg border border-serious/20 bg-serious-50 px-4 py-3 text-[13px] text-serious">{error}</div>}
+
+      {/* The reason an operator opens the console, reachable before any metric
+          loads (and even when the reads below fail). */}
+      <section aria-label="إجراءات سريعة" className="flex flex-wrap gap-2">
+        <Link to="/admin/subscriptions" className="inline-flex items-center gap-2 rounded-lg bg-brand px-3.5 py-2 text-[12.5px] font-bold text-white hover:opacity-90">
+          <KeyRound className="h-4 w-4" aria-hidden="true" /> إنشاء رمز تفعيل
+        </Link>
+        <Link to="/admin/subscription-editor" className="inline-flex items-center gap-2 rounded-lg border border-line bg-surface px-3.5 py-2 text-[12.5px] font-semibold text-ink hover:bg-canvas">
+          <CreditCard className="h-4 w-4" aria-hidden="true" /> رموز التفعيل والأسعار
+        </Link>
+      </section>
+
       {loading && <div className="grid min-h-48 place-items-center text-[13px] text-muted">جارٍ تحميل مؤشرات المنصة…</div>}
       {!loading && !data && !error && <div className="rounded-lg border border-line bg-surface px-4 py-8 text-center text-[13px] text-muted">لا توجد بيانات لعرضها.</div>}
       {stats && data && <>
