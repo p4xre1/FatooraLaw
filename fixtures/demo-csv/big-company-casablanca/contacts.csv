@@ -1,0 +1,101 @@
+﻿Nom,Type,ICE,Téléphone,Email,Ville,Solde
+Groupe Horizon Retail 001,client,008139986987973,+212 600-644039,contact001@example.com,Casablanca,576925
+Groupe Horizon Retail 002,client,007075364556815,+212 611-584529,contact002@example.com,Fès,152814
+Groupe Nova Retail 003,client,002940557616987,+212 614-446109,contact003@example.com,Fès,529668
+Groupe Rif Immobilier 004,client,008469788093208,+212 685-107559,contact004@example.com,Agadir,467488
+Groupe Rif Immobilier 005,client,002731778486488,+212 689-502155,contact005@example.com,Tanger,542873
+Groupe Oasis Industries 006,client,004002978753477,+212 665-803946,contact006@example.com,Tanger,358673
+Groupe Oasis Holding 007,client,005717847267147,+212 647-101358,contact007@example.com,Rabat,354159
+Groupe Anfa Immobilier 008,client,007010798193319,+212 605-788377,contact008@example.com,Fès,203468
+Groupe Nova Retail 009,client,000599728379298,+212 637-088534,contact009@example.com,Tanger,212278
+Groupe Anfa Industries 010,client,009486628360161,+212 606-874302,contact010@example.com,Marrakech,191920
+Groupe Anfa Retail 011,client,000087547517799,+212 621-161365,contact011@example.com,Fès,856914
+Groupe Rif Industries 012,client,009579318603208,+212 606-473768,contact012@example.com,Agadir,504670
+Groupe Atlas Immobilier 013,client,000283822264686,+212 610-401798,contact013@example.com,Marrakech,795480
+Groupe Atlas Retail 014,client,004776472587718,+212 667-835413,contact014@example.com,Marrakech,233180
+Groupe Horizon Industries 015,client,000175682052589,+212 668-227061,contact015@example.com,Casablanca,292572
+Groupe Rif Retail 016,client,009394948214162,+212 613-717799,contact016@example.com,Casablanca,632798
+Groupe Nova Industries 017,client,001854914524410,+212 652-908584,contact017@example.com,Marrakech,727321
+Groupe Oasis Holding 018,client,001304118955799,+212 604-969664,contact018@example.com,Tanger,110095
+Groupe Nova Industries 019,client,007615846450604,+212 688-346604,contact019@example.com,Marrakech,672914
+Groupe Anfa Holding 020,client,006590853801291,+212 615-039131,contact020@example.com,Rabat,361366
+Groupe Rif Retail 021,client,004069256663632,+212 623-569300,contact021@example.com,Casablanca,675950
+Groupe Anfa Immobilier 022,client,002300487645291,+212 622-579843,contact022@example.com,Casablanca,317359
+Groupe Anfa Retail 023,client,008500370382653,+212 671-869324,contact023@example.com,Marrakech,407263
+Groupe Nova Industries 024,client,005778794326270,+212 645-853282,contact024@example.com,Fès,442929
+Groupe Anfa Immobilier 025,client,000214584210839,+212 639-600445,contact025@example.com,Casablanca,884002
+Groupe Oasis Immobilier 026,client,008281126584409,+212 684-825484,contact026@example.com,Rabat,615162
+Groupe Atlas Retail 027,client,008452630976582,+212 692-541264,contact027@example.com,Casablanca,359635
+Groupe Atlas Retail 028,client,002201805154382,+212 676-639650,contact028@example.com,Rabat,615283
+Groupe Atlas Holding 029,client,007116494157718,+212 666-259026,contact029@example.com,Marrakech,392141
+Groupe Anfa Immobilier 030,client,005111744325688,+212 642-338368,contact030@example.com,Agadir,663747
+Groupe Anfa Immobilier 031,client,005237355696327,+212 695-594091,contact031@example.com,Agadir,472648
+Groupe Anfa Industries 032,client,004515474284352,+212 671-809943,contact032@example.com,Casablanca,502246
+Groupe Nova Retail 033,client,007660856517883,+212 654-369266,contact033@example.com,Agadir,652289
+Groupe Nova Holding 034,client,002048425996775,+212 601-039316,contact034@example.com,Rabat,469182
+Groupe Anfa Holding 035,client,004503784951838,+212 698-011946,contact035@example.com,Casablanca,742769
+Groupe Atlas Retail 036,client,007392419689821,+212 603-284032,contact036@example.com,Tanger,280062
+Groupe Horizon Industries 037,client,008375555974754,+212 604-674860,contact037@example.com,Tanger,626960
+Groupe Atlas Holding 038,client,005473548643906,+212 608-761151,contact038@example.com,Agadir,554028
+Groupe Anfa Retail 039,client,009188957555218,+212 622-796208,contact039@example.com,Marrakech,556039
+Groupe Rif Immobilier 040,client,001930733688283,+212 634-813469,contact040@example.com,Agadir,711170
+Groupe Oasis Industries 041,client,005568983298222,+212 684-600773,contact041@example.com,Casablanca,636035
+Groupe Anfa Holding 042,client,004224852722022,+212 652-672373,contact042@example.com,Fès,343986
+Groupe Oasis Holding 043,client,003858176252807,+212 600-060994,contact043@example.com,Casablanca,365252
+Groupe Nova Retail 044,client,000283166323373,+212 647-166213,contact044@example.com,Fès,394742
+Groupe Oasis Immobilier 045,client,005347897133115,+212 691-712006,contact045@example.com,Fès,531701
+Groupe Anfa Industries 046,client,002363608244560,+212 661-546326,contact046@example.com,Tanger,170740
+Groupe Nova Retail 047,client,002128357699085,+212 696-267236,contact047@example.com,Agadir,561884
+Groupe Horizon Immobilier 048,client,005888144019018,+212 657-591793,contact048@example.com,Casablanca,541320
+Groupe Oasis Immobilier 049,client,007802520161284,+212 602-048433,contact049@example.com,Agadir,693137
+Groupe Horizon Holding 050,client,005247357363856,+212 605-512705,contact050@example.com,Rabat,818017
+Groupe Rif Industries 051,client,003197967807360,+212 667-488029,contact051@example.com,Rabat,509824
+Groupe Nova Industries 052,client,005469059828195,+212 627-615056,contact052@example.com,Casablanca,596674
+Groupe Rif Industries 053,client,006116603304284,+212 647-088659,contact053@example.com,Marrakech,529500
+Groupe Atlas Holding 054,client,008178057803704,+212 611-176519,contact054@example.com,Agadir,279168
+Groupe Horizon Retail 055,client,000490741828898,+212 630-519324,contact055@example.com,Casablanca,264538
+Groupe Rif Retail 056,client,008671300668179,+212 622-179907,contact056@example.com,Rabat,289385
+Groupe Atlas Industries 057,client,005642710512983,+212 660-912860,contact057@example.com,Agadir,579371
+Groupe Atlas Retail 058,client,007812061769585,+212 610-778654,contact058@example.com,Agadir,234241
+Groupe Rif Holding 059,client,004316349992480,+212 603-359190,contact059@example.com,Agadir,731874
+Groupe Atlas Immobilier 060,client,001372987112098,+212 639-154804,contact060@example.com,Tanger,668563
+Fournisseur Logiciel SA 061,supplier,009426079113571,+212 649-999570,contact061@example.com,Marrakech,-252946
+Fournisseur Logistique SARL 062,supplier,004796745219803,+212 627-733011,contact062@example.com,Marrakech,-175922
+Fournisseur Services SARL 063,supplier,005213629586398,+212 638-956275,contact063@example.com,Fès,-137885
+Fournisseur Énergie SARL 064,supplier,004573284093426,+212 685-608662,contact064@example.com,Rabat,-383649
+Fournisseur Logistique SARL 065,supplier,007094098584638,+212 665-299441,contact065@example.com,Agadir,-353638
+Fournisseur Énergie SARL AU 066,supplier,005683068669538,+212 674-396268,contact066@example.com,Marrakech,-203590
+Fournisseur Services SA 067,supplier,003327967268350,+212 669-088687,contact067@example.com,Casablanca,-76093
+Fournisseur Acier SA 068,supplier,001795816354011,+212 697-358355,contact068@example.com,Agadir,-228427
+Fournisseur Papier SARL 069,supplier,006113875921153,+212 619-464897,contact069@example.com,Tanger,-348906
+Fournisseur Acier SARL AU 070,supplier,002107617707751,+212 606-427454,contact070@example.com,Rabat,-242080
+Fournisseur Logistique SARL AU 071,supplier,004883615202994,+212 633-813717,contact071@example.com,Tanger,-56012
+Fournisseur Acier SARL AU 072,supplier,005161994569943,+212 694-864862,contact072@example.com,Fès,-138714
+Fournisseur Énergie SA 073,supplier,006408948746439,+212 656-170897,contact073@example.com,Marrakech,-296598
+Fournisseur Énergie SARL 074,supplier,004193039955156,+212 682-444916,contact074@example.com,Fès,-159187
+Fournisseur Logistique SARL AU 075,supplier,001567959650565,+212 632-820335,contact075@example.com,Tanger,-217308
+Fournisseur Acier SARL 076,supplier,007090488015646,+212 638-958908,contact076@example.com,Agadir,-236717
+Fournisseur Logiciel SA 077,supplier,003013205987198,+212 666-663563,contact077@example.com,Fès,-128129
+Fournisseur Acier SARL 078,supplier,001631111960278,+212 694-025141,contact078@example.com,Marrakech,-86552
+Fournisseur Logistique SARL 079,supplier,007306424829601,+212 658-602024,contact079@example.com,Tanger,-311895
+Fournisseur Logistique SARL 080,supplier,002041263478923,+212 641-166963,contact080@example.com,Agadir,-353227
+Fournisseur Logiciel SA 081,supplier,003761561059148,+212 628-203868,contact081@example.com,Marrakech,-74031
+Fournisseur Logiciel SA 082,supplier,008818137852223,+212 670-264282,contact082@example.com,Agadir,-179192
+Fournisseur Acier SARL 083,supplier,009753325719294,+212 668-051606,contact083@example.com,Fès,-151794
+Fournisseur Logiciel SA 084,supplier,004704247613414,+212 686-862042,contact084@example.com,Tanger,-396855
+Fournisseur Acier SARL 085,supplier,004420146133800,+212 640-211876,contact085@example.com,Casablanca,-185784
+Fournisseur Services SARL 086,supplier,004786589305977,+212 688-449787,contact086@example.com,Casablanca,-69167
+Fournisseur Services SARL AU 087,supplier,005384885681067,+212 687-054851,contact087@example.com,Agadir,-199439
+Fournisseur Énergie SA 088,supplier,002761514136334,+212 627-482513,contact088@example.com,Agadir,-267680
+Fournisseur Acier SA 089,supplier,008752623942464,+212 654-861038,contact089@example.com,Tanger,-40131
+Fournisseur Énergie SARL 090,supplier,001665398997453,+212 693-930325,contact090@example.com,Agadir,-125345
+Fournisseur Logiciel SARL AU 091,supplier,003421723349677,+212 605-991439,contact091@example.com,Marrakech,-66592
+Fournisseur Services SARL 092,supplier,001047516886561,+212 615-732958,contact092@example.com,Agadir,-383888
+Fournisseur Logiciel SA 093,supplier,000823595349404,+212 621-593226,contact093@example.com,Marrakech,-389991
+Fournisseur Logistique SARL 094,supplier,008182446026195,+212 651-791879,contact094@example.com,Fès,-261070
+Fournisseur Services SA 095,supplier,000100052007009,+212 613-465239,contact095@example.com,Casablanca,-313150
+Fournisseur Papier SARL AU 096,supplier,007330570304887,+212 657-727576,contact096@example.com,Fès,-101712
+Fournisseur Services SA 097,supplier,006114635110203,+212 665-251953,contact097@example.com,Casablanca,-240467
+Fournisseur Acier SARL 098,supplier,003004263716715,+212 644-186945,contact098@example.com,Fès,-22941
+Fournisseur Papier SA 099,supplier,002670812977057,+212 677-757329,contact099@example.com,Rabat,-62841
+Fournisseur Énergie SARL AU 100,supplier,002398133702718,+212 653-128979,contact100@example.com,Marrakech,-344533

@@ -1,0 +1,943 @@
+﻿Date,Fournisseur,Catégorie,Mode,Montant TTC (MAD),Statut
+2025-11-09,Fournisseur Services 023,Assurance,espèces,895065,approuvée
+2025-11-14,Fournisseur Acier 037,Énergie,espèces,700726,approuvée
+2025-11-20,Fournisseur Acier 018,Marketing,virement,9011,approuvée
+2025-11-10,Fournisseur Services 012,Logistique,virement,31763,approuvée
+2025-11-23,Fournisseur Logiciel 005,Assurance,virement,710785,approuvée
+2025-11-07,Fournisseur Énergie 011,Abonnements SaaS,virement,446873,approuvée
+2025-11-25,Fournisseur Acier 010,Assurance,chèque,709944,en attente
+2025-11-02,Fournisseur Papier 028,Achats matières,virement,511015,approuvée
+2025-11-14,Fournisseur Logistique 031,Abonnements SaaS,chèque,269885,approuvée
+2025-11-24,Fournisseur Papier 012,Achats matières,chèque,397954,en attente
+2025-11-08,Fournisseur Acier 034,Loyer,chèque,489816,approuvée
+2025-11-04,Fournisseur Acier 033,Abonnements SaaS,chèque,885343,approuvée
+2025-11-24,Fournisseur Logiciel 033,Énergie,espèces,32070,approuvée
+2025-11-24,Fournisseur Services 010,Achats matières,espèces,826042,approuvée
+2025-11-29,Fournisseur Papier 012,Abonnements SaaS,chèque,334545,approuvée
+2025-11-24,Fournisseur Acier 021,Abonnements SaaS,chèque,236051,approuvée
+2025-11-25,Fournisseur Papier 021,Logistique,virement,104012,approuvée
+2025-11-19,Fournisseur Acier 020,Loyer,chèque,152931,approuvée
+2025-11-11,Fournisseur Papier 006,Abonnements SaaS,chèque,297159,approuvée
+2025-11-21,Fournisseur Papier 013,Achats matières,espèces,221552,en attente
+2025-11-16,Fournisseur Papier 033,Logistique,chèque,517141,en attente
+2025-11-06,Fournisseur Logiciel 004,Loyer,espèces,188268,approuvée
+2025-11-18,Fournisseur Papier 011,Abonnements SaaS,virement,620958,approuvée
+2025-11-29,Fournisseur Services 014,Salaires,chèque,271974,en attente
+2025-11-02,Fournisseur Logiciel 011,Logistique,virement,614165,approuvée
+2025-11-22,Fournisseur Énergie 001,Marketing,chèque,348399,approuvée
+2025-11-09,Fournisseur Énergie 003,Abonnements SaaS,virement,378932,approuvée
+2025-11-26,Fournisseur Énergie 016,Salaires,chèque,537567,approuvée
+2025-11-23,Fournisseur Logistique 020,Abonnements SaaS,virement,78766,approuvée
+2025-11-21,Fournisseur Acier 029,Énergie,virement,397106,approuvée
+2025-11-17,Fournisseur Logiciel 026,Salaires,espèces,315233,en attente
+2025-11-27,Fournisseur Services 027,Loyer,espèces,507819,approuvée
+2025-11-10,Fournisseur Acier 018,Loyer,chèque,651804,approuvée
+2025-11-14,Fournisseur Logistique 024,Abonnements SaaS,espèces,151214,approuvée
+2025-11-08,Fournisseur Services 032,Logistique,virement,369591,approuvée
+2025-11-04,Fournisseur Acier 029,Marketing,virement,609415,approuvée
+2025-11-03,Fournisseur Acier 028,Salaires,virement,181823,approuvée
+2025-11-12,Fournisseur Acier 005,Loyer,chèque,279392,en attente
+2025-11-18,Fournisseur Logiciel 021,Assurance,virement,109134,approuvée
+2025-11-01,Fournisseur Logiciel 029,Logistique,espèces,236548,approuvée
+2025-11-19,Fournisseur Énergie 017,Logistique,espèces,178248,en attente
+2025-11-11,Fournisseur Logiciel 017,Abonnements SaaS,espèces,403364,approuvée
+2025-11-01,Fournisseur Logistique 001,Marketing,chèque,16336,approuvée
+2025-11-24,Fournisseur Acier 007,Logistique,virement,597997,approuvée
+2025-11-21,Fournisseur Acier 009,Logistique,chèque,167980,approuvée
+2025-11-05,Fournisseur Acier 031,Logistique,chèque,692670,en attente
+2025-11-26,Fournisseur Services 016,Logistique,espèces,747364,approuvée
+2025-11-10,Fournisseur Énergie 030,Énergie,espèces,789242,approuvée
+2025-11-29,Fournisseur Logistique 026,Loyer,chèque,263912,approuvée
+2025-11-26,Fournisseur Acier 032,Assurance,espèces,693451,approuvée
+2025-11-16,Fournisseur Acier 025,Marketing,virement,341094,en attente
+2025-11-29,Fournisseur Logiciel 018,Assurance,espèces,417536,approuvée
+2025-11-25,Fournisseur Services 032,Assurance,virement,403387,approuvée
+2025-11-06,Fournisseur Logiciel 033,Loyer,espèces,33414,approuvée
+2025-11-22,Fournisseur Énergie 015,Marketing,espèces,810532,approuvée
+2025-11-26,Fournisseur Services 035,Énergie,chèque,248319,approuvée
+2025-11-28,Fournisseur Logiciel 028,Abonnements SaaS,virement,298997,approuvée
+2025-11-08,Fournisseur Papier 038,Abonnements SaaS,espèces,760072,approuvée
+2025-11-30,Fournisseur Papier 004,Abonnements SaaS,chèque,621431,approuvée
+2025-11-27,Fournisseur Logistique 016,Marketing,espèces,515193,en attente
+2025-11-01,Fournisseur Papier 001,Assurance,virement,134413,en attente
+2025-11-01,Fournisseur Papier 025,Achats matières,virement,517409,approuvée
+2025-11-26,Fournisseur Services 020,Énergie,virement,804135,en attente
+2025-11-20,Fournisseur Services 034,Énergie,chèque,442203,approuvée
+2025-11-21,Fournisseur Logiciel 023,Logistique,chèque,785452,en attente
+2025-11-06,Fournisseur Papier 022,Abonnements SaaS,chèque,623034,approuvée
+2025-11-28,Fournisseur Acier 034,Énergie,virement,184096,en attente
+2025-11-24,Fournisseur Logiciel 020,Assurance,virement,503074,approuvée
+2025-11-26,Fournisseur Services 032,Abonnements SaaS,virement,417282,approuvée
+2025-11-25,Fournisseur Acier 003,Achats matières,espèces,139236,en attente
+2025-11-01,Fournisseur Logiciel 035,Marketing,espèces,96283,en attente
+2025-11-30,Fournisseur Papier 036,Logistique,chèque,161952,en attente
+2025-11-30,Fournisseur Logiciel 035,Logistique,chèque,714540,approuvée
+2025-11-22,Fournisseur Énergie 008,Abonnements SaaS,chèque,437310,approuvée
+2025-11-09,Fournisseur Logiciel 033,Logistique,virement,188090,approuvée
+2025-11-23,Fournisseur Papier 005,Abonnements SaaS,chèque,793296,approuvée
+2025-11-09,Fournisseur Services 035,Abonnements SaaS,espèces,178028,approuvée
+2025-11-18,Fournisseur Logiciel 034,Loyer,virement,760447,en attente
+2025-11-16,Fournisseur Acier 026,Logistique,espèces,717452,approuvée
+2025-11-20,Fournisseur Acier 006,Assurance,espèces,146042,en attente
+2025-11-27,Fournisseur Logiciel 010,Marketing,chèque,411285,en attente
+2025-11-12,Fournisseur Papier 013,Marketing,chèque,276081,en attente
+2025-11-25,Fournisseur Logistique 012,Salaires,chèque,805307,approuvée
+2025-11-27,Fournisseur Papier 029,Abonnements SaaS,espèces,340565,approuvée
+2025-11-29,Fournisseur Logistique 004,Achats matières,virement,647482,approuvée
+2025-11-28,Fournisseur Logiciel 036,Logistique,chèque,576979,approuvée
+2025-11-21,Fournisseur Logiciel 014,Abonnements SaaS,virement,564993,en attente
+2025-12-30,Fournisseur Logiciel 025,Abonnements SaaS,virement,839827,en attente
+2025-12-19,Fournisseur Énergie 037,Abonnements SaaS,espèces,197384,en attente
+2025-12-07,Fournisseur Logistique 015,Logistique,chèque,590640,approuvée
+2025-12-20,Fournisseur Papier 001,Achats matières,virement,154648,en attente
+2025-12-20,Fournisseur Acier 003,Achats matières,chèque,643748,en attente
+2025-12-17,Fournisseur Acier 021,Abonnements SaaS,chèque,508248,approuvée
+2025-12-27,Fournisseur Services 019,Achats matières,virement,99988,approuvée
+2025-12-28,Fournisseur Logistique 030,Marketing,chèque,620020,approuvée
+2025-12-31,Fournisseur Énergie 010,Assurance,virement,73065,approuvée
+2025-12-26,Fournisseur Services 008,Assurance,chèque,134638,en attente
+2025-12-22,Fournisseur Logiciel 027,Logistique,virement,378664,approuvée
+2025-12-15,Fournisseur Acier 027,Loyer,virement,561994,approuvée
+2025-12-23,Fournisseur Papier 017,Salaires,espèces,443536,approuvée
+2025-12-10,Fournisseur Papier 001,Logistique,espèces,522036,en attente
+2025-12-03,Fournisseur Logiciel 022,Logistique,virement,586260,approuvée
+2025-12-10,Fournisseur Énergie 033,Loyer,virement,207882,approuvée
+2025-12-14,Fournisseur Acier 016,Loyer,virement,233201,approuvée
+2025-12-20,Fournisseur Énergie 015,Achats matières,chèque,515328,approuvée
+2025-12-13,Fournisseur Papier 004,Marketing,virement,467485,approuvée
+2025-12-16,Fournisseur Logistique 024,Marketing,espèces,888581,en attente
+2025-12-11,Fournisseur Logistique 001,Achats matières,espèces,575204,en attente
+2025-12-05,Fournisseur Papier 018,Loyer,chèque,220982,en attente
+2025-12-15,Fournisseur Papier 020,Salaires,espèces,667478,approuvée
+2025-12-12,Fournisseur Logiciel 009,Abonnements SaaS,chèque,104336,approuvée
+2025-12-22,Fournisseur Énergie 012,Assurance,virement,534102,approuvée
+2025-12-08,Fournisseur Logiciel 019,Salaires,chèque,398139,approuvée
+2025-12-01,Fournisseur Logistique 017,Salaires,virement,709159,approuvée
+2025-12-10,Fournisseur Acier 039,Abonnements SaaS,virement,663751,en attente
+2025-12-03,Fournisseur Services 032,Abonnements SaaS,virement,106854,en attente
+2025-12-25,Fournisseur Logistique 019,Loyer,virement,340836,en attente
+2025-12-21,Fournisseur Logiciel 001,Loyer,virement,528308,approuvée
+2025-12-23,Fournisseur Acier 030,Énergie,espèces,355590,en attente
+2025-12-09,Fournisseur Services 003,Loyer,espèces,278565,approuvée
+2025-12-22,Fournisseur Papier 022,Marketing,espèces,157363,approuvée
+2025-12-18,Fournisseur Énergie 017,Loyer,virement,441818,en attente
+2025-12-25,Fournisseur Logistique 004,Logistique,chèque,617931,approuvée
+2025-12-11,Fournisseur Énergie 035,Achats matières,espèces,575372,en attente
+2025-12-10,Fournisseur Logistique 012,Marketing,chèque,561330,en attente
+2025-12-10,Fournisseur Acier 011,Énergie,virement,353393,en attente
+2025-12-04,Fournisseur Papier 017,Marketing,chèque,685236,approuvée
+2025-12-30,Fournisseur Logistique 025,Salaires,espèces,297919,en attente
+2025-12-22,Fournisseur Logistique 017,Achats matières,chèque,803214,approuvée
+2025-12-03,Fournisseur Services 023,Loyer,espèces,372218,en attente
+2025-12-06,Fournisseur Services 031,Abonnements SaaS,chèque,499129,approuvée
+2025-12-05,Fournisseur Énergie 023,Logistique,espèces,158947,approuvée
+2025-12-23,Fournisseur Énergie 023,Loyer,espèces,699878,approuvée
+2025-12-26,Fournisseur Logiciel 002,Abonnements SaaS,virement,499451,approuvée
+2025-12-23,Fournisseur Énergie 030,Logistique,virement,700911,en attente
+2025-12-07,Fournisseur Logiciel 023,Logistique,virement,329305,approuvée
+2025-12-28,Fournisseur Services 023,Marketing,espèces,723296,approuvée
+2025-12-16,Fournisseur Papier 009,Achats matières,chèque,604203,en attente
+2025-12-11,Fournisseur Logistique 038,Assurance,chèque,405527,approuvée
+2025-12-23,Fournisseur Services 024,Abonnements SaaS,virement,485177,approuvée
+2025-12-15,Fournisseur Services 023,Énergie,virement,753745,approuvée
+2025-12-03,Fournisseur Énergie 029,Assurance,virement,28324,approuvée
+2025-12-24,Fournisseur Acier 010,Logistique,espèces,848958,approuvée
+2025-12-13,Fournisseur Logiciel 007,Assurance,espèces,509878,approuvée
+2025-12-27,Fournisseur Logiciel 024,Énergie,espèces,350599,approuvée
+2025-12-19,Fournisseur Acier 006,Marketing,chèque,208761,approuvée
+2025-12-24,Fournisseur Énergie 039,Loyer,virement,765417,en attente
+2025-12-20,Fournisseur Acier 005,Achats matières,espèces,493443,approuvée
+2025-12-25,Fournisseur Acier 022,Logistique,virement,106364,approuvée
+2025-12-16,Fournisseur Acier 024,Assurance,espèces,119186,approuvée
+2025-12-02,Fournisseur Logiciel 026,Loyer,chèque,54849,approuvée
+2025-12-10,Fournisseur Papier 013,Logistique,chèque,883424,approuvée
+2025-12-06,Fournisseur Acier 012,Assurance,virement,815827,approuvée
+2025-12-11,Fournisseur Acier 009,Logistique,chèque,147928,approuvée
+2025-12-16,Fournisseur Énergie 029,Abonnements SaaS,chèque,21384,approuvée
+2025-12-17,Fournisseur Logistique 036,Assurance,virement,194672,en attente
+2025-12-19,Fournisseur Logiciel 029,Achats matières,chèque,220396,approuvée
+2025-12-20,Fournisseur Papier 006,Achats matières,chèque,79852,approuvée
+2025-12-10,Fournisseur Acier 013,Abonnements SaaS,chèque,17860,approuvée
+2025-12-17,Fournisseur Logistique 024,Énergie,chèque,546721,approuvée
+2026-01-15,Fournisseur Logistique 004,Énergie,espèces,512653,approuvée
+2026-01-26,Fournisseur Logiciel 030,Énergie,chèque,771124,approuvée
+2026-01-10,Fournisseur Énergie 003,Salaires,espèces,212507,en attente
+2026-01-12,Fournisseur Logistique 028,Achats matières,chèque,764746,en attente
+2026-01-16,Fournisseur Énergie 008,Marketing,chèque,105216,approuvée
+2026-01-06,Fournisseur Services 030,Marketing,virement,469333,approuvée
+2026-01-14,Fournisseur Papier 019,Logistique,espèces,788075,approuvée
+2026-01-16,Fournisseur Logistique 017,Marketing,virement,219036,en attente
+2026-01-18,Fournisseur Énergie 028,Assurance,virement,187239,approuvée
+2026-01-03,Fournisseur Logiciel 032,Achats matières,chèque,547377,approuvée
+2026-01-28,Fournisseur Logistique 001,Logistique,espèces,611051,en attente
+2026-01-13,Fournisseur Logistique 010,Abonnements SaaS,virement,672387,approuvée
+2026-01-23,Fournisseur Logistique 031,Logistique,espèces,470006,en attente
+2026-01-31,Fournisseur Logiciel 014,Salaires,virement,276777,approuvée
+2026-01-21,Fournisseur Logistique 010,Salaires,virement,616786,approuvée
+2026-01-07,Fournisseur Logistique 018,Loyer,espèces,14090,approuvée
+2026-01-07,Fournisseur Acier 032,Salaires,chèque,327104,approuvée
+2026-01-25,Fournisseur Logistique 033,Logistique,virement,544293,approuvée
+2026-01-27,Fournisseur Énergie 001,Loyer,virement,666795,en attente
+2026-01-28,Fournisseur Services 010,Marketing,virement,48793,approuvée
+2026-01-01,Fournisseur Services 023,Logistique,espèces,717945,approuvée
+2026-01-05,Fournisseur Énergie 001,Énergie,virement,314883,approuvée
+2026-01-26,Fournisseur Logiciel 010,Énergie,espèces,254746,en attente
+2026-01-25,Fournisseur Logiciel 011,Logistique,espèces,117015,approuvée
+2026-01-16,Fournisseur Logistique 038,Abonnements SaaS,virement,65980,approuvée
+2026-01-04,Fournisseur Logiciel 009,Salaires,chèque,421550,approuvée
+2026-01-26,Fournisseur Logistique 030,Marketing,espèces,196509,approuvée
+2026-01-16,Fournisseur Énergie 003,Énergie,espèces,105352,approuvée
+2026-01-11,Fournisseur Logiciel 005,Loyer,chèque,822524,approuvée
+2026-01-26,Fournisseur Logistique 015,Loyer,chèque,123024,approuvée
+2026-01-13,Fournisseur Services 007,Achats matières,virement,753309,en attente
+2026-01-25,Fournisseur Énergie 017,Énergie,virement,349452,approuvée
+2026-01-05,Fournisseur Énergie 032,Marketing,espèces,142706,approuvée
+2026-01-16,Fournisseur Logistique 029,Assurance,virement,776287,en attente
+2026-01-13,Fournisseur Énergie 017,Achats matières,virement,65371,approuvée
+2026-01-28,Fournisseur Logiciel 016,Abonnements SaaS,chèque,358972,approuvée
+2026-01-03,Fournisseur Acier 005,Loyer,virement,675032,approuvée
+2026-01-13,Fournisseur Services 029,Logistique,virement,871827,approuvée
+2026-01-27,Fournisseur Services 013,Marketing,virement,319825,approuvée
+2026-01-28,Fournisseur Papier 001,Salaires,espèces,744537,approuvée
+2026-01-03,Fournisseur Papier 016,Achats matières,espèces,248810,approuvée
+2026-01-09,Fournisseur Logistique 003,Assurance,chèque,684372,approuvée
+2026-01-31,Fournisseur Acier 035,Assurance,chèque,573347,en attente
+2026-01-23,Fournisseur Logistique 002,Achats matières,espèces,875234,en attente
+2026-01-20,Fournisseur Logiciel 004,Salaires,chèque,686570,en attente
+2026-01-14,Fournisseur Papier 015,Assurance,chèque,809553,approuvée
+2026-01-01,Fournisseur Papier 019,Salaires,virement,458405,approuvée
+2026-01-26,Fournisseur Logiciel 036,Assurance,espèces,699333,approuvée
+2026-01-12,Fournisseur Énergie 031,Salaires,espèces,57096,approuvée
+2026-01-01,Fournisseur Logiciel 028,Marketing,espèces,477408,approuvée
+2026-01-24,Fournisseur Papier 038,Marketing,chèque,857708,en attente
+2026-01-15,Fournisseur Acier 022,Logistique,chèque,683690,approuvée
+2026-01-31,Fournisseur Énergie 016,Assurance,virement,89676,approuvée
+2026-01-01,Fournisseur Papier 040,Logistique,chèque,197154,approuvée
+2026-01-21,Fournisseur Acier 028,Énergie,chèque,269413,approuvée
+2026-01-31,Fournisseur Papier 028,Énergie,virement,35436,en attente
+2026-01-18,Fournisseur Logiciel 002,Énergie,virement,22317,approuvée
+2026-01-11,Fournisseur Services 005,Logistique,espèces,144009,en attente
+2026-01-17,Fournisseur Papier 032,Marketing,virement,792482,approuvée
+2026-01-28,Fournisseur Logistique 034,Logistique,espèces,763484,approuvée
+2026-01-28,Fournisseur Papier 023,Énergie,chèque,480645,approuvée
+2026-01-26,Fournisseur Énergie 024,Logistique,espèces,843428,approuvée
+2026-01-03,Fournisseur Acier 014,Marketing,chèque,747209,en attente
+2026-01-31,Fournisseur Services 007,Salaires,espèces,764197,en attente
+2026-01-26,Fournisseur Énergie 021,Assurance,virement,561721,approuvée
+2026-01-14,Fournisseur Logiciel 034,Marketing,virement,754724,approuvée
+2026-01-15,Fournisseur Papier 010,Marketing,espèces,146898,approuvée
+2026-01-22,Fournisseur Logiciel 003,Achats matières,espèces,432465,en attente
+2026-01-30,Fournisseur Services 017,Abonnements SaaS,chèque,639087,approuvée
+2026-01-11,Fournisseur Acier 020,Marketing,chèque,10812,en attente
+2026-01-01,Fournisseur Papier 004,Logistique,espèces,206620,en attente
+2026-01-14,Fournisseur Papier 011,Logistique,espèces,189955,en attente
+2026-01-15,Fournisseur Logistique 040,Assurance,espèces,394284,approuvée
+2026-01-23,Fournisseur Services 016,Assurance,virement,634558,approuvée
+2026-01-04,Fournisseur Papier 014,Marketing,chèque,167280,approuvée
+2026-01-09,Fournisseur Logistique 023,Énergie,chèque,670984,en attente
+2026-01-21,Fournisseur Énergie 017,Loyer,espèces,349607,approuvée
+2026-01-20,Fournisseur Énergie 005,Marketing,virement,587578,approuvée
+2026-01-06,Fournisseur Logiciel 028,Assurance,espèces,578817,approuvée
+2026-01-16,Fournisseur Logiciel 031,Abonnements SaaS,virement,37204,en attente
+2026-01-02,Fournisseur Acier 006,Loyer,espèces,201440,approuvée
+2026-01-21,Fournisseur Acier 008,Abonnements SaaS,virement,716912,approuvée
+2026-01-23,Fournisseur Services 009,Logistique,espèces,717699,approuvée
+2026-02-26,Fournisseur Services 026,Abonnements SaaS,chèque,323437,en attente
+2026-02-06,Fournisseur Services 006,Marketing,virement,221403,en attente
+2026-02-09,Fournisseur Papier 030,Abonnements SaaS,chèque,505072,approuvée
+2026-02-02,Fournisseur Logistique 033,Énergie,espèces,730708,en attente
+2026-02-24,Fournisseur Logiciel 026,Achats matières,chèque,633164,approuvée
+2026-02-21,Fournisseur Acier 034,Abonnements SaaS,espèces,233373,approuvée
+2026-02-17,Fournisseur Acier 024,Salaires,chèque,813147,approuvée
+2026-02-21,Fournisseur Logistique 009,Loyer,espèces,302960,approuvée
+2026-02-25,Fournisseur Services 024,Abonnements SaaS,chèque,61557,en attente
+2026-02-26,Fournisseur Services 038,Achats matières,espèces,110785,approuvée
+2026-02-08,Fournisseur Papier 023,Loyer,espèces,685901,en attente
+2026-02-11,Fournisseur Acier 003,Loyer,espèces,171111,approuvée
+2026-02-22,Fournisseur Logiciel 036,Marketing,espèces,73450,approuvée
+2026-02-20,Fournisseur Énergie 022,Énergie,espèces,174230,approuvée
+2026-02-06,Fournisseur Services 032,Salaires,virement,766882,approuvée
+2026-02-24,Fournisseur Énergie 032,Abonnements SaaS,chèque,657376,en attente
+2026-02-13,Fournisseur Papier 021,Marketing,chèque,392753,en attente
+2026-02-02,Fournisseur Logiciel 025,Abonnements SaaS,virement,690803,approuvée
+2026-02-05,Fournisseur Logiciel 018,Énergie,espèces,604624,approuvée
+2026-02-08,Fournisseur Papier 019,Marketing,virement,521712,approuvée
+2026-02-12,Fournisseur Logiciel 032,Marketing,virement,771039,approuvée
+2026-02-05,Fournisseur Papier 003,Énergie,virement,87660,approuvée
+2026-02-12,Fournisseur Papier 008,Énergie,espèces,132369,approuvée
+2026-02-18,Fournisseur Services 037,Loyer,chèque,210841,en attente
+2026-02-10,Fournisseur Services 018,Loyer,virement,207138,approuvée
+2026-02-02,Fournisseur Logistique 019,Salaires,virement,388666,approuvée
+2026-02-09,Fournisseur Logistique 023,Logistique,virement,352991,en attente
+2026-02-11,Fournisseur Services 024,Salaires,espèces,159808,en attente
+2026-02-26,Fournisseur Papier 021,Énergie,espèces,859645,approuvée
+2026-02-09,Fournisseur Logiciel 003,Marketing,chèque,339516,en attente
+2026-02-12,Fournisseur Logistique 014,Logistique,espèces,379047,en attente
+2026-02-21,Fournisseur Services 014,Marketing,virement,128163,approuvée
+2026-02-06,Fournisseur Logiciel 021,Assurance,espèces,274046,approuvée
+2026-02-13,Fournisseur Services 014,Achats matières,chèque,368108,approuvée
+2026-02-20,Fournisseur Acier 017,Achats matières,virement,94188,approuvée
+2026-02-22,Fournisseur Papier 032,Loyer,chèque,491668,approuvée
+2026-02-23,Fournisseur Énergie 017,Assurance,espèces,111571,approuvée
+2026-02-28,Fournisseur Logiciel 031,Assurance,virement,399129,en attente
+2026-02-05,Fournisseur Logistique 015,Salaires,espèces,750291,en attente
+2026-02-14,Fournisseur Acier 028,Marketing,espèces,139896,approuvée
+2026-02-02,Fournisseur Acier 023,Achats matières,virement,583506,approuvée
+2026-02-10,Fournisseur Logiciel 014,Assurance,espèces,132537,approuvée
+2026-02-11,Fournisseur Acier 014,Abonnements SaaS,chèque,765556,approuvée
+2026-02-05,Fournisseur Logistique 017,Logistique,espèces,852999,approuvée
+2026-02-18,Fournisseur Logiciel 033,Achats matières,espèces,523996,approuvée
+2026-02-22,Fournisseur Acier 011,Achats matières,virement,170861,approuvée
+2026-02-23,Fournisseur Logiciel 037,Assurance,espèces,734699,en attente
+2026-02-15,Fournisseur Services 034,Salaires,virement,378230,approuvée
+2026-02-07,Fournisseur Logiciel 029,Salaires,chèque,5364,en attente
+2026-02-21,Fournisseur Services 031,Loyer,virement,881326,approuvée
+2026-02-25,Fournisseur Papier 024,Salaires,espèces,120742,approuvée
+2026-02-03,Fournisseur Acier 002,Énergie,espèces,253447,approuvée
+2026-02-25,Fournisseur Papier 012,Loyer,espèces,218709,approuvée
+2026-02-11,Fournisseur Logiciel 011,Logistique,chèque,498743,approuvée
+2026-02-18,Fournisseur Logistique 008,Assurance,chèque,81623,en attente
+2026-02-23,Fournisseur Acier 029,Salaires,virement,824324,approuvée
+2026-02-19,Fournisseur Énergie 029,Abonnements SaaS,chèque,366510,approuvée
+2026-02-03,Fournisseur Logistique 005,Salaires,espèces,568445,approuvée
+2026-02-05,Fournisseur Énergie 032,Achats matières,virement,833779,approuvée
+2026-02-09,Fournisseur Logiciel 020,Logistique,espèces,705322,approuvée
+2026-02-12,Fournisseur Services 016,Logistique,chèque,459409,approuvée
+2026-02-12,Fournisseur Énergie 020,Logistique,espèces,402296,en attente
+2026-02-10,Fournisseur Énergie 008,Abonnements SaaS,chèque,234882,approuvée
+2026-03-14,Fournisseur Papier 001,Énergie,virement,212221,approuvée
+2026-03-23,Fournisseur Services 031,Salaires,espèces,39737,approuvée
+2026-03-16,Fournisseur Logistique 012,Énergie,espèces,101025,approuvée
+2026-03-24,Fournisseur Logistique 024,Marketing,espèces,783023,approuvée
+2026-03-10,Fournisseur Acier 029,Salaires,espèces,288009,approuvée
+2026-03-08,Fournisseur Services 020,Salaires,chèque,580342,approuvée
+2026-03-22,Fournisseur Papier 024,Achats matières,chèque,745413,approuvée
+2026-03-09,Fournisseur Papier 028,Marketing,virement,733141,approuvée
+2026-03-22,Fournisseur Logistique 005,Salaires,chèque,597136,en attente
+2026-03-28,Fournisseur Papier 038,Marketing,virement,641035,en attente
+2026-03-03,Fournisseur Logiciel 010,Marketing,espèces,817704,approuvée
+2026-03-18,Fournisseur Logiciel 037,Assurance,virement,619845,en attente
+2026-03-15,Fournisseur Logiciel 013,Logistique,chèque,657527,approuvée
+2026-03-17,Fournisseur Services 016,Achats matières,espèces,647389,approuvée
+2026-03-06,Fournisseur Logiciel 031,Achats matières,virement,865464,en attente
+2026-03-16,Fournisseur Papier 026,Achats matières,chèque,832143,en attente
+2026-03-08,Fournisseur Services 004,Assurance,espèces,792471,en attente
+2026-03-09,Fournisseur Logistique 026,Logistique,espèces,885227,approuvée
+2026-03-17,Fournisseur Papier 019,Salaires,espèces,113787,approuvée
+2026-03-26,Fournisseur Logistique 006,Salaires,virement,22070,approuvée
+2026-03-25,Fournisseur Logistique 010,Loyer,chèque,567456,approuvée
+2026-03-16,Fournisseur Papier 008,Logistique,espèces,409271,approuvée
+2026-03-11,Fournisseur Logiciel 008,Loyer,espèces,563250,approuvée
+2026-03-09,Fournisseur Énergie 022,Abonnements SaaS,espèces,11666,en attente
+2026-03-09,Fournisseur Logiciel 002,Loyer,chèque,303307,en attente
+2026-03-06,Fournisseur Services 019,Salaires,virement,855643,en attente
+2026-03-28,Fournisseur Acier 034,Énergie,virement,161127,approuvée
+2026-03-09,Fournisseur Papier 019,Achats matières,virement,813298,approuvée
+2026-03-03,Fournisseur Énergie 015,Salaires,virement,729068,approuvée
+2026-03-18,Fournisseur Logiciel 029,Marketing,espèces,617936,en attente
+2026-03-27,Fournisseur Services 033,Marketing,virement,774638,en attente
+2026-03-31,Fournisseur Logistique 031,Loyer,chèque,525222,approuvée
+2026-03-07,Fournisseur Acier 005,Salaires,espèces,368087,approuvée
+2026-03-19,Fournisseur Énergie 015,Salaires,espèces,100310,approuvée
+2026-03-21,Fournisseur Acier 020,Salaires,virement,496104,approuvée
+2026-03-23,Fournisseur Logistique 004,Loyer,virement,874608,en attente
+2026-03-08,Fournisseur Énergie 009,Marketing,espèces,849317,en attente
+2026-03-07,Fournisseur Énergie 024,Assurance,virement,480638,en attente
+2026-03-16,Fournisseur Énergie 025,Énergie,espèces,122884,approuvée
+2026-03-22,Fournisseur Logistique 030,Marketing,virement,889800,approuvée
+2026-03-03,Fournisseur Énergie 025,Marketing,virement,138283,approuvée
+2026-03-05,Fournisseur Logiciel 003,Salaires,espèces,444485,en attente
+2026-03-12,Fournisseur Logiciel 020,Logistique,virement,521387,approuvée
+2026-03-06,Fournisseur Énergie 023,Achats matières,espèces,134378,approuvée
+2026-03-22,Fournisseur Énergie 009,Énergie,virement,800790,approuvée
+2026-03-05,Fournisseur Acier 035,Énergie,virement,25011,en attente
+2026-03-08,Fournisseur Services 038,Logistique,virement,868488,approuvée
+2026-03-16,Fournisseur Logiciel 004,Logistique,virement,147884,en attente
+2026-03-08,Fournisseur Logistique 013,Énergie,chèque,94043,en attente
+2026-03-07,Fournisseur Services 011,Loyer,chèque,467470,approuvée
+2026-03-30,Fournisseur Papier 023,Achats matières,espèces,50626,en attente
+2026-03-03,Fournisseur Acier 014,Assurance,chèque,58899,en attente
+2026-03-17,Fournisseur Acier 016,Loyer,virement,31000,approuvée
+2026-03-11,Fournisseur Logiciel 039,Marketing,chèque,468033,approuvée
+2026-03-01,Fournisseur Logistique 024,Assurance,chèque,295924,approuvée
+2026-03-02,Fournisseur Acier 020,Salaires,espèces,857299,approuvée
+2026-03-28,Fournisseur Énergie 015,Logistique,chèque,423194,approuvée
+2026-03-18,Fournisseur Acier 003,Énergie,chèque,290125,approuvée
+2026-03-01,Fournisseur Services 004,Achats matières,espèces,822160,approuvée
+2026-03-05,Fournisseur Papier 034,Marketing,espèces,136724,approuvée
+2026-03-17,Fournisseur Acier 040,Logistique,virement,789431,approuvée
+2026-03-16,Fournisseur Acier 002,Logistique,virement,314770,approuvée
+2026-03-22,Fournisseur Papier 036,Salaires,virement,489620,approuvée
+2026-03-19,Fournisseur Logiciel 025,Achats matières,chèque,51541,en attente
+2026-03-28,Fournisseur Papier 035,Énergie,virement,294027,approuvée
+2026-03-31,Fournisseur Logistique 016,Marketing,virement,733173,approuvée
+2026-03-23,Fournisseur Services 001,Achats matières,chèque,131404,approuvée
+2026-03-17,Fournisseur Papier 002,Abonnements SaaS,chèque,611025,approuvée
+2026-03-31,Fournisseur Logiciel 029,Abonnements SaaS,virement,655244,approuvée
+2026-03-31,Fournisseur Énergie 008,Assurance,espèces,627851,approuvée
+2026-03-11,Fournisseur Logiciel 016,Achats matières,virement,56264,en attente
+2026-03-11,Fournisseur Acier 006,Salaires,chèque,298444,approuvée
+2026-03-20,Fournisseur Logiciel 026,Salaires,chèque,517452,approuvée
+2026-03-31,Fournisseur Acier 033,Achats matières,virement,56117,approuvée
+2026-03-27,Fournisseur Logistique 019,Logistique,chèque,391096,approuvée
+2026-03-24,Fournisseur Acier 026,Énergie,espèces,261233,en attente
+2026-03-28,Fournisseur Acier 040,Loyer,chèque,188079,approuvée
+2026-03-28,Fournisseur Acier 031,Achats matières,virement,744694,approuvée
+2026-03-27,Fournisseur Acier 025,Assurance,espèces,506089,en attente
+2026-03-14,Fournisseur Logistique 037,Logistique,chèque,209574,en attente
+2026-03-06,Fournisseur Acier 026,Loyer,virement,248681,approuvée
+2026-04-21,Fournisseur Logiciel 007,Assurance,espèces,203673,approuvée
+2026-04-14,Fournisseur Acier 022,Abonnements SaaS,virement,825192,en attente
+2026-04-15,Fournisseur Papier 030,Abonnements SaaS,chèque,417498,approuvée
+2026-04-22,Fournisseur Acier 039,Abonnements SaaS,virement,193438,approuvée
+2026-04-18,Fournisseur Papier 003,Marketing,virement,556137,en attente
+2026-04-13,Fournisseur Services 025,Énergie,virement,442249,approuvée
+2026-04-19,Fournisseur Services 018,Énergie,espèces,850766,en attente
+2026-04-18,Fournisseur Acier 031,Salaires,chèque,321090,approuvée
+2026-04-01,Fournisseur Acier 034,Logistique,espèces,390169,approuvée
+2026-04-28,Fournisseur Services 037,Assurance,espèces,672049,approuvée
+2026-04-29,Fournisseur Papier 027,Achats matières,chèque,669283,en attente
+2026-04-10,Fournisseur Services 011,Assurance,espèces,893204,approuvée
+2026-04-28,Fournisseur Acier 020,Marketing,chèque,379250,approuvée
+2026-04-25,Fournisseur Énergie 027,Abonnements SaaS,espèces,376411,en attente
+2026-04-29,Fournisseur Acier 013,Marketing,chèque,157013,en attente
+2026-04-29,Fournisseur Logiciel 038,Marketing,virement,324163,approuvée
+2026-04-14,Fournisseur Acier 022,Achats matières,espèces,199917,approuvée
+2026-04-23,Fournisseur Services 010,Salaires,virement,357655,en attente
+2026-04-23,Fournisseur Logistique 024,Marketing,virement,196821,approuvée
+2026-04-23,Fournisseur Acier 019,Marketing,chèque,227223,approuvée
+2026-04-30,Fournisseur Acier 035,Logistique,chèque,37129,approuvée
+2026-04-01,Fournisseur Papier 032,Assurance,chèque,236315,approuvée
+2026-04-29,Fournisseur Logiciel 029,Assurance,virement,865307,approuvée
+2026-04-22,Fournisseur Logistique 026,Achats matières,espèces,267401,approuvée
+2026-04-05,Fournisseur Papier 015,Salaires,virement,175402,en attente
+2026-04-03,Fournisseur Logistique 017,Assurance,espèces,55732,approuvée
+2026-04-19,Fournisseur Énergie 013,Loyer,espèces,871807,approuvée
+2026-04-15,Fournisseur Acier 032,Abonnements SaaS,chèque,135665,approuvée
+2026-04-27,Fournisseur Papier 022,Salaires,espèces,426718,approuvée
+2026-04-26,Fournisseur Acier 007,Logistique,virement,368407,en attente
+2026-04-04,Fournisseur Énergie 012,Énergie,espèces,836661,en attente
+2026-04-07,Fournisseur Énergie 001,Énergie,espèces,284712,approuvée
+2026-04-05,Fournisseur Papier 023,Énergie,espèces,668309,approuvée
+2026-04-02,Fournisseur Logiciel 014,Achats matières,virement,393516,approuvée
+2026-04-28,Fournisseur Logistique 024,Assurance,espèces,157847,approuvée
+2026-04-12,Fournisseur Acier 024,Assurance,chèque,162013,approuvée
+2026-04-19,Fournisseur Logiciel 007,Marketing,chèque,634740,approuvée
+2026-04-06,Fournisseur Énergie 030,Abonnements SaaS,virement,635847,en attente
+2026-04-23,Fournisseur Acier 005,Assurance,chèque,867713,approuvée
+2026-04-23,Fournisseur Logiciel 010,Marketing,espèces,377551,approuvée
+2026-04-02,Fournisseur Papier 030,Abonnements SaaS,chèque,852585,approuvée
+2026-04-06,Fournisseur Énergie 002,Salaires,virement,458507,approuvée
+2026-04-18,Fournisseur Logiciel 016,Abonnements SaaS,chèque,825408,approuvée
+2026-04-29,Fournisseur Énergie 018,Énergie,virement,888433,approuvée
+2026-04-13,Fournisseur Énergie 015,Assurance,chèque,178245,approuvée
+2026-04-24,Fournisseur Services 015,Marketing,virement,882896,approuvée
+2026-04-09,Fournisseur Services 035,Énergie,espèces,737126,en attente
+2026-04-30,Fournisseur Logiciel 026,Logistique,virement,860486,en attente
+2026-04-21,Fournisseur Logistique 018,Salaires,chèque,56562,approuvée
+2026-04-26,Fournisseur Énergie 008,Marketing,chèque,795133,approuvée
+2026-04-16,Fournisseur Acier 032,Abonnements SaaS,chèque,801043,en attente
+2026-04-12,Fournisseur Papier 037,Assurance,chèque,6852,en attente
+2026-04-13,Fournisseur Logiciel 024,Énergie,virement,279027,en attente
+2026-04-03,Fournisseur Logiciel 015,Logistique,chèque,680145,approuvée
+2026-04-03,Fournisseur Acier 005,Loyer,virement,773441,approuvée
+2026-04-19,Fournisseur Logistique 010,Abonnements SaaS,virement,638276,en attente
+2026-04-21,Fournisseur Services 006,Assurance,virement,895396,approuvée
+2026-04-21,Fournisseur Services 033,Assurance,chèque,125208,en attente
+2026-04-30,Fournisseur Papier 030,Énergie,virement,449130,en attente
+2026-04-12,Fournisseur Logiciel 007,Logistique,chèque,218564,approuvée
+2026-04-10,Fournisseur Logistique 026,Assurance,virement,722784,approuvée
+2026-04-06,Fournisseur Énergie 012,Achats matières,virement,882177,en attente
+2026-04-28,Fournisseur Services 015,Logistique,espèces,248148,en attente
+2026-04-19,Fournisseur Papier 011,Achats matières,virement,846517,approuvée
+2026-04-15,Fournisseur Énergie 002,Énergie,virement,78751,en attente
+2026-04-14,Fournisseur Services 037,Achats matières,virement,187093,en attente
+2026-04-05,Fournisseur Logistique 040,Assurance,chèque,153031,approuvée
+2026-04-05,Fournisseur Énergie 014,Logistique,chèque,162676,approuvée
+2026-04-12,Fournisseur Énergie 012,Logistique,espèces,121025,approuvée
+2026-04-24,Fournisseur Logistique 012,Abonnements SaaS,chèque,67363,en attente
+2026-04-27,Fournisseur Papier 013,Logistique,espèces,482956,approuvée
+2026-04-30,Fournisseur Logistique 025,Énergie,virement,820714,approuvée
+2026-04-14,Fournisseur Acier 022,Énergie,chèque,646822,en attente
+2026-05-25,Fournisseur Papier 002,Énergie,espèces,143352,approuvée
+2026-05-28,Fournisseur Services 040,Loyer,espèces,632829,approuvée
+2026-05-04,Fournisseur Énergie 040,Loyer,virement,383363,en attente
+2026-05-31,Fournisseur Énergie 034,Énergie,chèque,302306,en attente
+2026-05-03,Fournisseur Énergie 019,Salaires,espèces,884129,approuvée
+2026-05-26,Fournisseur Acier 029,Logistique,virement,487225,approuvée
+2026-05-22,Fournisseur Énergie 040,Marketing,virement,335099,approuvée
+2026-05-23,Fournisseur Acier 002,Abonnements SaaS,chèque,580388,approuvée
+2026-05-14,Fournisseur Logiciel 017,Logistique,espèces,186761,approuvée
+2026-05-24,Fournisseur Énergie 040,Marketing,espèces,344067,en attente
+2026-05-10,Fournisseur Services 019,Marketing,chèque,824191,approuvée
+2026-05-08,Fournisseur Services 010,Assurance,chèque,782772,en attente
+2026-05-05,Fournisseur Services 029,Logistique,chèque,322212,approuvée
+2026-05-22,Fournisseur Services 039,Marketing,virement,118331,en attente
+2026-05-10,Fournisseur Logistique 037,Énergie,virement,96780,approuvée
+2026-05-04,Fournisseur Logiciel 027,Achats matières,espèces,486649,en attente
+2026-05-29,Fournisseur Services 012,Abonnements SaaS,virement,305158,en attente
+2026-05-23,Fournisseur Logiciel 011,Loyer,espèces,817911,approuvée
+2026-05-07,Fournisseur Logistique 039,Marketing,chèque,132806,approuvée
+2026-05-22,Fournisseur Services 003,Achats matières,chèque,403078,en attente
+2026-05-11,Fournisseur Acier 022,Achats matières,chèque,17802,approuvée
+2026-05-26,Fournisseur Logistique 032,Énergie,chèque,569261,approuvée
+2026-05-10,Fournisseur Papier 036,Salaires,espèces,370528,approuvée
+2026-05-12,Fournisseur Services 008,Logistique,chèque,229400,approuvée
+2026-05-16,Fournisseur Papier 011,Énergie,chèque,470447,approuvée
+2026-05-04,Fournisseur Services 006,Achats matières,virement,73983,approuvée
+2026-05-01,Fournisseur Énergie 040,Achats matières,chèque,626438,approuvée
+2026-05-19,Fournisseur Logistique 038,Loyer,virement,103240,approuvée
+2026-05-09,Fournisseur Logiciel 028,Salaires,virement,247204,approuvée
+2026-05-22,Fournisseur Papier 033,Assurance,espèces,865638,approuvée
+2026-05-19,Fournisseur Énergie 011,Loyer,chèque,290914,approuvée
+2026-05-16,Fournisseur Acier 009,Loyer,espèces,300527,approuvée
+2026-05-07,Fournisseur Papier 004,Loyer,virement,309081,en attente
+2026-05-05,Fournisseur Services 019,Énergie,chèque,175024,approuvée
+2026-05-11,Fournisseur Logiciel 027,Achats matières,virement,556465,approuvée
+2026-05-07,Fournisseur Logistique 007,Assurance,chèque,785433,approuvée
+2026-05-14,Fournisseur Papier 022,Abonnements SaaS,virement,825873,approuvée
+2026-05-28,Fournisseur Services 018,Assurance,espèces,748327,en attente
+2026-05-29,Fournisseur Acier 007,Loyer,espèces,439210,en attente
+2026-05-25,Fournisseur Services 014,Loyer,virement,879072,approuvée
+2026-05-03,Fournisseur Papier 034,Assurance,chèque,754550,en attente
+2026-05-21,Fournisseur Acier 022,Loyer,chèque,119454,en attente
+2026-05-20,Fournisseur Logistique 012,Logistique,espèces,356794,approuvée
+2026-05-12,Fournisseur Énergie 004,Marketing,virement,787835,en attente
+2026-05-25,Fournisseur Papier 007,Achats matières,espèces,473246,approuvée
+2026-05-31,Fournisseur Logistique 007,Assurance,virement,461298,en attente
+2026-05-18,Fournisseur Acier 005,Achats matières,chèque,597397,en attente
+2026-05-25,Fournisseur Énergie 022,Salaires,espèces,239615,approuvée
+2026-05-30,Fournisseur Logiciel 007,Logistique,espèces,819069,en attente
+2026-05-22,Fournisseur Logiciel 032,Énergie,espèces,258625,approuvée
+2026-05-28,Fournisseur Logistique 035,Logistique,virement,98488,approuvée
+2026-05-09,Fournisseur Papier 005,Abonnements SaaS,chèque,674093,approuvée
+2026-05-30,Fournisseur Acier 006,Salaires,chèque,769407,approuvée
+2026-05-20,Fournisseur Papier 005,Achats matières,chèque,386114,en attente
+2026-05-30,Fournisseur Logistique 039,Énergie,espèces,593300,approuvée
+2026-05-31,Fournisseur Acier 007,Énergie,virement,405749,approuvée
+2026-05-13,Fournisseur Services 035,Salaires,espèces,866316,approuvée
+2026-05-13,Fournisseur Papier 039,Achats matières,chèque,863612,en attente
+2026-05-02,Fournisseur Logistique 028,Salaires,chèque,410312,approuvée
+2026-05-21,Fournisseur Acier 014,Achats matières,chèque,852013,en attente
+2026-05-22,Fournisseur Énergie 013,Salaires,chèque,763022,approuvée
+2026-05-21,Fournisseur Logiciel 032,Loyer,virement,134766,en attente
+2026-05-15,Fournisseur Logiciel 032,Énergie,virement,172759,approuvée
+2026-05-22,Fournisseur Acier 020,Achats matières,chèque,164718,approuvée
+2026-05-05,Fournisseur Logistique 015,Assurance,chèque,260995,approuvée
+2026-05-21,Fournisseur Acier 020,Salaires,espèces,233038,approuvée
+2026-05-20,Fournisseur Acier 012,Logistique,chèque,139352,approuvée
+2026-05-12,Fournisseur Papier 013,Abonnements SaaS,espèces,896326,approuvée
+2026-05-19,Fournisseur Papier 001,Marketing,chèque,229798,approuvée
+2026-06-30,Fournisseur Papier 036,Salaires,virement,403795,approuvée
+2026-06-18,Fournisseur Papier 013,Achats matières,espèces,670847,en attente
+2026-06-02,Fournisseur Logistique 035,Loyer,virement,355727,approuvée
+2026-06-11,Fournisseur Acier 036,Achats matières,espèces,42111,approuvée
+2026-06-27,Fournisseur Acier 031,Abonnements SaaS,chèque,841107,approuvée
+2026-06-12,Fournisseur Services 016,Énergie,chèque,519702,approuvée
+2026-06-29,Fournisseur Logiciel 005,Assurance,virement,34694,en attente
+2026-06-17,Fournisseur Énergie 019,Salaires,chèque,190644,approuvée
+2026-06-09,Fournisseur Services 012,Abonnements SaaS,virement,637682,approuvée
+2026-06-06,Fournisseur Énergie 004,Logistique,espèces,873311,en attente
+2026-06-03,Fournisseur Services 025,Abonnements SaaS,virement,183287,en attente
+2026-06-03,Fournisseur Logiciel 023,Assurance,virement,455309,approuvée
+2026-06-29,Fournisseur Services 017,Énergie,virement,396503,approuvée
+2026-06-16,Fournisseur Logistique 025,Assurance,espèces,671366,approuvée
+2026-06-10,Fournisseur Logiciel 035,Abonnements SaaS,espèces,338252,approuvée
+2026-06-07,Fournisseur Énergie 023,Logistique,chèque,414079,approuvée
+2026-06-01,Fournisseur Logistique 040,Achats matières,espèces,674880,approuvée
+2026-06-27,Fournisseur Logiciel 010,Salaires,virement,260956,en attente
+2026-06-16,Fournisseur Services 019,Salaires,virement,38000,approuvée
+2026-06-10,Fournisseur Logiciel 010,Abonnements SaaS,chèque,110317,en attente
+2026-06-12,Fournisseur Services 002,Abonnements SaaS,virement,178659,approuvée
+2026-06-05,Fournisseur Services 024,Énergie,virement,778528,en attente
+2026-06-08,Fournisseur Services 032,Abonnements SaaS,chèque,333219,en attente
+2026-06-11,Fournisseur Énergie 025,Achats matières,espèces,439260,approuvée
+2026-06-27,Fournisseur Papier 018,Salaires,espèces,72567,approuvée
+2026-06-27,Fournisseur Services 014,Salaires,virement,414507,approuvée
+2026-06-23,Fournisseur Services 010,Énergie,virement,156276,approuvée
+2026-06-29,Fournisseur Logiciel 021,Marketing,virement,844943,en attente
+2026-06-11,Fournisseur Logistique 039,Marketing,chèque,674300,en attente
+2026-06-07,Fournisseur Papier 009,Loyer,chèque,414071,approuvée
+2026-06-01,Fournisseur Logiciel 015,Logistique,chèque,282346,approuvée
+2026-06-05,Fournisseur Acier 035,Assurance,chèque,764687,approuvée
+2026-06-22,Fournisseur Services 003,Achats matières,virement,219715,en attente
+2026-06-13,Fournisseur Logistique 011,Loyer,espèces,727993,approuvée
+2026-06-19,Fournisseur Énergie 037,Abonnements SaaS,espèces,250186,approuvée
+2026-06-12,Fournisseur Logiciel 009,Assurance,espèces,266952,approuvée
+2026-06-30,Fournisseur Acier 025,Loyer,espèces,176051,en attente
+2026-06-19,Fournisseur Logistique 039,Assurance,espèces,482932,en attente
+2026-06-13,Fournisseur Papier 006,Énergie,espèces,566729,approuvée
+2026-06-28,Fournisseur Papier 024,Assurance,espèces,383580,en attente
+2026-06-01,Fournisseur Services 004,Loyer,chèque,472683,approuvée
+2026-06-18,Fournisseur Papier 001,Achats matières,virement,214349,approuvée
+2026-06-09,Fournisseur Logistique 007,Assurance,espèces,844163,approuvée
+2026-06-24,Fournisseur Services 003,Achats matières,espèces,782697,approuvée
+2026-06-06,Fournisseur Services 004,Énergie,chèque,6445,approuvée
+2026-06-08,Fournisseur Papier 037,Achats matières,virement,746963,approuvée
+2026-06-21,Fournisseur Logistique 034,Abonnements SaaS,espèces,561152,en attente
+2026-06-07,Fournisseur Services 015,Loyer,espèces,193298,approuvée
+2026-06-17,Fournisseur Services 038,Abonnements SaaS,chèque,450641,approuvée
+2026-06-26,Fournisseur Logistique 024,Énergie,chèque,621845,approuvée
+2026-06-06,Fournisseur Papier 023,Énergie,virement,546590,approuvée
+2026-06-09,Fournisseur Logistique 012,Salaires,espèces,563506,approuvée
+2026-06-08,Fournisseur Acier 022,Marketing,virement,789988,en attente
+2026-06-18,Fournisseur Logistique 005,Abonnements SaaS,espèces,583799,approuvée
+2026-06-29,Fournisseur Acier 022,Marketing,espèces,287817,en attente
+2026-06-13,Fournisseur Acier 037,Marketing,chèque,202877,approuvée
+2026-06-25,Fournisseur Logistique 012,Achats matières,virement,298508,approuvée
+2026-06-22,Fournisseur Énergie 021,Achats matières,espèces,281217,en attente
+2026-06-10,Fournisseur Logistique 032,Énergie,virement,794592,approuvée
+2026-06-08,Fournisseur Logiciel 038,Assurance,chèque,695682,approuvée
+2026-06-23,Fournisseur Papier 023,Assurance,chèque,565959,approuvée
+2026-06-28,Fournisseur Énergie 001,Marketing,chèque,741246,en attente
+2026-06-25,Fournisseur Énergie 035,Abonnements SaaS,virement,103986,en attente
+2026-06-27,Fournisseur Logistique 038,Salaires,chèque,175234,approuvée
+2026-06-05,Fournisseur Papier 014,Achats matières,chèque,405770,en attente
+2026-06-15,Fournisseur Services 017,Abonnements SaaS,chèque,578197,approuvée
+2026-06-24,Fournisseur Logistique 005,Achats matières,virement,692244,approuvée
+2026-06-02,Fournisseur Services 028,Logistique,chèque,836305,en attente
+2026-06-02,Fournisseur Logiciel 020,Marketing,virement,788947,en attente
+2026-06-20,Fournisseur Papier 020,Marketing,espèces,832312,en attente
+2026-06-23,Fournisseur Logiciel 019,Marketing,chèque,675323,approuvée
+2026-06-20,Fournisseur Services 012,Salaires,virement,157473,en attente
+2026-06-11,Fournisseur Services 031,Achats matières,chèque,874997,approuvée
+2026-06-10,Fournisseur Logiciel 038,Loyer,virement,602090,en attente
+2026-06-20,Fournisseur Logiciel 001,Achats matières,virement,315941,approuvée
+2026-06-28,Fournisseur Services 008,Logistique,chèque,735031,approuvée
+2026-06-07,Fournisseur Logistique 037,Salaires,chèque,259162,approuvée
+2026-06-14,Fournisseur Papier 013,Énergie,chèque,872124,en attente
+2026-06-15,Fournisseur Services 014,Logistique,virement,334676,en attente
+2026-06-28,Fournisseur Papier 030,Marketing,espèces,436806,en attente
+2026-07-20,Fournisseur Logistique 007,Logistique,virement,304465,approuvée
+2026-07-23,Fournisseur Logistique 012,Salaires,espèces,782170,approuvée
+2026-07-05,Fournisseur Papier 003,Logistique,virement,194887,approuvée
+2026-07-01,Fournisseur Acier 030,Logistique,virement,803120,approuvée
+2026-07-11,Fournisseur Logiciel 025,Marketing,chèque,48665,approuvée
+2026-07-10,Fournisseur Acier 003,Achats matières,espèces,667406,approuvée
+2026-07-18,Fournisseur Énergie 010,Énergie,chèque,725247,approuvée
+2026-07-29,Fournisseur Logiciel 025,Marketing,espèces,162998,approuvée
+2026-07-08,Fournisseur Énergie 035,Salaires,virement,871314,en attente
+2026-07-01,Fournisseur Acier 003,Loyer,chèque,283169,approuvée
+2026-07-22,Fournisseur Services 020,Abonnements SaaS,espèces,369420,en attente
+2026-07-19,Fournisseur Acier 006,Énergie,virement,699250,en attente
+2026-07-24,Fournisseur Acier 037,Abonnements SaaS,chèque,564431,approuvée
+2026-07-14,Fournisseur Logiciel 004,Logistique,chèque,835859,en attente
+2026-07-19,Fournisseur Acier 008,Loyer,chèque,404945,approuvée
+2026-07-24,Fournisseur Énergie 030,Assurance,espèces,839518,approuvée
+2026-07-17,Fournisseur Papier 002,Marketing,virement,277010,approuvée
+2026-07-25,Fournisseur Acier 009,Logistique,espèces,845432,approuvée
+2026-07-05,Fournisseur Logiciel 001,Logistique,chèque,677635,approuvée
+2026-07-02,Fournisseur Services 023,Assurance,espèces,190509,en attente
+2026-07-09,Fournisseur Logistique 025,Marketing,chèque,430895,approuvée
+2026-07-03,Fournisseur Services 003,Loyer,virement,320138,approuvée
+2026-07-12,Fournisseur Services 016,Logistique,espèces,892523,approuvée
+2026-07-03,Fournisseur Acier 017,Abonnements SaaS,espèces,521876,approuvée
+2026-07-01,Fournisseur Acier 029,Assurance,chèque,153228,approuvée
+2026-07-24,Fournisseur Acier 028,Salaires,chèque,188063,approuvée
+2026-07-13,Fournisseur Logiciel 016,Abonnements SaaS,chèque,24511,approuvée
+2026-07-04,Fournisseur Logistique 026,Logistique,espèces,212979,approuvée
+2026-07-14,Fournisseur Logistique 018,Salaires,chèque,828577,approuvée
+2026-07-29,Fournisseur Énergie 034,Énergie,espèces,442442,approuvée
+2026-07-15,Fournisseur Énergie 036,Abonnements SaaS,virement,322839,en attente
+2026-07-22,Fournisseur Papier 002,Loyer,chèque,220995,en attente
+2026-07-06,Fournisseur Énergie 001,Assurance,chèque,251404,approuvée
+2026-07-09,Fournisseur Logistique 002,Loyer,virement,179759,en attente
+2026-07-12,Fournisseur Services 030,Salaires,chèque,427003,en attente
+2026-07-10,Fournisseur Logistique 033,Abonnements SaaS,espèces,519165,approuvée
+2026-07-10,Fournisseur Logiciel 039,Achats matières,chèque,608961,approuvée
+2026-07-11,Fournisseur Logistique 005,Salaires,espèces,203945,approuvée
+2026-07-29,Fournisseur Logistique 040,Achats matières,espèces,844456,approuvée
+2026-07-05,Fournisseur Logistique 018,Assurance,virement,891404,approuvée
+2026-07-03,Fournisseur Énergie 005,Loyer,espèces,404749,en attente
+2026-07-14,Fournisseur Services 013,Abonnements SaaS,espèces,318594,approuvée
+2026-07-21,Fournisseur Acier 037,Achats matières,virement,174171,approuvée
+2026-07-17,Fournisseur Services 028,Énergie,virement,182427,en attente
+2026-07-18,Fournisseur Énergie 024,Abonnements SaaS,virement,337396,approuvée
+2026-07-12,Fournisseur Acier 025,Achats matières,virement,596228,en attente
+2026-07-15,Fournisseur Services 027,Logistique,espèces,210897,approuvée
+2026-07-26,Fournisseur Énergie 035,Loyer,chèque,32446,approuvée
+2026-07-21,Fournisseur Papier 033,Énergie,espèces,693928,approuvée
+2026-07-27,Fournisseur Énergie 019,Logistique,chèque,556341,en attente
+2026-07-11,Fournisseur Énergie 013,Énergie,espèces,506235,en attente
+2026-07-05,Fournisseur Papier 028,Assurance,espèces,99729,approuvée
+2026-07-12,Fournisseur Logiciel 004,Loyer,espèces,175138,approuvée
+2026-07-27,Fournisseur Logiciel 036,Salaires,espèces,590550,en attente
+2026-07-01,Fournisseur Acier 005,Assurance,virement,688767,en attente
+2026-07-30,Fournisseur Logistique 033,Achats matières,chèque,98126,en attente
+2026-07-10,Fournisseur Énergie 033,Salaires,espèces,895788,en attente
+2026-07-23,Fournisseur Acier 002,Assurance,espèces,295486,approuvée
+2026-07-01,Fournisseur Énergie 028,Assurance,espèces,752541,en attente
+2026-07-10,Fournisseur Logistique 002,Marketing,espèces,846166,en attente
+2026-07-06,Fournisseur Papier 001,Loyer,virement,593940,approuvée
+2026-07-16,Fournisseur Acier 011,Salaires,virement,94525,approuvée
+2026-07-17,Fournisseur Logiciel 025,Assurance,virement,859302,en attente
+2026-07-12,Fournisseur Services 011,Abonnements SaaS,espèces,7349,en attente
+2026-07-25,Fournisseur Logistique 022,Achats matières,chèque,883785,approuvée
+2026-07-13,Fournisseur Logistique 003,Marketing,chèque,528297,en attente
+2026-07-08,Fournisseur Logiciel 026,Assurance,virement,356461,approuvée
+2026-07-07,Fournisseur Logiciel 031,Salaires,virement,685738,approuvée
+2026-07-02,Fournisseur Énergie 012,Assurance,virement,520504,en attente
+2026-07-20,Fournisseur Services 008,Abonnements SaaS,espèces,33860,en attente
+2026-07-31,Fournisseur Logistique 033,Salaires,virement,713530,en attente
+2026-07-01,Fournisseur Énergie 031,Achats matières,chèque,825864,approuvée
+2026-07-13,Fournisseur Acier 008,Logistique,chèque,264454,approuvée
+2026-07-28,Fournisseur Services 014,Loyer,chèque,580503,en attente
+2026-07-21,Fournisseur Énergie 006,Énergie,espèces,385545,en attente
+2026-07-17,Fournisseur Logistique 008,Loyer,virement,836374,approuvée
+2026-07-19,Fournisseur Services 005,Énergie,virement,884358,en attente
+2026-07-13,Fournisseur Énergie 020,Assurance,virement,9083,approuvée
+2026-07-08,Fournisseur Logiciel 032,Énergie,virement,835850,approuvée
+2026-07-05,Fournisseur Énergie 008,Marketing,chèque,677060,en attente
+2026-07-09,Fournisseur Acier 025,Marketing,virement,462354,approuvée
+2026-07-20,Fournisseur Acier 018,Logistique,virement,521100,approuvée
+2026-07-04,Fournisseur Acier 040,Marketing,chèque,304415,approuvée
+2026-07-16,Fournisseur Logistique 001,Achats matières,chèque,726128,approuvée
+2026-08-21,Fournisseur Logistique 014,Loyer,virement,406322,approuvée
+2026-08-07,Fournisseur Services 036,Assurance,espèces,126133,approuvée
+2026-08-28,Fournisseur Logistique 001,Loyer,virement,582839,approuvée
+2026-08-03,Fournisseur Services 035,Loyer,chèque,530136,approuvée
+2026-08-30,Fournisseur Papier 022,Marketing,virement,361051,approuvée
+2026-08-10,Fournisseur Acier 038,Achats matières,chèque,319472,approuvée
+2026-08-26,Fournisseur Papier 025,Salaires,chèque,40857,approuvée
+2026-08-08,Fournisseur Énergie 014,Assurance,espèces,394255,approuvée
+2026-08-28,Fournisseur Papier 016,Logistique,espèces,555623,approuvée
+2026-08-09,Fournisseur Logiciel 005,Abonnements SaaS,virement,576572,approuvée
+2026-08-15,Fournisseur Énergie 034,Achats matières,chèque,404239,en attente
+2026-08-07,Fournisseur Acier 005,Loyer,virement,161856,approuvée
+2026-08-14,Fournisseur Services 037,Abonnements SaaS,espèces,380136,approuvée
+2026-08-23,Fournisseur Logiciel 034,Logistique,chèque,707237,approuvée
+2026-08-25,Fournisseur Papier 023,Assurance,virement,815937,en attente
+2026-08-24,Fournisseur Services 023,Logistique,chèque,724098,approuvée
+2026-08-11,Fournisseur Logistique 040,Abonnements SaaS,chèque,514691,en attente
+2026-08-09,Fournisseur Acier 019,Assurance,espèces,701793,en attente
+2026-08-22,Fournisseur Services 020,Loyer,virement,520923,approuvée
+2026-08-16,Fournisseur Logistique 024,Marketing,espèces,875303,en attente
+2026-08-29,Fournisseur Acier 023,Loyer,virement,494140,approuvée
+2026-08-03,Fournisseur Logistique 003,Loyer,espèces,103987,approuvée
+2026-08-17,Fournisseur Papier 006,Logistique,espèces,221552,approuvée
+2026-08-26,Fournisseur Énergie 022,Abonnements SaaS,virement,44786,approuvée
+2026-08-13,Fournisseur Énergie 037,Abonnements SaaS,chèque,690384,approuvée
+2026-08-14,Fournisseur Logistique 023,Abonnements SaaS,virement,782793,approuvée
+2026-08-05,Fournisseur Services 014,Marketing,chèque,646235,approuvée
+2026-08-31,Fournisseur Acier 025,Logistique,chèque,464936,approuvée
+2026-08-25,Fournisseur Services 025,Loyer,virement,806888,approuvée
+2026-08-07,Fournisseur Acier 038,Achats matières,chèque,326562,approuvée
+2026-08-26,Fournisseur Services 028,Achats matières,chèque,286218,en attente
+2026-08-01,Fournisseur Logistique 016,Logistique,chèque,156349,approuvée
+2026-08-24,Fournisseur Papier 024,Abonnements SaaS,virement,799516,approuvée
+2026-08-05,Fournisseur Acier 034,Énergie,espèces,67407,en attente
+2026-08-25,Fournisseur Services 008,Marketing,chèque,95168,approuvée
+2026-08-10,Fournisseur Logiciel 001,Marketing,virement,153383,approuvée
+2026-08-13,Fournisseur Papier 003,Achats matières,chèque,586143,en attente
+2026-08-20,Fournisseur Acier 021,Énergie,virement,118554,approuvée
+2026-08-02,Fournisseur Logiciel 006,Loyer,chèque,271662,approuvée
+2026-08-28,Fournisseur Acier 038,Énergie,virement,673152,en attente
+2026-08-20,Fournisseur Services 016,Assurance,chèque,647172,approuvée
+2026-08-05,Fournisseur Énergie 028,Énergie,espèces,39673,approuvée
+2026-08-18,Fournisseur Services 027,Achats matières,chèque,225188,en attente
+2026-08-24,Fournisseur Logiciel 007,Achats matières,espèces,778216,approuvée
+2026-08-06,Fournisseur Acier 005,Assurance,chèque,290635,approuvée
+2026-08-12,Fournisseur Logiciel 003,Assurance,virement,482186,approuvée
+2026-08-14,Fournisseur Logistique 009,Salaires,chèque,501669,approuvée
+2026-08-04,Fournisseur Papier 023,Énergie,espèces,327995,approuvée
+2026-08-19,Fournisseur Papier 017,Achats matières,chèque,434094,approuvée
+2026-08-21,Fournisseur Logistique 017,Logistique,espèces,735752,approuvée
+2026-08-02,Fournisseur Logistique 024,Achats matières,virement,617526,en attente
+2026-08-23,Fournisseur Logiciel 028,Achats matières,chèque,505687,en attente
+2026-08-04,Fournisseur Logistique 040,Énergie,chèque,408891,approuvée
+2026-08-12,Fournisseur Énergie 026,Abonnements SaaS,chèque,298328,en attente
+2026-08-19,Fournisseur Énergie 005,Achats matières,chèque,502530,approuvée
+2026-08-06,Fournisseur Acier 033,Logistique,espèces,574441,approuvée
+2026-08-09,Fournisseur Logistique 012,Salaires,espèces,664172,en attente
+2026-08-04,Fournisseur Énergie 004,Marketing,virement,520329,en attente
+2026-08-03,Fournisseur Énergie 025,Salaires,chèque,393907,approuvée
+2026-08-30,Fournisseur Papier 005,Logistique,chèque,799235,approuvée
+2026-08-25,Fournisseur Logiciel 033,Assurance,virement,576613,approuvée
+2026-08-02,Fournisseur Logiciel 003,Assurance,chèque,440814,en attente
+2026-08-28,Fournisseur Logistique 029,Achats matières,chèque,471765,approuvée
+2026-08-22,Fournisseur Logistique 032,Énergie,chèque,385836,approuvée
+2026-08-16,Fournisseur Acier 027,Abonnements SaaS,chèque,767663,approuvée
+2026-08-31,Fournisseur Énergie 030,Abonnements SaaS,virement,49524,approuvée
+2026-08-15,Fournisseur Énergie 031,Énergie,virement,761643,approuvée
+2026-08-17,Fournisseur Papier 006,Marketing,espèces,891287,approuvée
+2026-08-05,Fournisseur Services 027,Marketing,virement,638647,approuvée
+2026-08-14,Fournisseur Énergie 023,Assurance,chèque,812161,en attente
+2026-08-04,Fournisseur Logiciel 015,Logistique,virement,219881,approuvée
+2026-08-18,Fournisseur Logiciel 019,Marketing,espèces,54785,approuvée
+2026-08-02,Fournisseur Logistique 002,Abonnements SaaS,espèces,804208,en attente
+2026-08-27,Fournisseur Énergie 012,Loyer,virement,104813,en attente
+2026-08-18,Fournisseur Énergie 006,Loyer,chèque,193947,approuvée
+2026-08-29,Fournisseur Services 029,Logistique,chèque,893796,approuvée
+2026-08-22,Fournisseur Logistique 026,Achats matières,espèces,266334,approuvée
+2026-08-05,Fournisseur Papier 032,Abonnements SaaS,virement,50967,en attente
+2026-08-18,Fournisseur Logistique 016,Logistique,espèces,173576,en attente
+2026-08-09,Fournisseur Services 024,Énergie,chèque,754946,en attente
+2026-08-15,Fournisseur Acier 003,Énergie,espèces,322408,en attente
+2026-08-06,Fournisseur Services 025,Salaires,virement,89245,approuvée
+2026-08-28,Fournisseur Services 011,Logistique,espèces,125320,approuvée
+2026-08-22,Fournisseur Services 030,Logistique,espèces,662554,approuvée
+2026-08-12,Fournisseur Logistique 006,Logistique,chèque,594990,en attente
+2026-08-07,Fournisseur Logiciel 035,Marketing,virement,871787,approuvée
+2026-08-10,Fournisseur Logiciel 010,Salaires,virement,880178,en attente
+2026-08-13,Fournisseur Acier 031,Salaires,chèque,147164,approuvée
+2026-09-08,Fournisseur Papier 033,Logistique,virement,448195,approuvée
+2026-09-21,Fournisseur Logistique 001,Énergie,chèque,878995,approuvée
+2026-09-07,Fournisseur Acier 033,Énergie,espèces,131531,en attente
+2026-09-13,Fournisseur Acier 011,Énergie,chèque,437589,en attente
+2026-09-09,Fournisseur Logiciel 026,Logistique,virement,381760,en attente
+2026-09-10,Fournisseur Papier 016,Loyer,chèque,479207,en attente
+2026-09-20,Fournisseur Énergie 008,Achats matières,espèces,691901,approuvée
+2026-09-13,Fournisseur Logiciel 026,Loyer,espèces,765996,approuvée
+2026-09-09,Fournisseur Papier 031,Abonnements SaaS,chèque,238976,approuvée
+2026-09-13,Fournisseur Énergie 006,Assurance,chèque,889912,approuvée
+2026-09-26,Fournisseur Logiciel 017,Marketing,virement,864389,en attente
+2026-09-09,Fournisseur Acier 013,Salaires,chèque,492042,en attente
+2026-09-12,Fournisseur Logistique 034,Salaires,espèces,293977,approuvée
+2026-09-26,Fournisseur Énergie 024,Logistique,espèces,529783,approuvée
+2026-09-30,Fournisseur Logistique 014,Abonnements SaaS,espèces,691682,en attente
+2026-09-13,Fournisseur Logiciel 032,Logistique,virement,885592,approuvée
+2026-09-06,Fournisseur Logiciel 022,Logistique,chèque,625179,en attente
+2026-09-22,Fournisseur Logistique 021,Assurance,virement,264937,approuvée
+2026-09-29,Fournisseur Services 007,Énergie,virement,154217,en attente
+2026-09-20,Fournisseur Services 033,Assurance,virement,245602,en attente
+2026-09-20,Fournisseur Logiciel 034,Marketing,espèces,223481,approuvée
+2026-09-12,Fournisseur Acier 031,Abonnements SaaS,virement,251646,approuvée
+2026-09-27,Fournisseur Services 018,Marketing,espèces,775679,approuvée
+2026-09-05,Fournisseur Logiciel 022,Loyer,espèces,23681,en attente
+2026-09-19,Fournisseur Services 009,Énergie,chèque,81971,approuvée
+2026-09-11,Fournisseur Énergie 040,Énergie,virement,372007,approuvée
+2026-09-02,Fournisseur Acier 039,Assurance,virement,741566,en attente
+2026-09-08,Fournisseur Acier 018,Abonnements SaaS,chèque,143789,en attente
+2026-09-13,Fournisseur Logistique 015,Logistique,chèque,56420,en attente
+2026-09-24,Fournisseur Services 034,Abonnements SaaS,chèque,460404,approuvée
+2026-09-27,Fournisseur Logiciel 019,Assurance,espèces,302830,approuvée
+2026-09-15,Fournisseur Logiciel 034,Marketing,espèces,673452,approuvée
+2026-09-13,Fournisseur Papier 029,Loyer,chèque,667597,approuvée
+2026-09-21,Fournisseur Logiciel 035,Achats matières,virement,442541,approuvée
+2026-09-15,Fournisseur Acier 039,Salaires,espèces,409084,approuvée
+2026-09-08,Fournisseur Énergie 040,Logistique,virement,687684,en attente
+2026-09-18,Fournisseur Logiciel 031,Assurance,espèces,14013,approuvée
+2026-09-20,Fournisseur Logistique 021,Achats matières,chèque,892886,en attente
+2026-09-27,Fournisseur Acier 006,Loyer,virement,711413,en attente
+2026-09-10,Fournisseur Logiciel 008,Logistique,virement,56578,en attente
+2026-09-22,Fournisseur Logistique 004,Salaires,chèque,697334,approuvée
+2026-09-25,Fournisseur Logistique 021,Loyer,chèque,274021,approuvée
+2026-09-12,Fournisseur Services 003,Salaires,espèces,123135,approuvée
+2026-09-16,Fournisseur Papier 015,Assurance,virement,65184,approuvée
+2026-09-25,Fournisseur Logistique 025,Loyer,espèces,415303,approuvée
+2026-09-09,Fournisseur Services 036,Énergie,virement,412181,approuvée
+2026-09-15,Fournisseur Acier 023,Marketing,chèque,327511,approuvée
+2026-09-14,Fournisseur Papier 011,Assurance,virement,68469,approuvée
+2026-09-25,Fournisseur Logiciel 027,Marketing,virement,710234,approuvée
+2026-09-12,Fournisseur Services 033,Marketing,chèque,200005,approuvée
+2026-09-04,Fournisseur Logistique 040,Assurance,virement,530462,en attente
+2026-09-03,Fournisseur Logiciel 004,Achats matières,virement,490052,en attente
+2026-09-27,Fournisseur Services 037,Salaires,chèque,211691,en attente
+2026-09-12,Fournisseur Acier 035,Salaires,espèces,844536,en attente
+2026-09-26,Fournisseur Logistique 008,Marketing,espèces,251027,approuvée
+2026-09-29,Fournisseur Logistique 032,Assurance,chèque,838143,approuvée
+2026-09-08,Fournisseur Logistique 011,Achats matières,chèque,197079,approuvée
+2026-09-21,Fournisseur Acier 030,Énergie,espèces,854851,en attente
+2026-09-22,Fournisseur Services 013,Abonnements SaaS,virement,124712,approuvée
+2026-09-15,Fournisseur Papier 039,Assurance,espèces,832487,en attente
+2026-09-27,Fournisseur Papier 005,Salaires,chèque,291503,approuvée
+2026-09-03,Fournisseur Services 035,Abonnements SaaS,virement,892780,en attente
+2026-09-16,Fournisseur Logistique 032,Abonnements SaaS,espèces,312933,approuvée
+2026-09-22,Fournisseur Papier 011,Énergie,chèque,428802,approuvée
+2026-09-02,Fournisseur Acier 031,Énergie,espèces,565787,approuvée
+2026-09-09,Fournisseur Services 035,Marketing,espèces,857445,en attente
+2026-09-04,Fournisseur Logiciel 007,Énergie,virement,643521,en attente
+2026-09-20,Fournisseur Services 015,Assurance,virement,182497,approuvée
+2026-09-14,Fournisseur Logistique 040,Énergie,chèque,255014,en attente
+2026-09-21,Fournisseur Énergie 004,Achats matières,espèces,314286,en attente
+2026-09-22,Fournisseur Énergie 019,Abonnements SaaS,espèces,707736,approuvée
+2026-09-29,Fournisseur Services 002,Abonnements SaaS,virement,656816,approuvée
+2026-09-13,Fournisseur Papier 022,Achats matières,chèque,492318,approuvée
+2026-09-29,Fournisseur Acier 019,Logistique,espèces,180322,approuvée
+2026-09-24,Fournisseur Logistique 005,Abonnements SaaS,espèces,575739,en attente
+2026-09-17,Fournisseur Énergie 023,Loyer,virement,256755,approuvée
+2026-09-23,Fournisseur Acier 035,Énergie,virement,634527,approuvée
+2026-09-21,Fournisseur Logiciel 040,Achats matières,espèces,858645,en attente
+2026-09-07,Fournisseur Papier 008,Loyer,chèque,571774,approuvée
+2026-09-20,Fournisseur Logiciel 024,Achats matières,virement,538512,en attente
+2026-09-16,Fournisseur Services 024,Loyer,virement,322098,approuvée
+2026-10-14,Fournisseur Logistique 015,Achats matières,chèque,6990,approuvée
+2026-10-04,Fournisseur Services 003,Logistique,chèque,500922,approuvée
+2026-10-12,Fournisseur Papier 027,Loyer,espèces,694955,approuvée
+2026-10-15,Fournisseur Services 029,Logistique,virement,542101,approuvée
+2026-10-09,Fournisseur Services 031,Énergie,chèque,130949,approuvée
+2026-10-08,Fournisseur Logiciel 015,Énergie,virement,599041,approuvée
+2026-10-06,Fournisseur Services 035,Abonnements SaaS,virement,156722,approuvée
+2026-10-16,Fournisseur Acier 023,Achats matières,chèque,93101,en attente
+2026-10-04,Fournisseur Papier 019,Logistique,virement,38070,approuvée
+2026-10-02,Fournisseur Logistique 032,Marketing,virement,208973,en attente
+2026-10-13,Fournisseur Papier 040,Abonnements SaaS,espèces,407655,en attente
+2026-10-02,Fournisseur Logiciel 003,Assurance,virement,729718,approuvée
+2026-10-07,Fournisseur Acier 006,Assurance,chèque,229801,approuvée
+2026-10-02,Fournisseur Énergie 010,Marketing,virement,298960,approuvée
+2026-10-03,Fournisseur Logistique 012,Loyer,espèces,75524,en attente
+2026-10-07,Fournisseur Énergie 038,Marketing,virement,674095,approuvée
+2026-10-08,Fournisseur Logiciel 012,Loyer,espèces,747717,en attente
+2026-10-11,Fournisseur Logistique 034,Abonnements SaaS,espèces,206324,approuvée
+2026-10-15,Fournisseur Logiciel 019,Marketing,chèque,169935,en attente
+2026-10-09,Fournisseur Services 002,Assurance,virement,68417,en attente
+2026-10-04,Fournisseur Services 014,Logistique,espèces,815223,en attente
+2026-10-08,Fournisseur Logistique 035,Logistique,espèces,365184,approuvée
+2026-10-04,Fournisseur Acier 022,Marketing,espèces,850466,approuvée
+2026-10-09,Fournisseur Services 011,Abonnements SaaS,espèces,241766,en attente
+2026-10-15,Fournisseur Logiciel 032,Loyer,virement,356104,en attente
+2026-10-13,Fournisseur Logistique 020,Salaires,espèces,320742,approuvée
+2026-10-16,Fournisseur Logiciel 029,Achats matières,chèque,16541,approuvée
+2026-10-14,Fournisseur Énergie 026,Marketing,espèces,49906,approuvée
+2026-10-13,Fournisseur Logistique 003,Salaires,virement,456289,approuvée
+2026-10-12,Fournisseur Acier 013,Abonnements SaaS,espèces,232390,approuvée
+2026-10-16,Fournisseur Logiciel 022,Énergie,virement,682415,approuvée
+2026-10-02,Fournisseur Services 036,Loyer,virement,527189,approuvée
+2026-10-08,Fournisseur Logistique 006,Achats matières,espèces,818404,en attente
+2026-10-13,Fournisseur Papier 038,Loyer,chèque,9376,approuvée
+2026-10-07,Fournisseur Acier 015,Achats matières,espèces,632196,approuvée
+2026-10-16,Fournisseur Acier 017,Logistique,virement,645906,en attente
+2026-10-14,Fournisseur Papier 031,Abonnements SaaS,chèque,629790,approuvée
+2026-10-08,Fournisseur Énergie 037,Marketing,virement,654027,en attente
+2026-10-06,Fournisseur Acier 028,Abonnements SaaS,chèque,321883,approuvée
+2026-10-06,Fournisseur Logistique 009,Assurance,virement,374117,en attente
+2026-10-09,Fournisseur Papier 006,Salaires,espèces,62880,approuvée
+2026-10-02,Fournisseur Logistique 035,Assurance,espèces,96191,approuvée
+2026-10-03,Fournisseur Logiciel 029,Énergie,virement,567299,approuvée
+2026-10-08,Fournisseur Logistique 002,Salaires,virement,76967,approuvée
+2026-10-07,Fournisseur Acier 021,Énergie,espèces,223993,approuvée
+2026-10-01,Fournisseur Logiciel 001,Salaires,virement,72247,en attente
+2026-10-10,Fournisseur Papier 006,Logistique,espèces,711081,approuvée
+2026-10-04,Fournisseur Logiciel 022,Logistique,espèces,296550,en attente
+2026-10-04,Fournisseur Papier 003,Abonnements SaaS,chèque,56650,approuvée
+2026-10-13,Fournisseur Papier 037,Logistique,chèque,741097,approuvée
+2026-10-16,Fournisseur Papier 029,Assurance,espèces,421722,approuvée
+2026-10-16,Fournisseur Logiciel 006,Achats matières,espèces,738487,en attente
+2026-10-14,Fournisseur Énergie 036,Salaires,virement,143396,approuvée
+2026-10-01,Fournisseur Logistique 005,Loyer,chèque,677666,approuvée
+2026-10-16,Fournisseur Logiciel 036,Salaires,virement,743425,en attente
+2026-10-04,Fournisseur Logiciel 026,Logistique,espèces,192163,approuvée
+2026-10-09,Fournisseur Logiciel 024,Abonnements SaaS,espèces,146859,en attente
+2026-10-04,Fournisseur Acier 034,Logistique,chèque,797158,approuvée
+2026-10-04,Fournisseur Acier 017,Salaires,chèque,133387,approuvée
+2026-10-01,Fournisseur Logiciel 036,Abonnements SaaS,chèque,819168,approuvée
+2026-10-13,Fournisseur Services 017,Énergie,espèces,540321,approuvée
+2026-10-16,Fournisseur Logiciel 011,Abonnements SaaS,chèque,89790,approuvée
+2026-10-03,Fournisseur Logiciel 040,Logistique,espèces,642654,approuvée
+2026-10-16,Fournisseur Énergie 002,Marketing,espèces,753988,approuvée
+2026-10-05,Fournisseur Logistique 032,Logistique,espèces,294573,approuvée
+2026-10-03,Fournisseur Énergie 032,Achats matières,espèces,349884,approuvée
+2026-10-02,Fournisseur Acier 010,Assurance,espèces,265337,approuvée
+2026-10-02,Fournisseur Logistique 027,Achats matières,virement,507533,approuvée
+2026-10-04,Fournisseur Services 017,Abonnements SaaS,virement,309637,en attente
+2026-10-02,Fournisseur Acier 015,Énergie,chèque,766727,en attente
+2026-10-11,Fournisseur Services 017,Assurance,chèque,45115,approuvée
+2026-10-10,Fournisseur Énergie 009,Salaires,espèces,518814,en attente
+2026-10-05,Fournisseur Logiciel 010,Achats matières,chèque,885056,en attente
+2026-10-06,Fournisseur Acier 012,Loyer,espèces,566307,en attente
+2026-10-09,Fournisseur Logiciel 027,Loyer,chèque,495204,approuvée
+2026-10-08,Fournisseur Logistique 039,Assurance,chèque,349630,en attente
+2026-10-10,Fournisseur Acier 014,Énergie,virement,78058,approuvée
+2026-10-11,Fournisseur Papier 010,Logistique,chèque,671289,approuvée
+2026-10-07,Fournisseur Acier 026,Logistique,chèque,540561,approuvée
+2026-10-07,Fournisseur Services 006,Énergie,virement,536648,approuvée

@@ -1,0 +1,4 @@
+﻿Matricule,Nom,Email,Département,Rôle,Actif
+EMP-001,Yassine Idrissi,owner@example.com,Direction,owner,oui
+EMP-002,Hajar Benjelloun,compta@example.com,Finance,accountant,oui
+EMP-003,Mehdi Tazi,logistique@example.com,Logistique,assistant,oui
