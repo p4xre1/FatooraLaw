@@ -63,6 +63,7 @@ export type AuthScreen = keyof typeof AUTH_PATHS
 /** Signed-in application modules. */
 export const MODULE_PATHS: Record<ModuleKey, string> = {
   dashboard: "/dashboard",
+  invoices: "/invoices",
   projects: "/projects",
   contacts: "/contacts",
   procurement: "/procurement",
