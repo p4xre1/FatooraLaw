@@ -148,6 +148,7 @@ export function validateInvoiceDraft(invoice: InvoiceRecord): string[] {
   });
   if (!Number.isFinite(invoice.amountPaid) || invoice.amountPaid < 0) errors.push("amountPaid");
   if (!invoice.dueDate || !/^\d{4}-\d{2}-\d{2}$/.test(invoice.dueDate)) errors.push("dueDate");
+  if (invoice.dueDate && invoice.issueDate && invoice.dueDate < invoice.issueDate) errors.push("dueDateBeforeIssue");
   return errors;
 }
 
