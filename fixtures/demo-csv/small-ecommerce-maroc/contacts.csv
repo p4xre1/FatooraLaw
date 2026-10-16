@@ -1,0 +1,106 @@
+﻿Nom,Type,ICE,Téléphone,Email,Ville,Solde
+Kawtar Mansouri 001,client,—,+212 606-746258,client001@example.com,Agadir,0
+Mehdi Tazi 002,client,—,+212 625-849787,client002@example.com,Meknès,0
+Hajar Benjelloun 003,client,—,+212 633-254375,client003@example.com,Meknès,0
+Reda Chafik 004,client,—,+212 665-233203,client004@example.com,Agadir,0
+Sara El Fassi 005,client,—,+212 629-709657,client005@example.com,Marrakech,0
+Hajar Benjelloun 006,client,—,+212 670-999403,client006@example.com,Agadir,0
+Imane Ouahbi 007,client,—,+212 620-046271,client007@example.com,Meknès,0
+Nisrine Boukhris 008,client,—,+212 651-203077,client008@example.com,Agadir,536
+Sara El Fassi 009,client,—,+212 650-207234,client009@example.com,Tanger,492
+Yassine Idrissi 010,client,—,+212 683-330000,client010@example.com,Fès,0
+Sara El Fassi 011,client,—,+212 671-280576,client011@example.com,Casablanca,0
+Sara El Fassi 012,client,—,+212 667-354274,client012@example.com,Tanger,0
+Reda Chafik 013,client,—,+212 670-347004,client013@example.com,Fès,47
+Imane Ouahbi 014,client,—,+212 622-741527,client014@example.com,Meknès,0
+Mehdi Tazi 015,client,—,+212 697-362852,client015@example.com,Marrakech,0
+Sara El Fassi 016,client,—,+212 638-333847,client016@example.com,Fès,0
+Imane Ouahbi 017,client,—,+212 694-077080,client017@example.com,Tanger,0
+Kawtar Mansouri 018,client,—,+212 638-007623,client018@example.com,Rabat,0
+Mehdi Tazi 019,client,—,+212 651-806947,client019@example.com,Fès,0
+Adil Sbai 020,client,—,+212 642-214180,client020@example.com,Tanger,868
+Adil Sbai 021,client,—,+212 621-362360,client021@example.com,Fès,749
+Mehdi Tazi 022,client,—,+212 621-614468,client022@example.com,Marrakech,0
+Adil Sbai 023,client,—,+212 604-189794,client023@example.com,Rabat,0
+Hajar Benjelloun 024,client,—,+212 631-388026,client024@example.com,Meknès,0
+Sara El Fassi 025,client,—,+212 608-585968,client025@example.com,Marrakech,0
+Sara El Fassi 026,client,—,+212 654-996472,client026@example.com,Rabat,0
+Nisrine Boukhris 027,client,—,+212 635-161284,client027@example.com,Tanger,209
+Yassine Idrissi 028,client,—,+212 620-652759,client028@example.com,Casablanca,0
+Adil Sbai 029,client,—,+212 607-844316,client029@example.com,Agadir,0
+Yassine Idrissi 030,client,—,+212 621-705448,client030@example.com,Rabat,609
+Anas Lamrani 031,client,—,+212 603-078252,client031@example.com,Marrakech,0
+Yassine Idrissi 032,client,—,+212 650-425639,client032@example.com,Meknès,56
+Kawtar Mansouri 033,client,—,+212 642-115725,client033@example.com,Rabat,0
+Imane Ouahbi 034,client,—,+212 651-193712,client034@example.com,Meknès,0
+Adil Sbai 035,client,—,+212 626-696909,client035@example.com,Tanger,0
+Yassine Idrissi 036,client,—,+212 689-736734,client036@example.com,Marrakech,671
+Nisrine Boukhris 037,client,—,+212 631-833044,client037@example.com,Marrakech,0
+Imane Ouahbi 038,client,—,+212 601-618386,client038@example.com,Meknès,0
+Anas Lamrani 039,client,—,+212 620-430342,client039@example.com,Agadir,0
+Reda Chafik 040,client,—,+212 694-808669,client040@example.com,Meknès,0
+Adil Sbai 041,client,—,+212 649-610101,client041@example.com,Marrakech,233
+Adil Sbai 042,client,—,+212 671-801804,client042@example.com,Rabat,0
+Sara El Fassi 043,client,—,+212 668-157550,client043@example.com,Rabat,0
+Sara El Fassi 044,client,—,+212 663-705668,client044@example.com,Marrakech,0
+Anas Lamrani 045,client,—,+212 654-192844,client045@example.com,Rabat,0
+Anas Lamrani 046,client,—,+212 647-014220,client046@example.com,Casablanca,0
+Sara El Fassi 047,client,—,+212 600-182466,client047@example.com,Meknès,0
+Reda Chafik 048,client,—,+212 653-089262,client048@example.com,Rabat,80
+Reda Chafik 049,client,—,+212 670-740830,client049@example.com,Rabat,423
+Reda Chafik 050,client,—,+212 670-659341,client050@example.com,Casablanca,752
+Yassine Idrissi 051,client,—,+212 644-363829,client051@example.com,Tanger,0
+Mehdi Tazi 052,client,—,+212 600-696889,client052@example.com,Rabat,0
+Hajar Benjelloun 053,client,—,+212 692-815173,client053@example.com,Tanger,0
+Hajar Benjelloun 054,client,—,+212 698-620753,client054@example.com,Marrakech,0
+Yassine Idrissi 055,client,—,+212 636-388644,client055@example.com,Marrakech,0
+Kawtar Mansouri 056,client,—,+212 696-914232,client056@example.com,Marrakech,0
+Sara El Fassi 057,client,—,+212 666-514629,client057@example.com,Fès,0
+Imane Ouahbi 058,client,—,+212 613-386428,client058@example.com,Tanger,0
+Hajar Benjelloun 059,client,—,+212 600-897765,client059@example.com,Casablanca,0
+Anas Lamrani 060,client,—,+212 619-634257,client060@example.com,Meknès,0
+Anas Ziani 061,client,—,+212 642-073288,client061@example.com,Tanger,65
+Reda Hamdaoui 062,client,—,+212 646-233755,client062@example.com,Marrakech,0
+Anas Ziani 063,client,—,+212 614-679822,client063@example.com,Meknès,0
+Yassine Ziani 064,client,—,+212 635-819255,client064@example.com,Marrakech,29
+Yassine Ziani 065,client,—,+212 675-800279,client065@example.com,Marrakech,0
+Anas Benkirane 066,client,—,+212 612-608842,client066@example.com,Agadir,0
+Yassine Ziani 067,client,—,+212 683-842859,client067@example.com,Casablanca,0
+Imane Hamdaoui 068,client,—,+212 695-711456,client068@example.com,Agadir,0
+Sara Ziani 069,client,—,+212 691-085207,client069@example.com,Marrakech,124
+Reda Ziani 070,client,—,+212 632-081366,client070@example.com,Tanger,0
+Hajar Benkirane 071,client,—,+212 631-918826,client071@example.com,Agadir,35
+Anas Ziani 072,client,—,+212 672-899499,client072@example.com,Casablanca,0
+Mehdi Ziani 073,client,—,+212 654-953457,client073@example.com,Casablanca,0
+Hajar Ziani 074,client,—,+212 613-917752,client074@example.com,Casablanca,0
+Reda Hamdaoui 075,client,—,+212 624-154591,client075@example.com,Fès,731
+Mehdi Benkirane 076,client,—,+212 628-275600,client076@example.com,Rabat,258
+Imane Sefiani 077,client,—,+212 661-338223,client077@example.com,Marrakech,0
+Yassine Hamdaoui 078,client,—,+212 661-755768,client078@example.com,Casablanca,0
+Reda Hamdaoui 079,client,—,+212 669-531877,client079@example.com,Casablanca,0
+Kawtar Sefiani 080,client,—,+212 647-831591,client080@example.com,Marrakech,0
+Imane Sefiani 081,client,—,+212 610-424977,client081@example.com,Casablanca,0
+Sara Sefiani 082,client,—,+212 605-993981,client082@example.com,Meknès,0
+Reda Hamdaoui 083,client,—,+212 624-011620,client083@example.com,Tanger,0
+Anas Ziani 084,client,—,+212 609-933890,client084@example.com,Rabat,0
+Kawtar Benkirane 085,client,—,+212 615-506788,client085@example.com,Tanger,295
+Hajar Ziani 086,client,—,+212 611-247693,client086@example.com,Agadir,0
+Adil Ziani 087,client,—,+212 618-844907,client087@example.com,Agadir,0
+Nisrine Hamdaoui 088,client,—,+212 665-332255,client088@example.com,Tanger,0
+Reda Benkirane 089,client,—,+212 667-693631,client089@example.com,Marrakech,129
+Imane Benkirane 090,client,—,+212 641-699768,client090@example.com,Rabat,590
+Mehdi Sefiani 091,client,—,+212 654-133483,client091@example.com,Casablanca,0
+Imane Ziani 092,client,—,+212 681-864079,client092@example.com,Rabat,0
+Mehdi Ziani 093,client,—,+212 669-490646,client093@example.com,Casablanca,0
+Yassine Hamdaoui 094,client,—,+212 682-456870,client094@example.com,Meknès,183
+Yassine Benkirane 095,client,—,+212 603-727823,client095@example.com,Meknès,0
+Hajar Sefiani 096,client,—,+212 681-518467,client096@example.com,Fès,0
+Mehdi Ziani 097,client,—,+212 615-092535,client097@example.com,Tanger,0
+Yassine Sefiani 098,client,—,+212 660-063880,client098@example.com,Tanger,0
+Reda Sefiani 099,client,—,+212 634-799956,client099@example.com,Fès,489
+Yassine Benkirane 100,client,—,+212 697-319157,client100@example.com,Fès,0
+Fournisseur Emballage 01,supplier,004020751549033,+212 526-913133,pro01@example.com,Casablanca,-6419
+Fournisseur Emballage 02,supplier,005738678898153,+212 510-820320,pro02@example.com,Casablanca,-3908
+Fournisseur Emballage 03,supplier,005948738877526,+212 591-428909,pro03@example.com,Casablanca,-5655
+Fournisseur Emballage 04,supplier,002666312802208,+212 569-649990,pro04@example.com,Casablanca,-1179
+Fournisseur Emballage 05,supplier,009265487917518,+212 545-423992,pro05@example.com,Casablanca,-5058
