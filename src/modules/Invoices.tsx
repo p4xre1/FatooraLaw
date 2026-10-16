@@ -545,7 +545,7 @@ export default function Invoices() {
     if (persist(next)) {
       setEditor(updated);
       setFeedback(t.paymentSaved);
-      log("updated invoice payment", updated.number, "invoices", "info");
+      log("updated invoice payment", updated.number || "", "invoices", "info");
     }
   };
   const setContact = (contactId: string) => {
