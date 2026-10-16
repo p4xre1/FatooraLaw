@@ -7,7 +7,7 @@ const day = 86_400_000
 const now = Date.now()
 
 const allModules: ModuleKey[] = [
-  "dashboard", "projects", "contacts", "procurement", "inventory", "delivery", "verification", "legal", "reports", "calendar", "risk", "tools", "team", "audit", "settings",
+  "dashboard", "invoices", "projects", "contacts", "procurement", "inventory", "delivery", "verification", "legal", "reports", "calendar", "risk", "tools", "team", "audit", "settings",
 ]
 export function perms(keys: ModuleKey[]): Record<ModuleKey, boolean> {
   return allModules.reduce((acc, m) => ({ ...acc, [m]: keys.includes(m) }), {} as Record<ModuleKey, boolean>)
@@ -103,7 +103,7 @@ export const seedContracts: Contract[] = [
 ]
 
 export const seedTeam: TeamMember[] = [
-  { id: "u1", name: "Karim Benjelloun", email: "karim@atlas.ma", role: "owner", active: true, permissions: perms(["dashboard", "projects", "contacts", "procurement", "inventory", "delivery", "verification", "legal", "reports", "calendar", "risk", "tools", "team", "audit", "settings"]) },
+  { id: "u1", name: "Karim Benjelloun", email: "karim@atlas.ma", role: "owner", active: true, permissions: perms(["dashboard", "invoices", "projects", "contacts", "procurement", "inventory", "delivery", "verification", "legal", "reports", "calendar", "risk", "tools", "team", "audit", "settings"]) },
   { id: "u2", name: "Salma Idrissi", email: "salma@atlas.ma", role: "accountant", active: true, permissions: perms(["dashboard", "procurement", "reports", "contacts", "verification"]) },
   { id: "u3", name: "Hamza Fassi", email: "hamza@atlas.ma", role: "supervisor", active: true, permissions: perms(["dashboard", "projects", "inventory", "delivery", "verification"]) },
   { id: "u4", name: "Nadia Alaoui", email: "nadia@atlas.ma", role: "assistant", active: false, permissions: perms(["dashboard", "contacts"]) },
