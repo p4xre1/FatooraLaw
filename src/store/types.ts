@@ -2,6 +2,7 @@ export type Role = "owner" | "accountant" | "supervisor" | "assistant"
 
 export type ModuleKey =
   | "dashboard"
+  | "invoices"
   | "projects"
   | "contacts"
   | "procurement"
