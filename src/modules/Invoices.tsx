@@ -7,6 +7,7 @@ import { useMizan } from "../store/useMizan";
 import { useTranslation } from "../lib/language/store";
 import { validateLogoDataURL, validateLogoFile } from "../lib/logoValidation";
 import type { Settings, Contact } from "../store/types";
+import { localizedLandingPath } from "../lib/routes";
 import {
   calculateInvoiceTotals, createInvoiceId, duplicateInvoiceAsDraft,
   invoicePaymentStatus, nextInvoiceNumber, validateInvoiceDraft,
@@ -32,7 +33,7 @@ type Copy = {
   templates: string; chooseTemplate: string; saveTemplate: string; templateName: string; saveTemplateConfirm: string;
   applyTemplate: string; deleteTemplate: string; saved: string; issueConfirm: string; missing: string;
   missingSeller: string; missingAddress: string; missingDate: string; missingBuyer: string; missingLines: string;
-  missingDescription: string; missingQuantity: string; missingPrice: string; missingVat: string; missingDueDate: string;
+  missingDescription: string; missingQuantity: string; missingPrice: string; missingVat: string; missingDueDate: string; missingDueBeforeIssue: string;
   draftSaved: string; issuedSuccess: string; paymentSaved: string; templateSaved: string; confirmDelete: string;
   localWarning: string; localDanger: string; corruptedWarning: string; readOnly: string; issueHelp: string;
   pdfHelp: string; legalNotice: string; disclaimer: string; localOnly: string; reviewTax: string;
@@ -65,7 +66,7 @@ const COPY: Record<"en" | "fr" | "ar", Copy> = {
     missing:"Please correct these items before issuing:", missingSeller:"Add the seller's business name.", missingAddress:"Add the seller's address.",
     missingDate:"Enter a valid issue date.", missingBuyer:"Add the customer's name.", missingLines:"Add at least one item.",
     missingDescription:"Enter a description for every line.", missingQuantity:"Each quantity must be greater than zero.",
-    missingPrice:"Prices must be zero or greater.", missingVat:"VAT must be between 0 and 100.", missingDueDate:"Enter a valid due date.",
+    missingPrice:"Prices must be zero or greater.", missingVat:"VAT must be between 0 and 100.", missingDueDate:"Enter a valid due date.", missingDueBeforeIssue:"The due date cannot be earlier than the issue date.",
     draftSaved:"Draft saved in this browser.", issuedSuccess:"Invoice issued and saved in this browser.", paymentSaved:"Payment details saved.",
     templateSaved:"Template saved.", confirmDelete:"Delete this draft? This cannot be undone.", localWarning:"Invoices and templates are stored in this browser for this account only. They do not sync to other devices and may be lost if browser data is cleared.",
     localDanger:"Download and securely keep the PDF and any records you must legally retain. Fatorati does not provide a 10-year legal archive in this version.",
@@ -104,7 +105,7 @@ const COPY: Record<"en" | "fr" | "ar", Copy> = {
     missing:"Veuillez corriger les points suivants avant l’émission :", missingSeller:"Renseignez la raison sociale du vendeur.", missingAddress:"Renseignez l’adresse du vendeur.",
     missingDate:"Saisissez une date d’émission valide.", missingBuyer:"Renseignez le nom du client.", missingLines:"Ajoutez au moins une ligne.",
     missingDescription:"Renseignez la désignation de chaque ligne.", missingQuantity:"Chaque quantité doit être supérieure à zéro.",
-    missingPrice:"Les prix doivent être positifs ou nuls.", missingVat:"La TVA doit être comprise entre 0 et 100.", missingDueDate:"Saisissez une échéance valide.",
+    missingPrice:"Les prix doivent être positifs ou nuls.", missingVat:"La TVA doit être comprise entre 0 et 100.", missingDueDate:"Saisissez une échéance valide.", missingDueBeforeIssue:"La date d’échéance ne peut pas précéder la date d’émission.",
     draftSaved:"Brouillon enregistré dans ce navigateur.", issuedSuccess:"Facture émise et enregistrée dans ce navigateur.", paymentSaved:"Paiement enregistré.",
     templateSaved:"Modèle enregistré.", confirmDelete:"Supprimer ce brouillon ? Cette action est irréversible.", localWarning:"Les factures et modèles sont enregistrés dans ce navigateur, pour ce compte uniquement. Ils ne sont pas synchronisés entre appareils et peuvent être perdus si les données du navigateur sont effacées.",
     localDanger:"Téléchargez et conservez en sécurité les PDF et documents soumis à une obligation légale. Cette version de Fatorati ne fournit pas d’archive juridique de dix ans.",
@@ -143,7 +144,7 @@ const COPY: Record<"en" | "fr" | "ar", Copy> = {
     missing:"يرجى تصحيح ما يلي قبل الإصدار:", missingSeller:"أدخل الاسم القانوني للبائع.", missingAddress:"أدخل عنوان البائع.",
     missingDate:"أدخل تاريخ إصدار صحيحاً.", missingBuyer:"أدخل اسم العميل.", missingLines:"أضف بنداً واحداً على الأقل.",
     missingDescription:"أدخل وصفاً لكل بند.", missingQuantity:"يجب أن تكون كل كمية أكبر من صفر.",
-    missingPrice:"يجب أن تكون الأسعار صفراً أو أكثر.", missingVat:"يجب أن تكون الضريبة بين 0 و100.", missingDueDate:"أدخل تاريخ استحقاق صحيحاً.",
+    missingPrice:"يجب أن تكون الأسعار صفراً أو أكثر.", missingVat:"يجب أن تكون الضريبة بين 0 و100.", missingDueDate:"أدخل تاريخ استحقاق صحيحاً.", missingDueBeforeIssue:"لا يمكن أن يكون تاريخ الاستحقاق قبل تاريخ الإصدار.",
     draftSaved:"تم حفظ المسودة في هذا المتصفح.", issuedSuccess:"تم إصدار الفاتورة وحفظها في هذا المتصفح.", paymentSaved:"تم حفظ بيانات الأداء.",
     templateSaved:"تم حفظ القالب.", confirmDelete:"هل تريد حذف هذه المسودة؟ لا يمكن التراجع عن ذلك.", localWarning:"تُحفظ الفواتير والقوالب في هذا المتصفح لهذا الحساب فقط. لا تتم مزامنتها بين الأجهزة وقد تضيع عند مسح بيانات المتصفح.",
     localDanger:"قم بتنزيل ملفات PDF والوثائق التي يجب الاحتفاظ بها قانونياً واحفظها بأمان. هذه النسخة من فاتورتي لا توفر أرشيفاً قانونياً لمدة عشر سنوات.",
@@ -467,6 +468,7 @@ export default function Invoices() {
       if (key.startsWith("linePrice:")) return t.missingPrice;
       if (key.startsWith("lineVat:")) return t.missingVat;
       if (key === "dueDate") return t.missingDueDate;
+      if (key === "dueDateBeforeIssue") return t.missingDueBeforeIssue;
       return key;
     });
     if (editor.amountPaid > totals.totalTTC) localizedErrors.push(t.amountPaid + " — " + t.totalTTC);
@@ -573,7 +575,7 @@ export default function Invoices() {
     seller={kind === "seller"} onChange={(patch) => updateParty(kind, patch)} />;
 
   return <div className="mz-view space-y-5" dir={dir}>
-    <style>{".invoice-print-root{break-inside:avoid;color:#0f172a!important;background:#fff!important}.invoice-theme-modern .invoice-seller-name{letter-spacing:-.04em;text-transform:uppercase}.invoice-theme-modern{border-radius:2px!important}.invoice-theme-friendly .invoice-seller-name{letter-spacing:0}.invoice-theme-friendly .invoice-print-root{font-family:Inter,Tajawal,sans-serif}@media print{@page{size:A4;margin:11mm}body *{visibility:hidden!important}.invoice-print-root,.invoice-print-root *{visibility:visible!important}.invoice-print-root{position:absolute!important;inset:0 auto auto 0!important;width:100%!important;max-width:none!important;margin:0!important;border:0!important;border-radius:0!important;box-shadow:none!important}.no-print{display:none!important}body{background:white!important}.invoice-print-root table{font-size:9pt!important}.invoice-print-root th,.invoice-print-root td{padding:5pt!important;break-inside:avoid}.invoice-print-root img{max-height:18mm!important}.invoice-print-root *{print-color-adjust:exact;-webkit-print-color-adjust:exact}}"} </style>
+    <style>{".invoice-print-root{break-inside:avoid;color:#0f172a!important;background:#fff!important}.invoice-theme-modern .invoice-seller-name{letter-spacing:-.04em;text-transform:uppercase}.invoice-theme-modern{border-radius:2px!important}.invoice-theme-friendly .invoice-seller-name{letter-spacing:0}.invoice-print-root.invoice-theme-friendly{font-family:Inter,Tajawal,sans-serif;border-radius:14px!important}@media print{@page{size:A4;margin:11mm}body *{visibility:hidden!important}.invoice-print-root,.invoice-print-root *{visibility:visible!important}.invoice-print-root{position:absolute!important;inset:0 auto auto 0!important;width:100%!important;max-width:none!important;margin:0!important;border:0!important;border-radius:0!important;box-shadow:none!important}.no-print{display:none!important}body{background:white!important}.invoice-print-root table{font-size:9pt!important}.invoice-print-root th,.invoice-print-root td{padding:5pt!important;break-inside:avoid}.invoice-print-root img{max-height:18mm!important}.invoice-print-root *{print-color-adjust:exact;-webkit-print-color-adjust:exact}}"} </style>
     {!editor ? <>
       <div className="no-print flex flex-wrap items-start justify-between gap-3">
         <div><div className="text-xs font-bold uppercase tracking-widest text-brand">Fatorati · {t.localOnly}</div><h1 className="mt-1 text-2xl font-bold text-ink">{t.title}</h1><p className="mt-1 max-w-2xl text-sm text-muted">{t.subtitle}</p></div>
@@ -727,7 +729,14 @@ export default function Invoices() {
         </aside>
       </div>
     </>}
-    <div className="no-print text-[11px] leading-4 text-muted">{t.noLegalApproval}. {t.localWarning}</div>
+    <div className="no-print space-y-2 text-[11px] leading-4 text-muted">
+      <p>{t.noLegalApproval}. {t.localWarning}</p>
+      <div className="flex flex-wrap gap-x-3 gap-y-1">
+        <a className="underline underline-offset-2 hover:text-brand" href={localizedLandingPath("terms", language)}>{language === "ar" ? "شروط الاستخدام" : language === "fr" ? "Conditions d’utilisation" : "Terms of Service"}</a>
+        <a className="underline underline-offset-2 hover:text-brand" href={localizedLandingPath("privacy", language)}>{language === "ar" ? "سياسة الخصوصية" : language === "fr" ? "Politique de confidentialité" : "Privacy Policy"}</a>
+        <a className="underline underline-offset-2 hover:text-brand" href={localizedLandingPath("cookies", language)}>{language === "ar" ? "سياسة ملفات تعريف الارتباط" : language === "fr" ? "Politique relative aux cookies" : "Cookie Policy"}</a>
+      </div>
+    </div>
   </div>;
 }
 
