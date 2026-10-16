@@ -37,13 +37,8 @@ import { useMizan } from "../store/useMizan"
  * explicit `rtl:` counterpart.
  */
 
-/**
- * There is no `/invoices` route yet (see docs/FEATURES_AND_TOOLS.md §11: no
- * invoicing module exists). Flip this when it ships and the "Factures" rail
- * item starts opening it; nothing else changes. There is deliberately no
- * primary/quick-actions button in the rail while it is off — the owner
- * asked for it gone, and the top bar keeps the same shortcuts.
- */
+/** Invoices are enabled as a first-class module; the existing plan table grants
+ * access on FREE and the app router now mounts the dedicated invoice screen. */
 const INVOICE_ROUTE_ENABLED = true
 
 /**
@@ -191,7 +186,7 @@ export default function Sidebar({
 
   const label = (key: ModuleKey) => copy.shared.modules[key] ?? key
 
-  /** A rail row: a real module, or the invoice placeholder when it ships. */
+  /** A permission- and plan-aware row in the navigation rail. */
   type Item = {
     id: string
     href: string
@@ -226,9 +221,7 @@ export default function Sidebar({
   const buildItems = (keys: ModuleKey[]): Item[] =>
     rows(keys).filter((item) => matches(item.moduleKey!, item.label))
 
-  // The invoice placeholder is never locked: facturation is in FREE (see
-  // lib/plans), so when `/invoices` ships it opens for everyone.
-  // Invoices is now a first-class module, so normal role, search and plan rules apply.
+  // Invoices is a first-class module; normal role, search and plan rules apply.
   // The ordering keeps it immediately inside the Day to day group.
   const daily = buildItems(["dashboard", "invoices", "contacts", "procurement", "calendar"])
   const management = buildItems(["projects", "inventory", "delivery", "verification", "reports"])
