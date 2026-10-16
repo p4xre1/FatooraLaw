@@ -34,6 +34,30 @@ maintained older releases. The reporting targets remain acknowledgement within
   They cannot protect financial data stored on a device from someone with
   devtools or access to that browser profile.
 
+### Support access to customer accounts
+
+`supabase/migrations/20261020_support_account_lookup.sql` (also in the fresh
+schema) gives every account a shareable reference — `profiles.account_ref`,
+format `FT-XXXX-XXXX` — so a client can ask for help without sending an email
+address, a password or a document. The boundary is deliberate:
+
+- The reference is an **identifier, not an authenticator**. It is readable by
+  its owner, writable by nobody (`update (name)` is the only grant on
+  `profiles`), self-service rotatable, and it grants no access to anything.
+  Possessing one is not evidence of owning the account.
+- `support_lookup_account()` returns a **masked** view and is restricted to
+  `platform_admins`, rate limited to 30 resolutions per minute per operator.
+- `support_reveal_account_email()` is the only path to a full address and
+  additionally requires MFA (AAL2), matching activation-key issuance.
+- Both write `admin_audit_events` **before** returning, so a resolution that
+  produced data is always recorded. Anything that changes an account remains a
+  separate, separately gated operation; a lookup cannot alter state.
+- Ownership is verified by replying to the address on file, never to the
+  address in a ticket. Tickets filed by signed-out visitors have no account to
+  resolve and are reported as such.
+
+Full operator procedure: [docs/SUPPORT_ACCESS.md](docs/SUPPORT_ACCESS.md).
+
 ### Required database patch
 
 Apply `supabase/migrations/20261012_harden_profile_permissions.sql` to an

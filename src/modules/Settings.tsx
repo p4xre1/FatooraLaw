@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { Save, Upload, Download, Building2, Percent, FileText, HardDrive, Check, Sun, Moon, Monitor, Palette, Cloud, RefreshCw } from "lucide-react"
+import { Save, Upload, Download, Building2, Percent, FileText, HardDrive, Check, Sun, Moon, Monitor, Palette, Cloud, RefreshCw, Copy } from "lucide-react"
 import type { Settings as SettingsT } from "../store/types"
 import { accountStorageKey, useMizan } from "../store/useMizan"
 import { exportCurrentBackup, exportLegacyBackup, hasLegacyData } from "../lib/legacyBackup"
@@ -12,7 +12,7 @@ import { useTranslation } from "../lib/language/store"
 import { Card, SectionTitle, Btn, Field, Input, Textarea, Select } from "../components/kit"
 import { PlanActivationCard } from "../components/PlanStatus"
 import { THEME_MODES, useThemeStore, type ThemeMode } from "../lib/theme"
-import { supabase } from "../lib/supabase"
+import { isSupabaseConfigured, supabase } from "../lib/supabase"
 import { SUPPORT_EMAIL } from "../lib/contact"
 
 export default function Settings() {
@@ -36,6 +36,10 @@ export default function Settings() {
   const [eraseWorkspace, setEraseWorkspace] = useState(false)
   const [deletionMessage, setDeletionMessage] = useState("")
   const [deletingAccount, setDeletingAccount] = useState(false)
+  /** The shareable support reference; empty when there is no real session. */
+  const [accountRef, setAccountRef] = useState("")
+  const [refNotice, setRefNotice] = useState("")
+  const [refBusy, setRefBusy] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const readerRef = useRef<FileReader | null>(null)
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -54,6 +58,57 @@ export default function Settings() {
     cancelLogoRead()
     if (savedTimer.current !== null) clearTimeout(savedTimer.current)
   }, [])
+
+  // The support reference is a server object, not a device preference: a build
+  // without Supabase, or a visitor on the dev-only local workspace, simply has
+  // none and the card stays out of the way rather than showing a fake value.
+  useEffect(() => {
+    if (!isSupabaseConfigured) return
+    let active = true
+    void (async () => {
+      try {
+        const { data } = await supabase.auth.getUser()
+        if (!data.user) return
+        const { data: row } = await supabase.from("profiles").select("account_ref").eq("id", data.user.id).maybeSingle()
+        const value = (row as { account_ref?: string } | null)?.account_ref
+        if (active && value) setAccountRef(value)
+      } catch {
+        // Nothing to show; the rest of the help card still works.
+      }
+    })()
+    return () => { active = false }
+  }, [])
+
+  async function copyAccountRef() {
+    setRefNotice("")
+    const copiedLabel = language === "fr" ? "Copié" : language === "ar" ? "تم النسخ" : "Copied"
+    try {
+      await navigator.clipboard.writeText(accountRef)
+      setRefNotice(copiedLabel)
+    } catch {
+      setRefNotice(language === "fr" ? "Copie refusée par le navigateur. Sélectionnez le code et copiez-le manuellement." : language === "ar" ? "منع المتصفح النسخ التلقائي. حدّد المعرّف وانسخه يدوياً." : "The browser refused to copy. Select the code and copy it manually.")
+    }
+    window.setTimeout(() => setRefNotice(""), 2500)
+  }
+
+  // A reference that leaked into a public thread is worth retiring. It is
+  // self-service, changes no access, and needs no support ticket.
+  async function rotateAccountRef() {
+    const confirmText = language === "fr" ? "Générer une nouvelle référence ? L'ancienne cessera de fonctionner et les messages où elle apparaît ne permettront plus d'ouvrir votre compte." : language === "ar" ? "إنشاء معرّف جديد؟ سيتوقف المعرّف القديم عن العمل، ولن تسمح الرسائل التي يظهر فيها بالوصول إلى حسابك." : "Generate a new reference? The old one will stop working, and messages containing it will no longer open your account."
+    if (!window.confirm(confirmText)) return
+    setRefBusy(true)
+    setRefNotice("")
+    try {
+      const { data, error } = await supabase.rpc("rotate_account_ref")
+      if (error) throw error
+      if (typeof data === "string") setAccountRef(data)
+      setRefNotice(language === "fr" ? "Nouvelle référence générée" : language === "ar" ? "تم إنشاء معرّف جديد" : "New reference generated")
+    } catch (error) {
+      setRefNotice(error instanceof Error ? error.message : "—")
+    } finally {
+      setRefBusy(false)
+    }
+  }
 
   function clearFeedback() {
     setSaved(false)
@@ -300,7 +355,29 @@ export default function Settings() {
         </Card>
         <Card className="mt-4 p-5">
           <h2 className="text-[14px] font-bold text-ink">{language === "fr" ? "Aide et assistance" : language === "ar" ? "المساعدة والدعم" : "Help and support"}</h2>
-          <p className="mt-2 text-[12px] text-muted">{language === "fr" ? "Écrivez à notre équipe d’assistance :" : language === "ar" ? "راسل فريق الدعم:" : "Email our support team:"}</p>
+
+          {/* The one thing a client needs to send. It identifies their account
+              without exposing anything: no address, no password, no document. */}
+          <div className="mt-3 rounded-lg border border-line bg-canvas/50 p-3">
+            <p className="text-[12px] font-bold text-ink">{language === "fr" ? "Votre référence de compte" : language === "ar" ? "معرّف حسابك" : "Your account reference"}</p>
+            <p className="mt-1 text-[11.5px] leading-relaxed text-muted">{language === "fr"
+              ? "Un problème ? Envoyez-nous ce code avec la description du problème. Il nous permet de retrouver votre compte sans que vous ayez à communiquer votre adresse e-mail, votre mot de passe ou un document. Ne partagez jamais votre mot de passe, même avec nous."
+              : language === "ar" ? "واجهت مشكلة؟ أرسل لنا هذا المعرّف مع وصف المشكلة. يمكّننا من الوصول إلى حسابك دون أن ترسل بريدك الإلكتروني أو كلمة المرور أو أي وثيقة. لا تشارك كلمة المرور مع أي أحد، ولا معنا."
+              : "Having a problem? Send us this code with a description of the issue. It lets us find your account without you sharing your email address, password or any document. Never share your password — not even with us."}</p>
+            {accountRef ? <>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <code dir="ltr" className="rounded-md border border-line bg-surface px-2.5 py-1 font-mono text-[13px] font-bold tracking-wider text-ink">{accountRef}</code>
+                <Btn variant="outline" size="sm" onClick={() => void copyAccountRef()}><Copy className="h-3.5 w-3.5" /> {language === "fr" ? "Copier" : language === "ar" ? "نسخ" : "Copy"}</Btn>
+                <button type="button" disabled={refBusy} onClick={() => void rotateAccountRef()} className="text-[11px] font-semibold text-muted underline hover:text-ink disabled:opacity-50">{language === "fr" ? "Générer une nouvelle référence" : language === "ar" ? "إنشاء معرّف جديد" : "Generate a new reference"}</button>
+              </div>
+              {refNotice && <p role="status" className="mt-1.5 text-[11px] text-muted">{refNotice}</p>}
+            </> : <p className="mt-2 text-[11.5px] text-faint">{language === "fr"
+              ? "Disponible une fois connecté avec un compte Supabase configuré."
+              : language === "ar" ? "يظهر بعد تسجيل الدخول بحساب مرتبط بقاعدة البيانات."
+              : "Appears once you are signed in with a configured Supabase account."}</p>}
+          </div>
+
+          <p className="mt-3 text-[12px] text-muted">{language === "fr" ? "Écrivez à notre équipe d’assistance :" : language === "ar" ? "راسل فريق الدعم:" : "Email our support team:"}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <a className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-[#25D366] px-3.5 py-2 text-[12px] font-bold text-white shadow-sm transition hover:bg-[#1fbd5b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366] focus-visible:ring-offset-2" href="https://wa.me/212772966980" target="_blank" rel="noopener noreferrer" aria-label={language === "fr" ? "Contacter l’assistance sur WhatsApp au +212 772 966 980" : language === "ar" ? "تواصل مع الدعم عبر واتساب على الرقم +212 772 966 980" : "Contact support on WhatsApp at +212 772 966 980"}>
               <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 fill-current"><path d="M20.52 3.48A11.86 11.86 0 0 0 12.07 0C5.5 0 .15 5.34.15 11.92c0 2.1.55 4.15 1.6 5.96L0 24l6.28-1.65a11.9 11.9 0 0 0 5.78 1.47h.01c6.57 0 11.92-5.35 11.93-11.92a11.85 11.85 0 0 0-3.48-8.42ZM12.07 21.8a9.9 9.9 0 0 1-5.04-1.38l-.36-.21-3.73.98 1-3.64-.24-.37a9.88 9.88 0 0 1-1.52-5.26c0-5.46 4.44-9.9 9.9-9.9a9.84 9.84 0 0 1 7 2.9 9.84 9.84 0 0 1 2.9 7c0 5.46-4.45 9.9-9.91 9.9Zm5.43-7.42c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.27-.47-2.42-1.5-.9-.8-1.5-1.78-1.68-2.08-.17-.3-.02-.46.13-.61.14-.13.3-.35.45-.52.15-.18.2-.3.3-.5.1-.2.05-.38-.02-.53-.08-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.5h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.87 1.22 3.07c.15.2 2.1 3.2 5.08 4.49.71.3 1.26.49 1.7.62.71.23 1.36.2 1.87.12.57-.08 1.77-.72 2.02-1.42.25-.7.25-1.3.18-1.42-.08-.12-.28-.2-.58-.35Z" /></svg>
