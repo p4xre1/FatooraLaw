@@ -1,0 +1,133 @@
+FATORATI.TECH — MOROCCAN INVOICING LEGAL AND PRODUCT SPECIFICATION
+Research snapshot: 16 October 2026
+Scope: legal research leads and product requirements, not a legal opinion. Confirm the current law and tax regime with a Moroccan accountant/lawyer before production use.
+
+1. PRODUCT SUMMARY
+Build a Moroccan-market invoice creator for freelancers, artisans and small businesses. Allow users to create and save drafts, issue invoices with a date and identifier, add buyer/seller details, enter dynamic line items and different VAT rates, calculate HT/tax/TTC, track payment status, customize the colour/theme/logo, save reusable templates, preview A4 and print/export to PDF.
+
+Do not claim DGI certification, tax clearance, electronic-invoice transmission, or certified-accounting status. A PDF creator alone does not establish compliance.
+
+Current implementation target:
+- A first-class Invoices module under the signed-in app's Day-to-day group.
+- French, English and Arabic (RTL).
+- Three layouts: Standard, Modern and Friendly; custom accent colour and logo upload.
+- Seller/client information and itemized lines; configurable per-line tax; totals; due date and payment tracking.
+- Drafts editable/deletable; issued invoice particulars locked. Duplicate issued invoices into new drafts. Do not silently edit or erase an issued invoice.
+- Browser print dialog with Save as PDF.
+- Current data is browser localStorage keyed by app account identifier. No sync/cloud archive in this MVP. Sequence numbering is browser-local and may collide across devices; don't represent it as a central tax sequence.
+
+2. MAIN MOROCCAN LEGAL SOURCES TO CHECK
+This is a focused review of relevant frameworks, not “all laws”. Official sources should be treated as authoritative over blogs.
+
+A) Code Général des Impôts (CGI), especially Article 145 and provisions on invoice particulars / ICE
+Official Ministry of Economy and Finance CGI/publications:
+https://www.finances.gov.ma/fr/lbc/Pages/publications0.aspx
+The applicable year's CGI is the source to verify invoice particulars. Depending on the taxpayer/transaction, fields can include seller identity/name, address, ICE, IF (tax ID), RC, tax/professional identifiers, date and invoice identifier, buyer identity, description, quantities, prices, taxable base, tax rate/amount, HT and TTC totals, payment terms, and special or exemption language where legally required.
+Product implications:
+- Support the seller’s legal name, legal form, address/city, ICE, IF, RC and RC city; TP/patente and CNSS if applicable.
+- Support buyer details, line description, unit, quantity, unit price HT, tax rate, tax amount, total HT/TTC, due date, payment terms and references.
+- Do not claim every field applies to every taxpayer; exact compulsory particulars depend on the current tax regime and transaction.
+- VAT rates vary; rates in the UI are selection aids, not advice. 0% is not by itself an exemption reason. Let each line use its appropriate rate, including special treatment only after the user confirms it.
+
+B) Electronic invoicing under CGI Article 145-IX and implementing rules
+Official tax sources to check:
+https://www.finances.gov.ma/fr/lbc/Pages/publications0.aspx
+Secondary commentary reviewed as of 12 October 2026 reported that the practical DGI system/timetable and implementing decree still needed official confirmation. This must be rechecked in the Bulletin Officiel and current DGI notices; do not treat a blog as authority.
+Secondary context:
+https://la-caisse.ma/fr/blog/facturation-electronique-maroc/
+https://deadline.ma/conseils/systemes-erp-crm/facturation-electronique-dgi-maroc-2026
+Product implications: no invented DGI QR, signature, clearance stamp, authorization, or transmission. Build an official integration only after official rules, technical specifications, onboarding and launch dates are published and reviewed.
+
+C) Commercial/accounting records and retention
+Official Ministry legal texts:
+https://www.finances.gov.ma/fr/Pages/textes-juridiques.aspx
+Confirm current Code de commerce/accounting/tax retention obligations, scope, start date and exceptions with counsel/accountant. Ten-year retention is often cited for Moroccan commercial/accounting records, but do not assume one period covers every taxpayer/document.
+Product implications: browser localStorage is not a statutory archive. Tell users to export and securely retain required records. A future server archive needs access control, backups, export, audit history, retention policy and legal-hold handling, not just a database table. Issued invoices should be immutable; use lawful correction/credit-note workflows as applicable.
+
+D) Law 09-08 and CNDP
+Official Law 09-08 text:
+https://www.cndp.ma/images/lois/Loi-09-08-Fr.pdf
+CNDP formalities guidance:
+https://www.cndp.ma/conditions/
+Invoice data can contain personal names, phones, emails, addresses, client relationships, item details, prices and payment references.
+Product implications: state purposes, collect only needed data, define retention/access/security, implement deletion and privacy-request processes, and assess CNDP notification/authorization and cross-border transfer requirements before server storage or third-party processing. Don't promise “no server data” without auditing authentication, support, logs, analytics and integrations. Local invoice storage does not mean the separate authentication service holds no personal data.
+
+E) Law 53-05 and electronic exchanges
+It forms part of the Moroccan framework for electronic exchanges and certain electronic writings/signatures, as amended by subsequent legal texts. A printed PDF is not automatically a qualified electronic signature, certified original, or proof of delivery/acceptance.
+Product implications: describe exactly what the app does — renders/prints data supplied by a user. Review qualified signatures, evidence and delivery providers separately before adding them.
+
+F) Law 31-08 on consumer protection
+Relevant to Fatorati's own consumer-facing terms and commercial claims. Do not mislead users about compliance or confuse statutory rights with the platform's voluntary subscription refund guarantee. It does not certify invoices.
+
+G) Law 69-21 on payment deadlines
+Official texts index:
+https://www.finances.gov.ma/fr/Pages/textes-juridiques.aspx
+Ministry notice:
+https://www.finances.gov.ma/fr/pages/detail-actualite.aspx?fiche=7218
+Payment-deadline requirements and thresholds depend on circumstances. A default 30-day term is editable convenience, not a universal rule.
+Product implications: let users choose issue/due dates and terms; don't say every Moroccan invoice must be paid in a fixed time.
+
+3. COMPETITOR / MARKET PATTERNS REVIEWED
+- FactureGo Morocco invoice guide: https://facturego.ma/creation-facture-maroc
+- ComptaBee product: https://comptabee.ma/
+- YanCommerce product: https://yancommerce.com/
+- Bravico invoice visuals used only as a layout reference; do not copy brand assets or proprietary design.
+Common invoice-generator patterns: seller logo and legal info, invoice number/date, billed customer, itemized table, qty/unit price/tax/line total, separate HT/tax/TTC summary, payment terms, due date, notes/footer, template styling, draft/status lists, customer prefill, duplicate, and print/PDF. More advanced tools may include multiple VAT rates, payment/receivables tracking, direct PDF downloads, custom branding and correction documents. Confirm current availability of third-party features from each vendor before marketing comparisons.
+
+4. FATORATI BRAND / UI DIRECTION
+The repo uses Fatorati blues (#2563eb, artwork hues #3a88ea and #2b68bf), semantic Tailwind 4 tokens, Inter for Latin, Sora display, and Arabic RTL/Tajawal support. Reuse the current UI design tokens and card/table patterns.
+- Clean, professional SaaS style; responsive mobile-first layout.
+- Three meaningful themes, not merely different labels.
+- Custom accent colour with contrast; validated logo image (max 512 KB using existing validator).
+- Live preview, A4 print styles, readable table, correct page breaks and Arabic font/direction.
+- Accessible form labels, keyboard focus, long-name wrapping, errors and save confirmations.
+- Print hides controls; PDF should be selectable text, not a screenshot.
+
+5. MODEL AND BUSINESS RULES
+Seller fields: legal name, legal form, address, city/country, phone/email, ICE, IF, RC/RC city, TP/patente and CNSS where applicable; logo; optional payment/bank info, notes/footer.
+Buyer fields: legal/person name, address, city/country, phone/email and ICE/IF/RC where applicable.
+Invoice: identifier, issue date, due date, subject/reference, currency, line rows (description, unit, qty, HT unit price, VAT percentage), VAT summary by rate, HT subtotal, total tax, TTC total, amount paid, remaining balance, payment date/reference, terms and special tax text where applicable.
+Calculations: line HT = quantity × unit price; calculate rounded tax by line rate; group tax by rate; HT = sum bases; TTC = HT + tax; outstanding = max(0, TTC − amount paid). Test rounding edge cases. Validate non-negative amounts, positive quantity, valid tax range, valid dates, and due date not before issue date.
+Numbering: FAC-YYYY-NNNN is a UI convenience only. The current browser-local approach is not globally unique. Before multi-device/business-wide use, issue numbers using a backend transaction, tenant scoping, locking and a unique database constraint.
+Payment tracking is bookkeeping metadata, not a payment processor, escrow or guarantee of customer payment. No currency conversion unless it uses a displayed rate source/date.
+Template data: name, theme, colour, logo, default tax rate, terms and footer; do not carry over a previous buyer, prior payment or final invoice number.
+PDF export uses browser “Save as PDF” currently; direct downloadable files and robust file names may be future improvements.
+
+6. POLICY ADDITIONS
+Terms of Service:
+- User controls accuracy, required tax particulars, rates, invoice numbering and legal retention.
+- Tax choices are not advice; app does not submit to DGI or certify compliance.
+- Exported PDF reflects user input and is not independently verified.
+- Issued particulars are locked; corrections require an appropriate separate document.
+- Do not imply the app collects customer payments or guarantees settlement.
+- Subscription refunds concern Fatorati purchases only, and are separate from invoices created by customers. Mandatory legal rights remain.
+Privacy Policy:
+- Disclose the invoice/customer fields entered, browser-local storage, access risks, no cross-device sync/remote backup in this version and user control over PDF downloads/sharing.
+- Explain browser data-clearing or device loss may permanently erase these documents; Fatorati cannot recover unsynced records.
+- Distinguish invoice localStorage from separately processed authentication, support, website and analytics data.
+Cookie Policy:
+- localStorage is browser storage, not itself an advertising cookie. Say invoices/templates may persist on the device and can be removed by clearing site/browser storage. Cookie consent isn't an invoice backup.
+Refund Policy:
+- Fatorati subscription refunds are distinct from users' customer invoices. Subscription guarantees cover only eligible Fatorati purchases under its refund policy; mandatory statutory rights apply.
+- Support may not restore data that was never synced or backed up.
+All legal page additions should be linked, translated consistently into EN/FR/AR, dated, and reviewed by a Moroccan legal/accounting professional before publication.
+
+7. CURRENT MVP LIMITS / LAUNCH CHECKLIST
+- Local browser only; not synchronized and not a legal archive.
+- Local number sequence can collide on other devices; don't position as shared/team fiscal numbering.
+- Browser print PDF has no qualified signature, DGI transmission, tax QR or clearance.
+- User must verify rates/mandatory particulars and preserve legal records separately.
+- Test multi-page A4 print, long strings, Arabic RTL, Chrome/Firefox/Safari, quantity/rounding, mixed VAT rates, duplicate/issued lock, payment edit, templates, logo validator, user isolation, corrupted/full localStorage, and legal links across locales.
+- Run typecheck/lint/tests/production build in CI before merge; do not deploy until review and checks pass.
+
+8. OFFICIAL SOURCES / REFERENCE LINKS
+Ministry CGI/publications: https://www.finances.gov.ma/fr/lbc/Pages/publications0.aspx
+Ministry legal texts: https://www.finances.gov.ma/fr/Pages/textes-juridiques.aspx
+Law 69-21 notice: https://www.finances.gov.ma/fr/pages/detail-actualite.aspx?fiche=7218
+CNDP Law 09-08: https://www.cndp.ma/images/lois/Loi-09-08-Fr.pdf
+CNDP processing formalities: https://www.cndp.ma/conditions/
+Market example: https://facturego.ma/creation-facture-maroc
+Electronic invoicing commentary (secondary; verify against Gazette): https://la-caisse.ma/fr/blog/facturation-electronique-maroc/
+More e-invoicing commentary (secondary): https://deadline.ma/conseils/systemes-erp-crm/facturation-electronique-dgi-maroc-2026
+
+Legal notice: This is a focused product-requirements document, not exhaustive legal research or individualized tax advice. Verify Official Gazette, current-year CGI, CNDP formalities and specific sector/tax regime before relying on any invoice as compliant.
