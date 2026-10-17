@@ -374,3 +374,11 @@ body {
   .invoice-paper { break-inside: avoid; }
   @page { size: A4; margin: 12mm; }
 }
+
+/* QR codes (MFA enrollment): a scanner reads dark modules on a light quiet
+   zone, so this surface stays white in BOTH themes — the one deliberate
+   light-only exception, unlike the admin surfaces kept semantic by
+   tests/adminDarkMode.test.tsx. */
+.qr-scan {
+  background: #fff;
+}

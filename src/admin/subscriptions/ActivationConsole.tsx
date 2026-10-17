@@ -30,6 +30,7 @@ import { Check, Copy, KeyRound, MessageCircle, ShieldAlert, ShieldCheck } from "
 import { useSubscriptions } from "../../store/useSubscriptions"
 import { SUBSCRIPTION_SOURCES, type SubscriptionRecord, type SubscriptionSource } from "../../lib/subscriptionLedger"
 import { activationKeyHash, codeForSerial, randomActivationKey, randomSerial } from "../../lib/planCodes"
+import { formatSetupKey, isUsableSetupKey, normalizeSetupKey, qrImageDataUrl, secretFromUri } from "../lib/totpEnrollment"
 import { isSupabaseConfigured, supabase } from "../../lib/supabase"
 import type { PlanPeriod } from "../../lib/plans"
 
@@ -208,15 +209,34 @@ function ReadinessBanner({ readiness, onRecheck }: { readiness: IssuanceReadines
 
 /* --------------------------- admin MFA enrollment ------------------------ */
 
-/** TOTP enrollment + challenge. `onChanged` lets the console re-probe readiness. */
+/**
+ * TOTP enrollment + challenge for the AAL2 panel. `onChanged` lets the console
+ * re-probe readiness once the session reaches AAL2.
+ *
+ * The factor can be added to an authenticator app two ways, both made reliable
+ * here: the QR image (GoTrue sends raw SVG markup — it is turned into a
+ * browser-safe data URL) and the manual setup key (shown in groups of four with
+ * one click that copies the whole key; a partial copy is what Google
+ * Authenticator reports as "the key value is too short").
+ */
 function AdminMfaPanel({ onChanged }: { onChanged?: () => void }) {
   const [aal2, setAal2] = useState(false)
   const [factorId, setFactorId] = useState<string | null>(null)
   const [qr, setQr] = useState<string | null>(null)
   const [secret, setSecret] = useState<string | null>(null)
+  const [uri, setUri] = useState<string | null>(null)
   const [code, setCode] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  /** An unverified factor holds no recoverable setup key once the page reloads. */
+  async function dropPendingFactors(): Promise<void> {
+    const { data: factors } = await supabase.auth.mfa.listFactors()
+    for (const factor of factors?.totp ?? []) {
+      if (factor.status !== "verified") await supabase.auth.mfa.unenroll({ factorId: factor.id })
+    }
+  }
 
   async function refresh() {
     try {
@@ -228,7 +248,15 @@ function AdminMfaPanel({ onChanged }: { onChanged?: () => void }) {
       setAal2(assurance?.currentLevel === "aal2")
       const verified = factors?.totp.find((factor) => factor.status === "verified")
       const pending = factors?.totp.find((factor) => factor.status !== "verified")
-      setFactorId(verified?.id ?? pending?.id ?? null)
+      if (pending && !verified && !factorId) {
+        // Without the enroll response there is no key left to show or scan, and
+        // the code box would sit with nothing to enter: clear the leftover and
+        // offer the setup button again instead.
+        await supabase.auth.mfa.unenroll({ factorId: pending.id })
+        setFactorId(null)
+      } else {
+        setFactorId(verified?.id ?? pending?.id ?? null)
+      }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "تعذر التحقق من المصادقة متعددة العوامل.")
     }
@@ -238,11 +266,41 @@ function AdminMfaPanel({ onChanged }: { onChanged?: () => void }) {
   async function enroll() {
     setBusy(true); setError(null)
     try {
+      // GoTrue refuses a second factor with the same friendly name until the
+      // unverified one expires (~5 minutes): clear leftovers first so a retry
+      // works immediately.
+      await dropPendingFactors()
       const { data, error: enrollError } = await supabase.auth.mfa.enroll({ factorType: "totp", friendlyName: "Fatorati CMS" })
       if (enrollError) throw enrollError
-      setFactorId(data.id); setQr(data.totp.qr_code); setSecret(data.totp.secret)
-    } catch (reason) { setError(reason instanceof Error ? reason.message : "تعذر إعداد المصادقة متعددة العوامل.") }
-    finally { setBusy(false) }
+      const totp = data?.totp
+      // The `secret` field and the otpauth URI carry the same key and the QR
+      // encodes the URI: prefer the field, fall back to the URI when the field
+      // is empty or unusable, refuse only when neither yields a usable key.
+      const fromField = normalizeSetupKey(totp?.secret ?? "")
+      const setupKey = isUsableSetupKey(fromField) ? fromField : normalizeSetupKey(secretFromUri(totp?.uri ?? ""))
+      if (!data?.id || !totp?.qr_code || !isUsableSetupKey(setupKey)) {
+        // Never show a key the authenticator app would reject as too short —
+        // say so here and let the owner start over.
+        throw new Error("أعاد الخادم مفتاح إعداد غير صالح أو ناقص. اضغط «إعداد تطبيق المصادقة» مرة أخرى.")
+      }
+      setFactorId(data.id)
+      setQr(totp.qr_code)
+      setSecret(setupKey)
+      setUri(totp.uri ?? null)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "تعذر إعداد المصادقة متعددة العوامل.")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function copySecret() {
+    if (!secret) return
+    try {
+      // The whole key, ungrouped: a partial copy is what the app calls "too short".
+      await navigator.clipboard.writeText(normalizeSetupKey(secret))
+      setCopied(true)
+    } catch { /* clipboard unavailable: the key is on screen to copy by hand */ }
   }
 
   async function verify() {
@@ -251,7 +309,7 @@ function AdminMfaPanel({ onChanged }: { onChanged?: () => void }) {
     try {
       const { error: verifyError } = await supabase.auth.mfa.challengeAndVerify({ factorId, code: code.trim() })
       if (verifyError) throw verifyError
-      setQr(null); setSecret(null); setCode("")
+      setQr(null); setSecret(null); setUri(null); setCode(""); setCopied(false)
       await refresh()
       // The session just reached AAL2: the builder can issue now, so let the
       // console re-probe instead of leaving a stale "MFA required" banner.
@@ -267,9 +325,27 @@ function AdminMfaPanel({ onChanged }: { onChanged?: () => void }) {
         <h2 className="text-sm font-bold">{aal2 ? "المصادقة متعددة العوامل مفعّلة لهذه الجلسة" : "يلزم إكمال المصادقة متعددة العوامل"}</h2>
         <p className="mt-1 text-xs leading-relaxed text-muted">إنشاء مفاتيح التفعيل وعرضها وإلغاؤها محمي بمستوى MFA من الخادم (AAL2). لا تدخل رمزك إلا بعد ربط تطبيق مصادقة موثوق.</p>
         {!aal2 && !factorId && <button type="button" disabled={busy} onClick={() => void enroll()} className="mt-3 rounded-lg bg-ink px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{busy ? "جارٍ الإعداد…" : "إعداد تطبيق المصادقة"}</button>}
-        {!aal2 && qr && <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border bg-surface p-3">
-          <img alt="رمز QR للمصادقة متعددة العوامل" className="h-36 w-36" src={`data:image/svg+xml;utf-8,${encodeURIComponent(qr)}`} />
-          <div className="min-w-56 flex-1"><p className="text-xs font-semibold">امسح الرمز بتطبيق المصادقة أو أدخل السر يدوياً:</p><code dir="ltr" className="mt-1 block break-all rounded bg-slate-100 p-2 text-xs">{secret}</code></div>
+        {!aal2 && qr && secret && <div className="mt-3 rounded-lg border bg-surface p-3">
+          <div className="flex flex-wrap items-start gap-3">
+            {/* The white quiet zone (`.qr-scan`, kept white in both themes):
+                scanners fail on edge-to-edge art or dark surroundings. */}
+            <div className="qr-scan shrink-0 rounded-md p-2">
+              <img alt="رمز QR للمصادقة متعددة العوامل" className="h-44 w-44" src={qrImageDataUrl(qr)} />
+            </div>
+            <div className="min-w-56 flex-1">
+              <p className="text-xs font-semibold">امسح الرمز بتطبيق المصادقة (مثل Google Authenticator)، أو أدخل المفتاح يدوياً:</p>
+              <code dir="ltr" className="mt-1 block break-all rounded bg-slate-100 p-2 text-xs">{formatSetupKey(secret)}</code>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <button type="button" onClick={() => void copySecret()} className="inline-flex items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-3 py-1.5 text-xs font-semibold hover:bg-canvas">
+                  {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />} {copied ? "تم نسخ المفتاح" : "نسخ المفتاح كاملاً"}
+                </button>
+                {uri && uri.startsWith("otpauth://") && (
+                  <a href={uri} className="rounded-lg border border-line-strong bg-surface px-3 py-1.5 text-xs font-semibold hover:bg-canvas">إضافة مباشرة إلى تطبيق المصادقة</a>
+                )}
+              </div>
+              <p className="mt-2 text-[11px] leading-relaxed text-muted">المفتاح مكوّن من {normalizeSetupKey(secret).length} حرفاً. انسخه كاملاً دفعة واحدة — المفتاح الناقص يرفضه التطبيق برسالة «المفتاح قصير جداً».</p>
+            </div>
+          </div>
         </div>}
         {!aal2 && factorId && <div className="mt-3 flex flex-wrap gap-2"><input aria-label="رمز تطبيق المصادقة" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} className="w-44 rounded-lg border bg-surface px-3 py-2 text-sm tracking-[0.25em]" placeholder="000000" /><button type="button" disabled={busy || code.length !== 6} onClick={() => void verify()} className="rounded-lg bg-brand px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{busy ? "جارٍ التحقق…" : "تأكيد الرمز"}</button></div>}
         {error && <p role="alert" className="mt-2 text-xs text-rose-700">{error}</p>}
