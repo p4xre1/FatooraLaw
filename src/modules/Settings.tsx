@@ -17,6 +17,7 @@ import { storagePurchaseLink } from "../lib/cloudStorage"
 import { usePlan } from "../store/usePlan"
 import ContactImportPanel from "../components/ContactImportPanel"
 import { SUPPORT_EMAIL } from "../lib/contact"
+import { copyText } from "../lib/copyText"
 
 export default function Settings() {
   const { t: copy, language } = useTranslation()
@@ -93,12 +94,8 @@ export default function Settings() {
   async function copyAccountRef() {
     setRefNotice("")
     const copiedLabel = language === "fr" ? "Copié" : language === "ar" ? "تم النسخ" : "Copied"
-    try {
-      await navigator.clipboard.writeText(accountRef)
-      setRefNotice(copiedLabel)
-    } catch {
-      setRefNotice(language === "fr" ? "Copie refusée par le navigateur. Sélectionnez le code et copiez-le manuellement." : language === "ar" ? "منع المتصفح النسخ التلقائي. حدّد المعرّف وانسخه يدوياً." : "The browser refused to copy. Select the code and copy it manually.")
-    }
+    const manualLabel = language === "fr" ? "Copie refusée par le navigateur. Sélectionnez le code et copiez-le manuellement." : language === "ar" ? "منع المتصفح النسخ التلقائي. حدّد المعرّف وانسخه يدوياً." : "The browser refused to copy. Select the code and copy it manually."
+    setRefNotice(await copyText(accountRef) ? copiedLabel : manualLabel)
     window.setTimeout(() => setRefNotice(""), 2500)
   }
 

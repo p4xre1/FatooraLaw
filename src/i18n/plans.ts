@@ -81,6 +81,8 @@ const en = {
   /** The module toolbar and the dashboard strip. */
   unlockToUse: (module: string, plan: string) => `${module} needs the ${plan} plan`,
   dashboardTitle: "Plan & modules",
+  /** The × that hides a buy/upgrade message. */
+  dismiss: "Hide this message",
 }
 
 /** One copy shape for the three languages; a missing key is a compile error. */
@@ -150,6 +152,8 @@ const fr: PlansCopy = {
 
   unlockToUse: (module, plan) => `${module} nécessite le plan ${plan}`,
   dashboardTitle: "Plan & modules",
+  /** The × that hides a buy/upgrade message. */
+  dismiss: "Masquer ce message",
 }
 
 const ar: PlansCopy = {
@@ -216,6 +220,8 @@ const ar: PlansCopy = {
 
   unlockToUse: (module, plan) => `${module} تحتاج خطة ${plan}`,
   dashboardTitle: "الخطة والوحدات",
+  /** The × that hides a buy/upgrade message. */
+  dismiss: "إخفاء هذه الرسالة",
 }
 
 export const plans = { ar, en, fr }

@@ -30,6 +30,7 @@ import { useState } from "react"
 import { Link, Navigate, Outlet, useOutletContext } from "react-router"
 import { Check, Copy, DatabaseZap, KeyRound, ShieldAlert } from "lucide-react"
 import { Btn } from "../components/kit"
+import { copyText } from "../lib/copyText"
 import type { AdminAccess } from "./lib/adminAuth"
 
 export default function PlatformAdminRoute() {
@@ -45,13 +46,9 @@ export default function PlatformAdminRoute() {
   const statement = `insert into public.platform_admins (user_id)\nselect id from auth.users where email = ${emailLiteral}\non conflict do nothing;`
 
   async function copyStatement() {
-    try {
-      await navigator.clipboard.writeText(statement)
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 2500)
-    } catch {
-      setCopied(false)
-    }
+    const ok = await copyText(statement)
+    setCopied(ok)
+    if (ok) window.setTimeout(() => setCopied(false), 2500)
   }
 
   return (

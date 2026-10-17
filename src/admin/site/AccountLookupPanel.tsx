@@ -19,6 +19,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { AlertTriangle, BadgeCheck, Copy, Loader2, Mail, Search, ShieldAlert } from "lucide-react"
 import { Badge, Btn, Card, Field, Input } from "../../components/kit"
 import { FormAlert } from "../../modules/auth/components/FormAlert"
+import { copyText } from "../../lib/copyText"
 import {
   currentSessionHasMfa,
   lookupSupportAccount,
@@ -88,11 +89,11 @@ export default function AccountLookupPanel({ requestId }: { requestId: string | 
   }
 
   async function copy(value: string) {
-    try {
-      await navigator.clipboard?.writeText(value)
+    const ok = await copyText(value)
+    if (ok) {
       setCopied(value)
       window.setTimeout(() => setCopied(""), 2000)
-    } catch {
+    } else {
       setError("تعذّر النسخ تلقائياً. حدّد المعرّف يدوياً وانسخه.")
     }
   }
