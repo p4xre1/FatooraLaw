@@ -66,14 +66,14 @@ export const PLANS: Record<PlanCode, Plan> = {
   },
   pro: {
     code: "pro",
-    monthlyPrice: 199,
-    yearlyPrice: 1990,
+    monthlyPrice: 79,
+    yearlyPrice: 790,
     modules: PLAN_MODULE_ORDER.filter((module) => !ADVANCED_MODULES.includes(module)),
   },
   boost: {
     code: "boost",
-    monthlyPrice: 499,
-    yearlyPrice: 4990,
+    monthlyPrice: 250,
+    yearlyPrice: 2500,
     modules: PLAN_MODULE_ORDER,
   },
 }

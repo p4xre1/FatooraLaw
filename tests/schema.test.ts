@@ -193,11 +193,16 @@ describe("CMS access control", () => {
     await db.exec(siteOperations)
   })
 
-  it("isolates opt-in business backup snapshots by authenticated account", async () => {
+  it("keeps legacy snapshots isolated but blocks new database payloads", async () => {
     await db.exec(businessBackupMirror)
-    await db.exec(businessBackupMirror) // applying the migration twice must stay safe
+    await db.exec(businessBackupMirror) // historical migration followed by latest hardening
+    await db.exec(sql("migrations/20261022_paid_cloud_storage.sql"))
+    // A pre-migration snapshot fixture, inserted by the trusted database owner.
+    await db.exec(`alter table public.business_backup_mirrors disable trigger validate_cloud_mirror_metadata;
+      insert into public.business_backup_mirrors(user_id,device_id,snapshot) values ('${user}','44444444-4444-4444-8444-444444444444','{"contacts":[{"name":"Private client"}]}'::jsonb);
+      alter table public.business_backup_mirrors enable trigger validate_cloud_mirror_metadata;`)
     await asUser(user, async () => {
-      await db.exec(`insert into public.business_backup_mirrors(user_id,device_id,snapshot) values ('${user}','44444444-4444-4444-8444-444444444444','{"contacts":[{"name":"Private client"}]}'::jsonb);`)
+      await expect(db.exec(`insert into public.business_backup_mirrors(user_id,device_id,snapshot) values ('${user}',gen_random_uuid(),'{}'::jsonb)`)).rejects.toThrow()
       const { rows } = await db.query("select user_id::text, snapshot from public.business_backup_mirrors")
       expect(rows).toHaveLength(1)
       await expect(db.exec(`insert into public.business_backup_mirrors(user_id,device_id,snapshot) values ('${admin}','55555555-5555-4555-8555-555555555555','{}'::jsonb)`)).rejects.toThrow()
@@ -367,4 +372,16 @@ it("hardens an existing CMS installation, including pre-existing column grants",
     await expect(db.exec(`update public.profiles set is_admin = true where id = '${user}'`)).rejects.toThrow()
     await db.exec(`update public.profiles set name = 'Still editable' where id = '${user}'`)
   })
+})
+
+it("keeps the new monthly prices in fresh schemas and upgrades existing catalogs idempotently", async () => {
+  const prices = async () => (await db.query<{ code: string; monthly_price: string }>(
+    "select code::text,monthly_price::text from public.plan_catalog where code::text in ('pro','boost','business') order by code::text",
+  )).rows.map((row) => ({ code: row.code, monthly: Number(row.monthly_price) }))
+  const expected = [{ code: "boost", monthly: 250 }, { code: "business", monthly: 250 }, { code: "pro", monthly: 79 }]
+  expect(await prices()).toEqual(expected)
+  await db.exec("update public.plan_catalog set monthly_price=case when code::text='pro' then 199 else 499 end where code::text in ('pro','boost','business')")
+  await db.exec(sql("migrations/20261023_plan_prices.sql"))
+  await db.exec(sql("migrations/20261023_plan_prices.sql"))
+  expect(await prices()).toEqual(expected)
 })

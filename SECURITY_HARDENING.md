@@ -1,4 +1,8 @@
-# Military-Grade Security Hardening Applied
+# Historical browser hardening (not server protection)
+
+> This is a historical task summary, not a security certification. Browser
+> obfuscation/input checks are not server access control. See
+> [the current server security runbook](docs/SERVER_SECURITY.md).
 
 Interpretation of request (`militerry` + `injactions input` + `resrve engenirin`):
 - **Military-grade / high-security** protections

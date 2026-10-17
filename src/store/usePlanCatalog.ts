@@ -57,6 +57,30 @@ export const usePlanCatalog = create<State>()(
     }),
     {
       name: "fatorati.plan-catalog.v1",
+      version: 1,
+      // Old catalogs persisted the shipped defaults as if they were overrides.
+      // Upgrade only those values; retain intentional custom prices and copy.
+      migrate: (persisted) => {
+        const state = persisted as Partial<State> | undefined
+        const catalog = state?.catalog ?? defaultCatalog()
+        const defaults = defaultCatalog()
+        return {
+          ...state,
+          catalog: {
+            ...catalog,
+            prices: {
+              pro: {
+                monthly: catalog.prices?.pro?.monthly === 199 ? defaults.prices.pro.monthly : catalog.prices?.pro?.monthly ?? defaults.prices.pro.monthly,
+                yearly: catalog.prices?.pro?.yearly === 1990 ? defaults.prices.pro.yearly : catalog.prices?.pro?.yearly ?? defaults.prices.pro.yearly,
+              },
+              boost: {
+                monthly: catalog.prices?.boost?.monthly === 499 ? defaults.prices.boost.monthly : catalog.prices?.boost?.monthly ?? defaults.prices.boost.monthly,
+                yearly: catalog.prices?.boost?.yearly === 4990 ? defaults.prices.boost.yearly : catalog.prices?.boost?.yearly ?? defaults.prices.boost.yearly,
+              },
+            },
+          },
+        }
+      },
       storage: createJSONStorage(() => localStorage),
     },
   ),

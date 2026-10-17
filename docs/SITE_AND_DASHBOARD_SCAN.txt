@@ -238,7 +238,7 @@ The component reads its PAGE and its LANGUAGE from the URL:
     compliant, pilot from your pocket, work as a team).
  7) PRICING (function PricingSection)
     - three plans with prices read from the same copy the JSON-LD uses:
-      Essentiel 0 MAD, Pro 199 MAD / month, Équipe 499 MAD / month
+      Essentiel 0 MAD, Pro 79 MAD / month, Équipe 250 MAD / month
     - choosing a plan leads to sign-up (no payment provider is integrated)
  8) ONE-TIME PRODUCTS (function OneTimeProductsSection)
     Products published in the CMS with a price and an EXTERNAL purchase URL.

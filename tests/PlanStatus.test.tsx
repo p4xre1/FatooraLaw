@@ -115,8 +115,8 @@ describe("the black plan cards", () => {
 
   it("defaults to the year and shows what the year saves", () => {
     render(<PlanLock module="tools" onNavigate={vi.fn()} />)
-    // 12 × 199 − 1 990 = 398 MAD saved on PRO, computed not invented.
-    expect(screen.getByText(plans.saveYear(MAD(398)))).toBeTruthy()
+    // 12 × 79 − 790 = 158 MAD saved on PRO, computed not invented.
+    expect(screen.getByText(plans.saveYear(MAD(158)))).toBeTruthy()
     expect(screen.getAllByText(plans.twoMonthsFree).length).toBeGreaterThan(0)
     // The monthly toggle still prices by the month.
     fireEvent.click(screen.getByRole("button", { name: plans.period["1M"] }))

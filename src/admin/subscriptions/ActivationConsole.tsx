@@ -219,7 +219,7 @@ function ReadinessBanner({ readiness, onRecheck }: { readiness: IssuanceReadines
  * one click that copies the whole key; a partial copy is what Google
  * Authenticator reports as "the key value is too short").
  */
-function AdminMfaPanel({ onChanged }: { onChanged?: () => void }) {
+export function AdminMfaPanel({ onChanged }: { onChanged?: () => void }) {
   const [aal2, setAal2] = useState(false)
   const [factorId, setFactorId] = useState<string | null>(null)
   const [qr, setQr] = useState<string | null>(null)
@@ -323,7 +323,7 @@ function AdminMfaPanel({ onChanged }: { onChanged?: () => void }) {
       {aal2 ? <ShieldCheck className="mt-0.5 h-5 w-5 text-emerald-700" /> : <ShieldAlert className="mt-0.5 h-5 w-5 text-amber-700" />}
       <div className="min-w-0 flex-1">
         <h2 className="text-sm font-bold">{aal2 ? "المصادقة متعددة العوامل مفعّلة لهذه الجلسة" : "يلزم إكمال المصادقة متعددة العوامل"}</h2>
-        <p className="mt-1 text-xs leading-relaxed text-muted">إنشاء مفاتيح التفعيل وعرضها وإلغاؤها محمي بمستوى MFA من الخادم (AAL2). لا تدخل رمزك إلا بعد ربط تطبيق مصادقة موثوق.</p>
+        <p className="mt-1 text-xs leading-relaxed text-muted">مفاتيح التفعيل وتغيير صلاحيات الإدارة وبيانات الاشتراكات محمية بتحقق MFA من الخادم (AAL2). لا تدخل رمزك إلا بعد ربط تطبيق مصادقة موثوق.</p>
         {!aal2 && !factorId && <button type="button" disabled={busy} onClick={() => void enroll()} className="mt-3 rounded-lg bg-ink px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{busy ? "جارٍ الإعداد…" : "إعداد تطبيق المصادقة"}</button>}
         {!aal2 && qr && secret && <div className="mt-3 rounded-lg border bg-surface p-3">
           <div className="flex flex-wrap items-start gap-3">

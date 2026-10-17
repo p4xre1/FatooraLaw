@@ -128,7 +128,7 @@ export function toExcel(rows: Record<string, unknown>[], filename = "export.xls"
 }
 
 /** Parse records, not individual lines: quoted fields may contain newlines. */
-export function parseCSV(text: string): string[][] {
+export function parseCSV(text: string, delimiter: "," | ";" = ","): string[][] {
   const source = text.replace(/^\uFEFF/, "")
   if (!source) return []
   const rows: string[][] = []
@@ -143,7 +143,7 @@ export function parseCSV(text: string): string[][] {
       recordStarted = true
       if (quoted && source[i + 1] === '"') { field += '"'; i++ }
       else quoted = !quoted
-    } else if (ch === "," && !quoted) {
+    } else if (ch === delimiter && !quoted) {
       row.push(field)
       field = ""
       recordStarted = true

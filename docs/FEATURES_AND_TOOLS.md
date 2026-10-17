@@ -986,8 +986,8 @@ than abstract features:
 | Risques, Coffre juridique, Abonnements & Outils (« Plus d'outils ») | — | — | ✅ |
 
 *Factures has no route yet (`INVOICE_ROUTE_ENABLED` is off); the entitlement is
-already in FREE so the module is covered the day it ships. Prices: PRO 199 MAD/mo
-(1 990/yr), BOOST 499 MAD/mo (4 990/yr), in `PLANS` — the one place prices live.
+already in FREE so the module is covered the day it ships. Prices: PRO 79 MAD/mo
+(790/yr), BOOST 250 MAD/mo (2 500/yr), in `PLANS` — the one place prices live.
 
 **How it presents.** The plan is a second filter after the role's permissions.
 A locked module stays visible in the rail with a 🔒 and a tooltip naming the plan

@@ -127,6 +127,7 @@ export default function PlanLock({ module, onNavigate }: { module: PlanModule; o
                 {paragraphs.value}
               </p>
               <p className="relative mt-2 text-[12.5px] leading-relaxed text-white/55">{paragraphs.tagline}</p>
+              {code !== "free" && <p className="relative mt-2 text-[12px] leading-relaxed text-white/65">{t.cloudNote}</p>}
 
               <div className="relative mt-4">
                 {price === null ? (
