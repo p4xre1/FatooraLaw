@@ -93,7 +93,7 @@ const FR: RefCopy = {
   ],
   priceTitle: "Que coûte Fatorati, et que ne fait-il pas ?",
   priceBody:
-    "Trois formules, publiées en dirhams : Essentiel à 0 MAD pour commencer, Pro à 199 MAD par mois, Équipe à 499 MAD par mois. On peut changer de formule ou s'arrêter. Fatorati ne produit pas une liasse fiscale, ne télé-déclare pas à la DGI et ne se substitue pas à un conseil. Les montants du tableau de bord illustré (1 720 MAD, +12 %) sont un aperçu de démonstration, pas une statistique.",
+    "Trois formules, publiées en dirhams : Essentiel à 0 MAD pour commencer, Pro à 79 MAD par mois, Équipe à 250 MAD par mois. On peut changer de formule ou s'arrêter. Fatorati ne produit pas une liasse fiscale, ne télé-déclare pas à la DGI et ne se substitue pas à un conseil. Les montants du tableau de bord illustré (1 720 MAD, +12 %) sont un aperçu de démonstration, pas une statistique.",
   tableCaption: "Repères chiffrés cités sur cette page",
   cols: ["Repère", "Valeur", "Source"],
   rows: [
@@ -101,7 +101,7 @@ const FR: RefCopy = {
     { label: "Pénalité, TVA hors délai", value: "20 %", source: "CGI, art. 208", url: SOURCES.cgi.url },
     { label: "Pénalité + majoration, 1er mois (cas général)", value: "10 % + 5 %", source: "CGI, art. 208", url: SOURCES.cgi.url },
     { label: "Loi 09-08", value: "18 février 2009, BO n° 5714", source: "CNDP", url: SOURCES.cndp.url },
-    { label: "Fatorati Essentiel / Pro / Équipe", value: "0 / 199 / 499 MAD", source: "Page Tarifs", url: "/pricing" },
+    { label: "Fatorati Essentiel / Pro / Équipe", value: "0 / 79 / 250 MAD", source: "Page Tarifs", url: "/pricing" },
   ],
   sourcesTitle: "Sources",
   notAdvice: "Ces extraits aident à citer le bon texte. Ils ne sont pas un conseil fiscal ou juridique personnalisé.",
@@ -158,7 +158,7 @@ const EN: RefCopy = {
   ],
   priceTitle: "What does Fatorati cost, and what does it not do?",
   priceBody:
-    "Three plans, published in dirhams: Essential at MAD 0 to start, Pro at MAD 199 per month, Team at MAD 499 per month. You can change plan or stop. Fatorati does not produce a tax return, does not file with the DGI, and does not replace advice. The illustrated dashboard figures (MAD 1,720, +12%) are a demo preview, not a statistic.",
+    "Three plans, published in dirhams: Essential at MAD 0 to start, Pro at MAD 79 per month, Team at MAD 250 per month. You can change plan or stop. Fatorati does not produce a tax return, does not file with the DGI, and does not replace advice. The illustrated dashboard figures (MAD 1,720, +12%) are a demo preview, not a statistic.",
   tableCaption: "Figures cited on this page",
   cols: ["Figure", "Value", "Source"],
   rows: [
@@ -166,7 +166,7 @@ const EN: RefCopy = {
     { label: "Penalty, late VAT", value: "20%", source: "CGI, art. 208", url: SOURCES.cgi.url },
     { label: "Penalty + surcharge, first month (general case)", value: "10% + 5%", source: "CGI, art. 208", url: SOURCES.cgi.url },
     { label: "Law 09-08", value: "18 February 2009, BO No. 5714", source: "CNDP", url: SOURCES.cndp.url },
-    { label: "Fatorati Essential / Pro / Team", value: "MAD 0 / 199 / 499", source: "Pricing page", url: "/pricing" },
+    { label: "Fatorati Essential / Pro / Team", value: "MAD 0 / 79 / 250", source: "Pricing page", url: "/pricing" },
   ],
   sourcesTitle: "Sources",
   notAdvice: "These extracts help you cite the right text. They are not personal tax or legal advice.",
@@ -223,7 +223,7 @@ const AR: RefCopy = {
   ],
   priceTitle: "بكم تكلف فاتورتي، وما الذي لا تفعله؟",
   priceBody:
-    "ثلاث خطط منشورة بالدرهم: الأساسي بـ 0 درهم للبدء، برو بـ 199 درهماً في الشهر، والفريق بـ 499 درهماً في الشهر. يمكن تغيير الخطة أو التوقف. لا تُنتج فاتورتي إقراراً جبائياً ولا تُودعه لدى المديرية العامة للضرائب ولا تحل محل استشارة. أرقام اللوحة التوضيحية (1 720 درهماً، +12٪) مثال للعرض وليست إحصائية.",
+    "ثلاث خطط منشورة بالدرهم: الأساسي بـ 0 درهم للبدء، برو بـ 79 درهماً في الشهر، والفريق بـ 250 درهماً في الشهر. يمكن تغيير الخطة أو التوقف. لا تُنتج فاتورتي إقراراً جبائياً ولا تُودعه لدى المديرية العامة للضرائب ولا تحل محل استشارة. أرقام اللوحة التوضيحية (1 720 درهماً، +12٪) مثال للعرض وليست إحصائية.",
   tableCaption: "أرقام مُستشهد بها في هذه الصفحة",
   cols: ["المرجع", "القيمة", "المصدر"],
   rows: [
@@ -231,7 +231,7 @@ const AR: RefCopy = {
     { label: "ذعيرة الضريبة خارج الأجل", value: "20٪", source: "المادة 208", url: SOURCES.cgi.url },
     { label: "ذعيرة + زيادة، الشهر الأول (الحالة العامة)", value: "10٪ + 5٪", source: "المادة 208", url: SOURCES.cgi.url },
     { label: "القانون 09-08", value: "18 فبراير 2009، ج.ر. 5714", source: "اللجنة الوطنية", url: SOURCES.cndp.url },
-    { label: "فاتورتي أساسي / برو / فريق", value: "0 / 199 / 499 درهماً", source: "صفحة الأسعار", url: "/pricing" },
+    { label: "فاتورتي أساسي / برو / فريق", value: "0 / 79 / 250 درهماً", source: "صفحة الأسعار", url: "/pricing" },
   ],
   sourcesTitle: "المصادر",
   notAdvice: "هذه المقتطفات تساعد على الاستشهاد بالنص الصحيح. ليست استشارة جبائية أو قانونية خاصة.",
@@ -266,7 +266,7 @@ const LEADS: Record<RefLang, Record<string, PageLead>> = {
     pricing: {
       eyebrow: "Tarifs",
       title: "Combien coûte Fatorati ?",
-      lead: "Essentiel est à 0 MAD pour commencer, sans carte bancaire. Pro est à 199 MAD par mois et Équipe à 499 MAD par mois. Les prix sont en dirhams, publiés sur cette page, et la formule se change ou s'arrête sans engagement caché.",
+      lead: "Essentiel est à 0 MAD pour commencer, sans carte bancaire. Pro est à 79 MAD par mois et Équipe à 250 MAD par mois. Les prix sont en dirhams, publiés sur cette page, et la formule se change ou s'arrête sans engagement caché.",
     },
     blog: {
       eyebrow: "Ressources",
@@ -323,7 +323,7 @@ const LEADS: Record<RefLang, Record<string, PageLead>> = {
     pricing: {
       eyebrow: "Pricing",
       title: "How much does Fatorati cost?",
-      lead: "Essential is MAD 0 to start, with no card. Pro is MAD 199 per month and Team is MAD 499 per month. Prices are in dirhams, published on this page, and the plan can be changed or stopped with no hidden term.",
+      lead: "Essential is MAD 0 to start, with no card. Pro is MAD 79 per month and Team is MAD 250 per month. Prices are in dirhams, published on this page, and the plan can be changed or stopped with no hidden term.",
     },
     blog: {
       eyebrow: "Resources",
@@ -380,7 +380,7 @@ const LEADS: Record<RefLang, Record<string, PageLead>> = {
     pricing: {
       eyebrow: "الأسعار",
       title: "بكم تكلف فاتورتي؟",
-      lead: "الأساسي بـ 0 درهم للبدء، دون بطاقة بنكية. برو بـ 199 درهماً في الشهر والفريق بـ 499 درهماً في الشهر. الأسعار بالدرهم، منشورة في هذه الصفحة، ويمكن تغيير الخطة أو إيقافها دون التزام خفي.",
+      lead: "الأساسي بـ 0 درهم للبدء، دون بطاقة بنكية. برو بـ 79 درهماً في الشهر والفريق بـ 250 درهماً في الشهر. الأسعار بالدرهم، منشورة في هذه الصفحة، ويمكن تغيير الخطة أو إيقافها دون التزام خفي.",
     },
     blog: {
       eyebrow: "الموارد",

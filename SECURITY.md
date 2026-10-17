@@ -72,6 +72,17 @@ privilege escalation that already occurred. Use a trusted SQL operator or
 server-only service role for administrator provisioning. Never expose a
 service-role key through the browser or a `VITE_*` variable.
 
+## Server hardening rollout
+
+Apply `supabase/migrations/20261024_server_security.sql` after the existing
+migrations. It adds server ingestion budgets, same-tenant relationship checks,
+MFA for admin-role/billing changes and protection against forged purchase/audit rows.
+The matching Admin → Security page exposes MFA enrollment/verification.
+These changes are **not live until applied**. Auth CAPTCHA, Auth rate limits,
+OAuth redirects, infrastructure protection, monitoring and credential hygiene
+still require deployment configuration. See [the server security runbook](docs/SERVER_SECURITY.md)
+for exact boundaries, limits, manual steps and verification.
+
 ## Browser hardening
 
 - Cloudflare Pages headers in `public/_headers` specify CSP, HSTS,
@@ -105,9 +116,10 @@ service-role key through the browser or a `VITE_*` variable.
   expenses, stock, contracts, subscriptions, team, settings and audit entries
   are partitioned in browser `localStorage` by Supabase user ID. This is not
   encryption or a device access boundary. An owner may explicitly opt in to a
-  second Supabase mirror from Settings; it is RLS-protected per authenticated
-  user and browser/device, but stored as readable JSONB (not end-to-end
-  encrypted). It is a backup copy, not live cross-device sync or a restore path.
+  second Supabase mirror from Settings on an active PRO/BOOST plan; new
+  backups are private File Storage JSON files, with RLS and server-enforced
+  account/project quotas. Legacy JSONB mirrors are retained for recovery.
+  Neither format is end-to-end encrypted. It is a backup copy, not live cross-device sync or a restore path.
   The mirror includes business contact/financial data; no auth session, ad
   platform credentials, tokens or passwords are included.
 - Logout removes private records from active memory but keeps the account's

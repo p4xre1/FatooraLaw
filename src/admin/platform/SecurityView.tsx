@@ -5,6 +5,8 @@ import { Badge, Btn, Card, Input, SectionTitle, Table, Td, Th } from "../../comp
 import { FormAlert } from "../../modules/auth/components/FormAlert"
 import { useOutletContext } from "react-router"
 import type { AdminAccess } from "../lib/adminAuth"
+import { AdminMfaPanel } from "../subscriptions/ActivationConsole"
+import { isSupabaseConfigured } from "../../lib/supabase"
 import { listAccessAccounts, listAdminAuditEvents, updateAccessRole, type AccessAccount, type AdminAuditEvent } from "./client"
 
 export default function SecurityView() {
@@ -58,6 +60,8 @@ export default function SecurityView() {
   return (
     <div className="mz-view space-y-6">
       <SectionTitle title="الأمان والصلاحيات" sub="إدارة مشغلي المنصة ومحرري المحتوى بشكل منفصل ومراجعة سجل الإجراءات." />
+      {isSupabaseConfigured && <AdminMfaPanel onChanged={() => { void refresh() }} />}
+      <p className="text-[12px] text-muted">منح صلاحيات المشغل أو المحرر وإلغاؤها يتطلب التحقق الثنائي MFA (AAL2). يتحقق الخادم من مستوى الجلسة، وليس من هذه الشاشة فقط.</p>
       {error && <FormAlert kind="error">{error}</FormAlert>}
       {notice && <div role="status" className="rounded-lg border border-good/20 bg-good-50 px-4 py-3 text-[13px] text-emerald-800">{notice}</div>}
 

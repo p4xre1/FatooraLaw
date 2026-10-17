@@ -328,8 +328,8 @@ create table if not exists public.plan_catalog (
 insert into public.plan_catalog (code, name, monthly_price, max_users, max_contacts, max_projects, max_storage_mb, features)
 values
   ('starter', 'Starter', 0, 1, 100, 10, 250, '{"reports": false, "audit": false}'::jsonb),
-  ('pro', 'Pro', 199, 5, 1000, 100, 2048, '{"reports": true, "audit": true}'::jsonb),
-  ('business', 'Business', 499, 20, 5000, 500, 10240, '{"reports": true, "audit": true, "priority_support": true}'::jsonb),
+  ('pro', 'Pro', 79, 5, 1000, 100, 2048, '{"reports": true, "audit": true}'::jsonb),
+  ('business', 'Business', 250, 20, 5000, 500, 10240, '{"reports": true, "audit": true, "priority_support": true}'::jsonb),
   ('enterprise', 'Enterprise', 0, 1000, 100000, 10000, 102400, '{"reports": true, "audit": true, "priority_support": true, "custom_limits": true}'::jsonb)
 on conflict (code) do update set
   name = excluded.name,
@@ -744,10 +744,10 @@ create table if not exists public.plan_catalog (
 insert into public.plan_catalog(code,name,monthly_price,max_users,max_contacts,max_projects,max_storage_mb,features)
 values
   ('starter','Starter',0,1,100,10,250,'{"reports":false,"audit":false}'::jsonb),
-  ('pro','Pro',199,5,1000,100,2048,'{"reports":true,"audit":true}'::jsonb),
-  ('business','Business',499,20,5000,500,10240,'{"reports":true,"audit":true,"priority_support":true}'::jsonb),
+  ('pro','Pro',79,5,1000,100,2048,'{"reports":true,"audit":true}'::jsonb),
+  ('business','Business',250,20,5000,500,10240,'{"reports":true,"audit":true,"priority_support":true}'::jsonb),
   ('enterprise','Enterprise',0,1000,100000,10000,102400,'{"reports":true,"audit":true,"priority_support":true,"custom_limits":true}'::jsonb),
-  ('boost','BOOST',499,20,5000,500,10240,'{"reports":true,"audit":true,"priority_support":true}'::jsonb)
+  ('boost','BOOST',250,20,5000,500,10240,'{"reports":true,"audit":true,"priority_support":true}'::jsonb)
 on conflict (code) do nothing;
 
 create table if not exists public.account_subscriptions (
@@ -2946,3 +2946,441 @@ from public.mcp_connections;
 
 grant select on public.mcp_connection_status to authenticated;
 grant select on public.mcp_connection_status to service_role;
+-- Paid, opt-in backups use File Storage, NOT the 500 MB Postgres database.
+-- Decimal units match the product allowance: 100 MB = 100,000,000 bytes.
+begin;
+create table if not exists public.cloud_storage_config (
+  id boolean primary key default true check (id),
+  capacity_bytes bigint not null default 900000000 check (capacity_bytes >= 0),
+  used_bytes bigint not null default 0 check (used_bytes >= 0),
+  object_count integer not null default 0 check (object_count >= 0),
+  addons_enabled boolean not null default false
+);
+insert into public.cloud_storage_config(id) values (true) on conflict do nothing;
+create table if not exists public.cloud_storage_accounts (
+  user_id uuid primary key, -- retained until Storage API cleanup, even after auth deletion
+  used_bytes bigint not null default 0 check (used_bytes >= 0),
+  object_count integer not null default 0 check (object_count >= 0),
+  extra_gb integer not null default 0 check (extra_gb between 0 and 1000),
+  extra_expires_at timestamptz
+);
+alter table public.cloud_storage_config enable row level security;
+alter table public.cloud_storage_accounts enable row level security;
+revoke all on public.cloud_storage_config, public.cloud_storage_accounts from public, anon, authenticated;
+-- Only trusted SQL / service_role may provision paid add-ons or change capacity.
+grant all on public.cloud_storage_config, public.cloud_storage_accounts to service_role;
+
+create or replace function public.has_paid_cloud(p_user uuid)
+returns boolean language sql stable security definer set search_path = public, pg_catalog as $$
+  select exists (select 1 from public.account_subscriptions s
+    join public.profiles p on p.id = s.user_id
+    where s.user_id = p_user and s.plan::text in ('pro','boost')
+      and s.status::text = 'active' and s.current_period_end > now()
+      and p.deletion_requested_at is null);
+$$;
+revoke all on function public.has_paid_cloud(uuid) from public, anon;
+grant execute on function public.has_paid_cloud(uuid) to authenticated;
+
+create or replace function public.cloud_storage_status()
+returns jsonb language sql stable security definer set search_path = public, pg_catalog as $$
+  select jsonb_build_object(
+    'allowed', public.has_paid_cloud(auth.uid()),
+    'limit_bytes', case when public.has_paid_cloud(auth.uid()) then 100000000::bigint +
+      case when c.addons_enabled and a.extra_expires_at > now() then coalesce(a.extra_gb,0)::bigint * 1000000000 else 0 end else 0 end,
+    'used_bytes', coalesce(a.used_bytes,0),
+    'capacity_bytes', c.capacity_bytes, 'project_used_bytes', c.used_bytes,
+    'addons_enabled', c.addons_enabled)
+  from public.cloud_storage_config c left join public.cloud_storage_accounts a on a.user_id = auth.uid()
+  where c.id and auth.uid() is not null;
+$$;
+revoke all on function public.cloud_storage_status() from public, anon;
+grant execute on function public.cloud_storage_status() to authenticated;
+
+-- Storage API writes metadata.size from the actual uploaded object. Clients
+-- cannot write storage.objects through PostgREST. Do not grant them SQL access.
+-- A single locked counter serializes ALL backup writes, including overwrites,
+-- so concurrent devices/accounts cannot exceed either quota.
+create or replace function public.enforce_cloud_storage_quota()
+returns trigger language plpgsql security definer set search_path = public, pg_catalog as $$
+declare
+  cfg public.cloud_storage_config%rowtype;
+  acct public.cloud_storage_accounts%rowtype;
+  uid uuid;
+  old_size bigint := 0;
+  new_size bigint := 0;
+  allowance bigint;
+  count_delta integer := 0;
+begin
+  if TG_OP = 'UPDATE' and (old.bucket_id = 'business-backups' or new.bucket_id = 'business-backups')
+    and (new.bucket_id <> old.bucket_id or new.name <> old.name) then
+    raise exception 'cloud_object_move_not_allowed';
+  end if;
+  if TG_OP = 'DELETE' then
+    if old.bucket_id <> 'business-backups' then return old; end if;
+    uid := split_part(old.name, '/', 1)::uuid;
+    old_size := coalesce((old.metadata->>'size')::bigint,0);
+    count_delta := -1;
+  else
+    if new.bucket_id <> 'business-backups' then return new; end if;
+    if new.name !~ '^[0-9a-f-]{36}/[0-9a-f-]{36}\.json$' then raise exception 'invalid_cloud_object_path'; end if;
+    uid := split_part(new.name, '/', 1)::uuid;
+    perform split_part(split_part(new.name, '/', 2), '.', 1)::uuid;
+    if not public.has_paid_cloud(uid) then raise exception 'cloud_requires_active_pro_or_boost'; end if;
+    -- Storage's RLS permission probe is rolled back and may have only
+    -- contentLength (older versions have no metadata yet). Final writes use
+    -- server-measured size; user-supplied custom metadata is a separate field.
+    new_size := coalesce((new.metadata->>'size')::bigint, (new.metadata->>'contentLength')::bigint, 0);
+    if new_size < 0 or new_size > 4194304 then raise exception 'cloud_snapshot_exceeds_4_mb'; end if;
+    if TG_OP = 'UPDATE' then old_size := coalesce((old.metadata->>'size')::bigint,0);
+    else count_delta := 1; end if;
+  end if;
+  select * into cfg from public.cloud_storage_config where id for update;
+  insert into public.cloud_storage_accounts(user_id) values(uid) on conflict do nothing;
+  select * into acct from public.cloud_storage_accounts where user_id = uid for update;
+  allowance := 100000000 + case when cfg.addons_enabled and acct.extra_expires_at > now()
+    then acct.extra_gb::bigint * 1000000000 else 0 end;
+  -- Deletion remains possible after subscription expiry; active accounts may
+  -- shrink files after an add-on expires or project capacity decreases.
+  if new_size > old_size and acct.used_bytes + new_size - old_size > allowance then
+    raise exception 'cloud_account_storage_full';
+  end if;
+  if new_size > old_size and cfg.used_bytes + new_size - old_size > cfg.capacity_bytes then
+    raise exception 'cloud_project_storage_full_try_later';
+  end if;
+  -- Bound small/empty-object metadata growth too. This scales with paid
+  -- capacity, so add-on GB can actually be used rather than hitting 50 files.
+  if count_delta > 0 and acct.object_count >= allowance / 1000000 then
+    raise exception 'cloud_account_file_count_limit';
+  end if;
+  if count_delta > 0 and cfg.object_count >= cfg.capacity_bytes / 1000000 then
+    raise exception 'cloud_project_file_count_limit';
+  end if;
+  update public.cloud_storage_config set used_bytes = used_bytes + new_size - old_size,
+    object_count = object_count + count_delta where id;
+  update public.cloud_storage_accounts set used_bytes = used_bytes + new_size - old_size,
+    object_count = object_count + count_delta where user_id = uid;
+  if TG_OP = 'DELETE' then return old; end if;
+  return new;
+end;
+$$;
+revoke all on function public.enforce_cloud_storage_quota() from public, anon, authenticated;
+
+-- Storage is absent in the lightweight schema test harness, present on Supabase.
+do $$ begin
+  if to_regclass('storage.buckets') is not null then
+    insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
+      values('business-backups','business-backups',false,4194304,array['application/json'])
+      on conflict(id) do update set public=false, file_size_limit=4194304, allowed_mime_types=array['application/json'];
+    drop trigger if exists enforce_paid_cloud_quota on storage.objects;
+    create trigger enforce_paid_cloud_quota after insert or update or delete on storage.objects
+      for each row execute function public.enforce_cloud_storage_quota();
+    drop policy if exists paid_cloud_read on storage.objects;
+    create policy paid_cloud_read on storage.objects for select to authenticated
+      using(bucket_id='business-backups' and split_part(name,'/',1)=auth.uid()::text
+        and exists(select 1 from public.profiles p where p.id=auth.uid() and p.deletion_requested_at is null));
+    drop policy if exists paid_cloud_insert on storage.objects;
+    create policy paid_cloud_insert on storage.objects for insert to authenticated
+      with check(bucket_id='business-backups' and split_part(name,'/',1)=auth.uid()::text and public.has_paid_cloud(auth.uid()));
+    drop policy if exists paid_cloud_update on storage.objects;
+    create policy paid_cloud_update on storage.objects for update to authenticated
+      using(bucket_id='business-backups' and split_part(name,'/',1)=auth.uid()::text and public.has_paid_cloud(auth.uid()))
+      with check(bucket_id='business-backups' and split_part(name,'/',1)=auth.uid()::text and public.has_paid_cloud(auth.uid()));
+    drop policy if exists paid_cloud_delete on storage.objects;
+    create policy paid_cloud_delete on storage.objects for delete to authenticated
+      using(bucket_id='business-backups' and split_part(name,'/',1)=auth.uid()::text);
+  end if;
+end $$;
+
+-- Keep the operator's base catalog consistent with the new paid allowance.
+update public.plan_catalog set max_storage_mb=100 where code::text in ('pro','boost');
+
+-- Keep legacy snapshots intact for recovery, but stop clients storing new JSON
+-- payloads in Postgres. New rows contain only an empty compatibility snapshot.
+alter table public.business_backup_mirrors alter column snapshot set default '{}'::jsonb;
+revoke insert, update on public.business_backup_mirrors from authenticated;
+grant insert(user_id,device_id,enabled,updated_at), update(user_id,device_id,enabled,updated_at) on public.business_backup_mirrors to authenticated;
+drop policy if exists business_backup_mirrors_own_insert on public.business_backup_mirrors;
+create policy business_backup_mirrors_own_insert on public.business_backup_mirrors for insert to authenticated
+  with check(user_id=auth.uid() and public.has_paid_cloud(auth.uid()));
+drop policy if exists business_backup_mirrors_own_update on public.business_backup_mirrors;
+create policy business_backup_mirrors_own_update on public.business_backup_mirrors for update to authenticated
+  using(user_id=auth.uid()) with check(user_id=auth.uid() and (not enabled or public.has_paid_cloud(auth.uid())));
+create or replace function public.validate_cloud_mirror_metadata()
+returns trigger language plpgsql security definer set search_path = public, pg_catalog as $$
+begin
+  if TG_OP='UPDATE' and (new.user_id <> old.user_id or new.device_id <> old.device_id) then
+    raise exception 'cloud_mirror_identity_immutable';
+  end if;
+  if TG_OP = 'INSERT' or (new.enabled and not old.enabled) then
+    if to_regclass('storage.objects') is null then raise exception 'cloud_storage_not_installed'; end if;
+    if not exists(select 1 from storage.objects where bucket_id='business-backups'
+      and name=new.user_id::text || '/' || new.device_id::text || '.json') then
+      raise exception 'upload_cloud_object_first';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+revoke all on function public.validate_cloud_mirror_metadata() from public, anon, authenticated;
+drop trigger if exists validate_cloud_mirror_metadata on public.business_backup_mirrors;
+create trigger validate_cloud_mirror_metadata before insert or update on public.business_backup_mirrors
+  for each row execute function public.validate_cloud_mirror_metadata();
+
+-- Never orphan Storage files by deleting their auth owner through SQL. Storage
+-- API removal must happen first (SQL deletion of storage.objects leaks blobs).
+create or replace function public.require_cloud_cleanup_before_user_delete()
+returns trigger language plpgsql security definer set search_path = public, pg_catalog as $$
+begin
+  if exists(select 1 from public.cloud_storage_accounts where user_id=old.id and object_count>0) then
+    raise exception 'remove_cloud_files_via_storage_api_before_account_purge';
+  end if;
+  delete from public.cloud_storage_accounts where user_id=old.id;
+  return old;
+end;
+$$;
+revoke all on function public.require_cloud_cleanup_before_user_delete() from public, anon, authenticated;
+drop trigger if exists require_cloud_cleanup on auth.users;
+create trigger require_cloud_cleanup before delete on auth.users
+  for each row execute function public.require_cloud_cleanup_before_user_delete();
+create or replace function public.require_cloud_cleanup_before_workspace_erase()
+returns trigger language plpgsql security definer set search_path = public, pg_catalog as $$
+begin
+  if new.workspace_erased_at is distinct from old.workspace_erased_at
+    and new.workspace_erased_at is not null
+    and exists(select 1 from public.cloud_storage_accounts where user_id=new.id and object_count>0) then
+    raise exception 'remove_cloud_files_via_storage_api_before_workspace_erase';
+  end if;
+  return new;
+end;
+$$;
+revoke all on function public.require_cloud_cleanup_before_workspace_erase() from public, anon, authenticated;
+drop trigger if exists require_cloud_cleanup_before_erase on public.profiles;
+create trigger require_cloud_cleanup_before_erase before update of workspace_erased_at on public.profiles
+  for each row execute function public.require_cloud_cleanup_before_workspace_erase();
+
+create or replace function public.cloud_cleanup_candidates()
+returns table(user_id uuid) language sql stable security definer set search_path = public, pg_catalog as $$
+  select p.id from public.profiles p
+  where p.deletion_requested_at <= now() - interval '30 days'
+    and exists(select 1 from public.cloud_storage_accounts a where a.user_id=p.id and a.object_count>0);
+$$;
+revoke all on function public.cloud_cleanup_candidates() from public, anon, authenticated;
+grant execute on function public.cloud_cleanup_candidates() to service_role;
+commit;
+-- Published monthly prices in MAD. Existing activation periods are unchanged.
+-- Business is the legacy name for the public Boost/Team tier.
+begin;
+update public.plan_catalog
+set monthly_price = case when code::text = 'pro' then 79 else 250 end,
+    updated_at = now()
+where code::text in ('pro', 'boost', 'business');
+commit;
+-- Server-side boundaries: applies to direct REST/RPC calls, not just the UI.
+-- Apply after the existing migrations. This does not configure Auth/WAF settings.
+begin;
+
+revoke create on schema public from public, anon, authenticated;
+
+-- Clients must not forge security/audit records. Trusted trigger/RPC owners
+-- still append real changes; operators retain their existing read access.
+drop policy if exists admin_audit_events_admin_insert on public.admin_audit_events;
+revoke insert, update, delete on public.admin_audit_events from public, anon, authenticated;
+
+-- One bounded row per server-chosen scope, not one row per attacker request.
+create table if not exists public.server_request_budgets (
+  scope text primary key check (char_length(scope) between 1 and 120),
+  window_started_at timestamptz not null default now(),
+  requests integer not null check (requests > 0)
+);
+alter table public.server_request_budgets enable row level security;
+revoke all on public.server_request_budgets from public, anon, authenticated;
+
+create or replace function public.take_server_request_budget(p_scope text, p_limit integer, p_window interval)
+returns boolean language plpgsql security definer set search_path = pg_catalog, public as $$
+declare accepted integer;
+begin
+  if p_limit <= 0 or p_window <= interval '0 seconds' then raise exception 'invalid_server_budget'; end if;
+  delete from public.server_request_budgets where window_started_at < now() - interval '2 days';
+  insert into public.server_request_budgets(scope,window_started_at,requests)
+  values(p_scope,now(),1)
+  on conflict(scope) do update set
+    window_started_at = case when public.server_request_budgets.window_started_at <= now()-p_window then now() else public.server_request_budgets.window_started_at end,
+    requests = case when public.server_request_budgets.window_started_at <= now()-p_window then 1 else public.server_request_budgets.requests+1 end
+  where public.server_request_budgets.window_started_at <= now()-p_window or public.server_request_budgets.requests < p_limit
+  returning requests into accepted;
+  return accepted is not null;
+end;
+$$;
+revoke all on function public.take_server_request_budget(text,integer,interval) from public, anon, authenticated;
+
+-- Global budgets are intentional: request headers/email can be spoofed and
+-- must never be treated as proof of a client's IP or identity. Global limits
+-- protect storage even when an attacker rotates addresses/anonymous sessions.
+create or replace function public.guard_public_ingestion()
+returns trigger language plpgsql security definer set search_path = pg_catalog, public as $$
+declare
+  family text;
+  email_hash text;
+  minute_limit integer;
+begin
+  if TG_TABLE_NAME in ('cms_support_requests','purchase_requests') then
+    family := case when TG_TABLE_NAME='cms_support_requests' then 'support' else 'purchase' end;
+    if new.email is null or char_length(new.email)>254 or new.email !~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$' then
+      raise exception 'invalid_request_email' using errcode='23514';
+    end if;
+    new.email := lower(btrim(new.email));
+    email_hash := md5(new.email); -- short-lived dedup/rate key, NOT authentication
+    if TG_TABLE_NAME='purchase_requests' then
+      if char_length(new.company)>200 or char_length(new.message)>10000 or new.seats>1000 then
+        raise exception 'purchase_request_too_large' using errcode='23514';
+      end if;
+      if current_setting('role',true) in ('anon','authenticated') and not public.activation_admin_mfa() then
+        -- Identity/status/timestamps cannot be asserted by the caller.
+        new.user_id := auth.uid();
+        new.status := 'new';
+        new.created_at := now();
+        new.updated_at := now();
+      end if;
+    end if;
+    if not public.take_server_request_budget(family||':day',200,interval '1 day') or
+       not public.take_server_request_budget(family||':hour',60,interval '1 hour') or
+       not public.take_server_request_budget(family||':email:'||email_hash,3,interval '1 hour') then
+      raise exception 'public_request_rate_limited_try_later' using errcode='PT429';
+    end if;
+  elsif TG_TABLE_NAME in ('site_page_views','site_analytics_events') then
+    family := case when TG_TABLE_NAME='site_page_views' then 'pageviews' else 'events' end;
+    minute_limit := case when TG_TABLE_NAME='site_page_views' then 120 else 60 end;
+    if not public.take_server_request_budget(family||':day',10000,interval '1 day') or
+       not public.take_server_request_budget(family||':hour',1000,interval '1 hour') or
+       not public.take_server_request_budget(family||':minute',minute_limit,interval '1 minute') then
+      raise exception 'analytics_rate_limited' using errcode='PT429';
+    end if;
+  else
+    raise exception 'unsupported_public_ingestion_table';
+  end if;
+  return new;
+end;
+$$;
+revoke all on function public.guard_public_ingestion() from public, anon, authenticated;
+do $$ declare t text; begin
+  foreach t in array array['cms_support_requests','purchase_requests','site_page_views','site_analytics_events'] loop
+    execute format('drop trigger if exists guard_public_ingestion on public.%I',t);
+    execute format('create trigger guard_public_ingestion before insert on public.%I for each row execute function public.guard_public_ingestion()',t);
+  end loop;
+end $$;
+
+-- Separate anonymous and signed-in policies: an anonymous caller must not
+-- need SELECT access to profiles just to submit a request. Pending accounts
+-- cannot bypass their access stop by sending user_id=null.
+drop policy if exists purchase_requests_public_insert on public.purchase_requests;
+drop policy if exists purchase_requests_authenticated_insert on public.purchase_requests;
+create policy purchase_requests_public_insert on public.purchase_requests for insert to anon
+  with check(user_id is null);
+create policy purchase_requests_authenticated_insert on public.purchase_requests for insert to authenticated
+  with check(user_id=auth.uid() and not exists(select 1 from public.profiles p where p.id=auth.uid() and p.deletion_requested_at is not null));
+
+-- RLS on a row alone does not secure its foreign keys: PostgreSQL's FK checks
+-- intentionally bypass RLS. Verify that referenced business records belong to
+-- the SAME tenant, including UUID-array references not covered by normal FKs.
+create or replace function public.guard_workspace_references()
+returns trigger language plpgsql security definer set search_path = pg_catalog, public as $$
+declare data jsonb := to_jsonb(new); reference_id uuid; equipment uuid[];
+begin
+  -- Unrelated updates/deletions of old bad references must remain possible.
+  -- Any newly assigned reference or ownership change is checked uniformly.
+  if TG_OP='UPDATE' and new.user_id is distinct from old.user_id then
+    raise exception 'workspace_owner_immutable' using errcode='23514';
+  end if;
+  if TG_TABLE_NAME in ('projects','contracts','expenses') then
+    reference_id := coalesce(nullif(data->>'client_id',''),nullif(data->>'vendor_id',''))::uuid;
+    if reference_id is not null and (TG_OP='INSERT' or
+      (data->>'client_id') is distinct from (to_jsonb(old)->>'client_id') or
+      (data->>'vendor_id') is distinct from (to_jsonb(old)->>'vendor_id')) then
+      if not exists(select 1 from public.contacts where id=reference_id and user_id=new.user_id) then
+        raise exception 'invalid_workspace_reference' using errcode='23514';
+      end if;
+    end if;
+  end if;
+  if TG_TABLE_NAME='stock_items' then
+    reference_id := nullif(data->>'assigned_project_id','')::uuid;
+    if reference_id is not null and (TG_OP='INSERT' or new.assigned_project_id is distinct from old.assigned_project_id) then
+      if not exists(select 1 from public.projects where id=reference_id and user_id=new.user_id) then
+        raise exception 'invalid_workspace_reference' using errcode='23514';
+      end if;
+    end if;
+  end if;
+  if TG_TABLE_NAME='projects' then
+    if TG_OP='INSERT' or new.equipment_ids is distinct from old.equipment_ids then
+    equipment := new.equipment_ids;
+    if exists(select 1 from unnest(equipment) as u(equipment_id) where not exists(
+      select 1 from public.stock_items s where s.id=u.equipment_id and s.user_id=new.user_id)) then
+      raise exception 'invalid_workspace_reference' using errcode='23514';
+    end if;
+    end if;
+  end if;
+  return new;
+end;
+$$;
+revoke all on function public.guard_workspace_references() from public, anon, authenticated;
+do $$ declare t text; begin
+  foreach t in array array['projects','contracts','expenses','stock_items'] loop
+    execute format('drop trigger if exists guard_workspace_references on public.%I',t);
+    execute format('create trigger guard_workspace_references before insert or update on public.%I for each row execute function public.guard_workspace_references()',t);
+  end loop;
+end $$;
+
+-- Require signed JWT AAL2, not a client-supplied flag, before granting/revoking
+-- platform/content administrator access. Preserve last-admin protection + audit.
+create or replace function public.set_platform_admin(p_user_id uuid, p_enabled boolean)
+returns void language plpgsql security definer set search_path = pg_catalog, public as $$
+begin
+  if not public.activation_admin_mfa() then raise exception 'platform_admin_mfa_required' using errcode='42501'; end if;
+  if p_user_id is null or p_enabled is null then raise exception 'user_id_and_enabled_are_required' using errcode='22023'; end if;
+  perform pg_advisory_xact_lock(724613032);
+  if p_enabled then
+    insert into public.platform_admins(user_id) values(p_user_id) on conflict(user_id) do nothing;
+  else
+    if not exists(select 1 from public.platform_admins where user_id=p_user_id) then return; end if;
+    if (select count(*) from public.platform_admins)<=1 then raise exception 'cannot_remove_last_platform_admin' using errcode='23514'; end if;
+    delete from public.platform_admins where user_id=p_user_id;
+  end if;
+end;
+$$;
+create or replace function public.set_content_admin(p_user_id uuid, p_enabled boolean)
+returns void language plpgsql security definer set search_path = pg_catalog, public as $$
+begin
+  if not public.activation_admin_mfa() then raise exception 'platform_admin_mfa_required' using errcode='42501'; end if;
+  if p_user_id is null or p_enabled is null then raise exception 'user_id_and_enabled_are_required' using errcode='22023'; end if;
+  update public.profiles set is_admin=p_enabled where id=p_user_id;
+  if not found then raise exception 'profile_not_found' using errcode='P0002'; end if;
+end;
+$$;
+revoke all on function public.set_platform_admin(uuid,boolean), public.set_content_admin(uuid,boolean) from public, anon;
+grant execute on function public.set_platform_admin(uuid,boolean), public.set_content_admin(uuid,boolean) to authenticated;
+
+-- An AAL1 operator must not bypass MFA-protected activation keys by editing
+-- account_subscriptions directly. Restrictive policies compose with (rather
+-- than replace) the existing platform-admin policies. Reads are unchanged;
+-- trusted SECURITY DEFINER redemption/auth triggers continue to work.
+do $$ declare t text; begin
+  foreach t in array array['plan_catalog','account_subscriptions','usage_monthly','purchase_requests'] loop
+    if t <> 'purchase_requests' then
+      execute format('drop policy if exists billing_mfa_insert on public.%I',t);
+      execute format('create policy billing_mfa_insert on public.%I as restrictive for insert to authenticated with check (public.activation_admin_mfa())',t);
+    end if;
+    execute format('drop policy if exists billing_mfa_update on public.%I',t);
+    execute format('create policy billing_mfa_update on public.%I as restrictive for update to authenticated using (true) with check (public.activation_admin_mfa())',t);
+    execute format('drop policy if exists billing_mfa_delete on public.%I',t);
+    execute format('create policy billing_mfa_delete on public.%I as restrictive for delete to authenticated using (public.activation_admin_mfa())',t);
+  end loop;
+end $$;
+
+-- Trigger functions run by attached triggers, never through client RPC calls.
+-- No blanket revocation of normal helper RPCs: RLS depends on their grants.
+do $$ declare f record; begin
+  for f in select p.oid::regprocedure as signature from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+    where n.nspname='public' and p.prorettype='trigger'::regtype loop
+    execute format('revoke execute on function %s from public, anon, authenticated',f.signature);
+  end loop;
+end $$;
+commit;

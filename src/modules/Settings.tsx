@@ -4,7 +4,7 @@ import type { Settings as SettingsT } from "../store/types"
 import { accountStorageKey, useMizan } from "../store/useMizan"
 import { exportCurrentBackup, exportLegacyBackup, hasLegacyData } from "../lib/legacyBackup"
 import { downloadEncryptedBackup, downloadSelectedCsv, EXPORT_SECTIONS, type ExportSection } from "../lib/dataExport"
-import { deleteSupabaseBackup, disableSupabaseBackup, enableSupabaseBackup, syncSupabaseBackupNow, useSupabaseBackup } from "../lib/supabaseBackup"
+import { deleteSupabaseBackup, disableSupabaseBackup, enableSupabaseBackup, syncSupabaseBackupNow, refreshCloudQuota, useSupabaseBackup } from "../lib/supabaseBackup"
 import { isTaxRate, parseAmount } from "../lib/businessValidation"
 import { LOGO_TYPES, validateLogoDataURL, validateLogoFile } from "../lib/logoValidation"
 import { useLocalSaveStatus } from "../lib/localSaveStatus"
@@ -13,6 +13,9 @@ import { Card, SectionTitle, Btn, Field, Input, Textarea, Select } from "../comp
 import { PlanActivationCard } from "../components/PlanStatus"
 import { THEME_MODES, useThemeStore, type ThemeMode } from "../lib/theme"
 import { isSupabaseConfigured, supabase } from "../lib/supabase"
+import { storagePurchaseLink } from "../lib/cloudStorage"
+import { usePlan } from "../store/usePlan"
+import ContactImportPanel from "../components/ContactImportPanel"
 import { SUPPORT_EMAIL } from "../lib/contact"
 
 export default function Settings() {
@@ -20,6 +23,14 @@ export default function Settings() {
   const t = copy.settings
   const { settings, updateSettings, auth } = useMizan()
   const backupSync = useSupabaseBackup()
+  const activation = usePlan((state) => state.activation)
+  useEffect(() => {
+    if (auth && auth.id !== "local-dev" && isSupabaseConfigured) {
+      void refreshCloudQuota(auth.id).catch(() => undefined)
+    }
+  }, [auth?.id, activation])
+  const cloudAllowed = backupSync.quota?.allowed === true
+  const projectFull = !!backupSync.quota && backupSync.quota.project_used_bytes >= backupSync.quota.capacity_bytes
   const [f, setF] = useState<SettingsT>(settings)
   const [taxRateInput, setTaxRateInput] = useState(String(settings.taxRate))
   const [saved, setSaved] = useState(false)
@@ -188,16 +199,25 @@ export default function Settings() {
       } />
       {saveError && <p role="alert" className="text-sm text-serious">{saveError}</p>}
 
+      <ContactImportPanel />
+
       <Card className="space-y-3 p-4">
         <p className="text-[13px] text-muted">{t.localData.body}</p>
         {auth && auth.id !== "local-dev" && <div className="space-y-3 rounded-lg border border-brand/20 bg-brand-50/40 p-3">
           <div className="flex items-center gap-2 text-[13px] font-semibold"><Cloud className="h-4 w-4 text-brand" />{t.localData.cloudTitle}</div>
           <p className="text-[12px] text-muted">{t.localData.cloudWarning}</p>
+          <p className="text-[12px] font-medium">{t.localData.cloudPlan}</p>
+          {!cloudAllowed && <p className="text-[12px] text-muted">{t.localData.cloudLocked}</p>}
+          {backupSync.quota && <p className="text-[12px] text-muted">{t.localData.cloudUsage((backupSync.quota.used_bytes / 1_000_000).toFixed(2), (backupSync.quota.limit_bytes / 1_000_000).toFixed(0))}</p>}
+          {projectFull && <p role="alert" className="text-[12px] text-serious">{t.localData.cloudFull}</p>}
+          <p className="text-[12px] text-muted">{t.localData.cloudAddon}</p>
+          {!backupSync.quota?.addons_enabled && <p className="text-[12px] text-muted">{t.localData.cloudAddonPending}</p>}
+          {cloudAllowed && <a className="text-[12px] font-semibold text-brand underline" href={storagePurchaseLink()} target="_blank" rel="noopener noreferrer">{t.localData.cloudBuy}</a>}
           <p className="text-[12px] text-muted">
             {backupSync.status === "syncing" ? t.localData.cloudSyncing : backupSync.status === "synced" ? `${t.localData.cloudSynced} ${backupSync.updatedAt ? new Date(backupSync.updatedAt).toLocaleString() : ""}` : backupSync.status === "error" ? t.localData.cloudFailed : backupSync.status === "unavailable" ? t.localData.cloudUnavailable : t.localData.cloudDisabled}
           </p>
-          {cloudBackupError && <p role="alert" className="text-sm text-serious">{cloudBackupError}</p>}
-          {!backupSync.enabled && <>
+          {(cloudBackupError || backupSync.message) && <p role="alert" className="text-sm text-serious">{cloudBackupError || backupSync.message}</p>}
+          {!backupSync.enabled && cloudAllowed && <>
             <label className="flex items-start gap-2 text-[12px] text-ink">
               <input className="mt-0.5" type="checkbox" checked={backupConsent} onChange={(event) => setBackupConsent(event.target.checked)} />
               <span>{t.localData.cloudConsent}</span>
@@ -210,7 +230,7 @@ export default function Settings() {
             }}><Cloud className="h-4 w-4" /> {t.localData.cloudEnable}</Btn>
           </>}
           {backupSync.enabled && <span className="flex flex-wrap gap-2">
-            <Btn variant="outline" size="sm" disabled={backupSync.status === "syncing"} onClick={async () => {
+            <Btn variant="outline" size="sm" disabled={!cloudAllowed || backupSync.status === "syncing"} onClick={async () => {
               if (!auth) return
               setCloudBackupError(null)
               try { await syncSupabaseBackupNow(auth.id) }
@@ -222,13 +242,15 @@ export default function Settings() {
               try { await disableSupabaseBackup(auth.id) }
               catch (error) { setCloudBackupError(error instanceof Error ? error.message : t.localData.cloudFailed) }
             }}>{t.localData.cloudDisable}</Btn>
+          </span>}
+          <span className="flex flex-wrap gap-2">
             <Btn variant="danger" size="sm" onClick={async () => {
               if (!auth || !window.confirm(t.localData.cloudDeleteConfirm)) return
               setCloudBackupError(null)
               try { await deleteSupabaseBackup(auth.id) }
               catch (error) { setCloudBackupError(error instanceof Error ? error.message : t.localData.cloudFailed) }
             }}>{t.localData.cloudDelete}</Btn>
-          </span>}
+          </span>
         </div>}
         <div className="space-y-3 rounded-lg border border-line p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -345,6 +367,7 @@ export default function Settings() {
             if (!auth || !window.confirm("Request account deletion? You will be signed out immediately.")) return
             setDeletingAccount(true); setDeletionMessage("")
             try {
+              if (eraseWorkspace) await deleteSupabaseBackup(auth.id)
               const { error } = await supabase.rpc("request_account_deletion", { p_erase_workspace: eraseWorkspace })
               if (error) throw error
               if (eraseWorkspace) localStorage.removeItem(accountStorageKey(auth.id))

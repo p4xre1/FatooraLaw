@@ -199,3 +199,19 @@ records remain on those devices until erased there.
 Monthly backend CSV exports and Gmail delivery are not implemented: no mail
 provider, export job, or delivery monitoring is configured in this repository.
 Do not tell users that monthly exports or update emails are already being sent.
+
+## Paid cloud backup storage (100 MB/account)
+
+Apply `20261022_paid_cloud_storage.sql` and deploy its matching client together.
+Cloud backups now use private File Storage for active PRO/BOOST, not database JSON.
+Read [the paid cloud storage runbook](docs/PAID_CLOUD_STORAGE.md) for the Free-tier
+900 MB shared cap, $2/GB/month manual add-ons, upgrade steps and **required Storage
+cleanup scheduler** before enabling this in production.
+
+## Server-side security rollout
+
+After existing migrations, apply `20261024_server_security.sql` and deploy the
+matching Admin Security/MFA panel. See [SERVER_SECURITY.md](docs/SERVER_SECURITY.md)
+for database request budgets, tenant-reference checks, MFA-protected role changes,
+manual Auth/CAPTCHA/WAF configuration and required live verification. These
+changes are not automatically applied to the hosted project.

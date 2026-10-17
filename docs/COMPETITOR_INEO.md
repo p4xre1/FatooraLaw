@@ -161,7 +161,7 @@ legal dictionary/glossary, colleges/academies, archive/library,
 seminars/events, exam bank, comments, trending laws (Google Trends MA),
 user management/GDPR, governance/reports, settings, marketing/AI assistant.
 
-**Pricing:** Essentiel **0 MAD** · Pro **199 MAD/mo** · Équipe **499 MAD/mo**.
+**Pricing:** Essentiel **0 MAD** · Pro **79 MAD/mo** · Équipe **250 MAD/mo**.
 
 **Storage reality:** business records live in **localStorage partitioned by
 Supabase user ID** — a prototype, documented as such in `SECURITY.md` and

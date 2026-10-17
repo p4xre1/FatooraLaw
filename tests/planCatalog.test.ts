@@ -31,7 +31,7 @@ describe("prices", () => {
   })
 
   it("computes the yearly saving, never negative", () => {
-    expect(yearlySaving({ monthly: 199, yearly: 1990 })).toBe(398)
+    expect(yearlySaving({ monthly: 79, yearly: 790 })).toBe(158)
     expect(yearlySaving({ monthly: 100, yearly: 5000 })).toBe(0) // a badly edited price floors at 0
     expect(yearlySaving({ monthly: 0, yearly: 0 })).toBe(0)
   })
@@ -69,5 +69,28 @@ describe("paragraphs", () => {
     usePlanCatalog.getState().setCopy("pro", "fr", "value", "x")
     usePlanCatalog.getState().reset()
     expect(usePlanCatalog.getState().catalog).toEqual(defaultCatalog())
+  })
+})
+
+describe("the updated plan prices", () => {
+  it("ships Pro at 79/month, Boost at 250/month and ten-month annual prices", () => {
+    expect(defaultCatalog().prices).toEqual({ pro: { monthly: 79, yearly: 790 }, boost: { monthly: 250, yearly: 2500 } })
+  })
+
+  it("upgrades old persisted defaults without retaining stale prices", async () => {
+    localStorage.setItem("fatorati.plan-catalog.v1", JSON.stringify({ version: 0, state: { catalog: {
+      prices: { pro: { monthly: 199, yearly: 1990 }, boost: { monthly: 499, yearly: 4990 } }, copy: {},
+    } } }))
+    await usePlanCatalog.persist.rehydrate()
+    expect(usePlanCatalog.getState().catalog).toEqual(defaultCatalog())
+  })
+
+  it("preserves custom prices and paragraphs during the defaults migration", async () => {
+    const copy = { pro: { fr: { value: "Custom copy" } } }
+    localStorage.setItem("fatorati.plan-catalog.v1", JSON.stringify({ version: 0, state: { catalog: {
+      prices: { pro: { monthly: 99, yearly: 990 }, boost: { monthly: 499, yearly: 4990 } }, copy,
+    } } }))
+    await usePlanCatalog.persist.rehydrate()
+    expect(usePlanCatalog.getState().catalog).toEqual({ prices: { pro: { monthly: 99, yearly: 990 }, boost: { monthly: 250, yearly: 2500 } }, copy })
   })
 })
