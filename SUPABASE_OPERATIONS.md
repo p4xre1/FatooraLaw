@@ -8,7 +8,11 @@
 2. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in local/build
    configuration. Use only a public anon/publishable key, never a service role.
 3. Configure Supabase's Site URL and allowed confirmation/recovery redirect
-   URLs for your real domain and any trusted preview origins.
+   URLs for your real domain and any trusted preview origins. To enable the
+   **Continuer avec Google** button on `/login`, also enable the Google provider
+   and allow `<origin>/login` as a redirect URL — see
+   [docs/GOOGLE_AUTH.md](docs/GOOGLE_AUTH.md). The Google client secret belongs
+   in the Supabase dashboard, never in a `VITE_*` variable.
 4. Create administrator accounts through Supabase Auth, then provision the
    required permissions from trusted SQL, as described below.
 

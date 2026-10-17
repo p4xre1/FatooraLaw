@@ -1,9 +1,17 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import type { FormEvent } from "react"
 import {
   ArrowRight, ArrowLeft, ShieldCheck, ShieldAlert, Lock, Eye, EyeOff, CheckCircle2, AlertCircle, KeyRound, Loader2,
 } from "lucide-react"
 import { checkPassword, MAX_NAME_LENGTH, sanitizeInput } from "../modules/auth/lib/validation"
+import { GoogleSignInButton } from "../modules/auth/components/GoogleButton"
+import {
+  clearGoogleSignInError,
+  isGoogleSignInAvailable,
+  readGoogleSignInError,
+  signInWithGoogle,
+  type GoogleSignInErrorCode,
+} from "../modules/auth/lib/googleAuth"
 import { isSupabaseConfigured, supabaseConfigProblem, supabase } from "../lib/supabase"
 import { signInLocally } from "../lib/localDevMode"
 import SupabaseSetupNotice from "./SupabaseSetupNotice"
@@ -42,6 +50,18 @@ function friendlyError(message: string): string {
   if (m.includes("rate limit") || m.includes("too many")) return "Trop de tentatives. Réessayez dans quelques minutes."
   if (m.includes("network")) return "Problème de connexion. Vérifiez votre réseau et réessayez."
   return "Une erreur est survenue. Vérifiez votre connexion et réessayez."
+}
+
+/** French copy for the Google OAuth outcomes the login screen can explain. */
+const GOOGLE_ERROR_MESSAGES: Record<GoogleSignInErrorCode, string> = {
+  notConfigured: "La connexion Google n'est pas configurée pour ce site.",
+  providerNotEnabled:
+    "La connexion Google n'est pas encore activée pour ce site. Utilisez votre e-mail et votre mot de passe, ou contactez l'administrateur.",
+  redirectNotAllowed:
+    "La connexion Google a été refusée : l'adresse de retour de ce site n'est pas autorisée dans Supabase. Vérifiez les Redirect URLs du projet.",
+  cancelled: "Connexion Google annulée.",
+  network: "Problème de connexion. Vérifiez votre réseau et réessayez.",
+  unexpected: "La connexion avec Google a échoué. Réessayez ou utilisez votre e-mail et votre mot de passe.",
 }
 
 function PasswordInput({
@@ -131,6 +151,13 @@ export default function Auth({
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [privacyOpen, setPrivacyOpen] = useState(false)
+  // A failed Google callback (`#error=…`) is on the URL when the screen mounts;
+  // read it once, then keep it in state while cleaning the address bar.
+  const [googleError, setGoogleError] = useState<GoogleSignInErrorCode | null>(() => readGoogleSignInError())
+  const [googleLoading, setGoogleLoading] = useState(false)
+  useEffect(() => {
+    if (googleError) clearGoogleSignInError()
+  }, [googleError])
 
   // Login
   const [loginEmail, setLoginEmail] = useState("")
@@ -153,6 +180,7 @@ export default function Auth({
   function switchView(v: View) {
     setError(null)
     setNotice(null)
+    setGoogleError(null)
     setInternalView(v)
     if (v !== view) onViewChange?.(v)
   }
@@ -187,6 +215,7 @@ export default function Auth({
     e.preventDefault()
     if (loading) return
     setError(null)
+    setGoogleError(null)
     if (!requireSupabase()) return
     setLoading(true)
     try {
@@ -195,6 +224,26 @@ export default function Auth({
     } catch {
       setError("Problème de connexion. Vérifiez votre réseau et réessayez.")
     } finally { setLoading(false) }
+  }
+
+  async function handleGoogle() {
+    if (loading || googleLoading) return
+    setError(null)
+    setNotice(null)
+    setGoogleError(null)
+    if (!isGoogleSignInAvailable()) {
+      setGoogleError("notConfigured")
+      return
+    }
+    setGoogleLoading(true)
+    try {
+      const { error: googleAuthError } = await signInWithGoogle()
+      if (googleAuthError) setGoogleError(googleAuthError)
+    } finally {
+      // On success the browser is already on its way to Google, so this only
+      // matters when no navigation happened (blocked popup/redirect).
+      setGoogleLoading(false)
+    }
   }
 
   async function handleSignup(e: FormEvent) {
@@ -306,7 +355,28 @@ export default function Auth({
                   <span>Vous avez été déconnecté automatiquement après une période d'inactivité, pour protéger vos données.</span>
                 </div>
               )}
-              <form className="mt-7 space-y-4" onSubmit={handleLogin}>
+              {isGoogleSignInAvailable() && (
+                <div className="mt-5 space-y-3">
+                  <GoogleSignInButton
+                    label="Continuer avec Google"
+                    onClick={handleGoogle}
+                    loading={googleLoading}
+                    disabled={loading}
+                  />
+                  {googleError && <Notice kind="error">{GOOGLE_ERROR_MESSAGES[googleError]}</Notice>}
+                  <div className="flex items-center gap-3 pt-1" aria-hidden="true">
+                    <span className="h-px flex-1 bg-line" />
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-faint">ou</span>
+                    <span className="h-px flex-1 bg-line" />
+                  </div>
+                </div>
+              )}
+              {!isGoogleSignInAvailable() && googleError && (
+                <div className="mt-5">
+                  <Notice kind="error">{GOOGLE_ERROR_MESSAGES[googleError]}</Notice>
+                </div>
+              )}
+              <form className={`${isGoogleSignInAvailable() ? "mt-4" : "mt-7"} space-y-4`} onSubmit={handleLogin}>
                 {error && <Notice kind="error">{error}</Notice>}
                 {notice && <Notice kind="success">{notice}</Notice>}
                 <Field label="Email professionnel">

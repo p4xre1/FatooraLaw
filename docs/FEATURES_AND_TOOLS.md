@@ -917,7 +917,8 @@ says *"L'export ne remplace pas une procédure de restauration."*
 ## 6. Cross-cutting tools
 
 ### 6.1 Authentication — `/login`, `/signup`, `/forgot-password`, `/reset-password`
-**Files:** `src/components/Auth.tsx` (421 lines), `src/hooks/useSupabaseAuth.ts`
+**Files:** `src/components/Auth.tsx`, `src/modules/auth/lib/googleAuth.ts`,
+`src/hooks/useSupabaseAuth.ts`
 
 Each screen has its **own URL**, so it can be linked, bookmarked and reached with
 the back button — a deliberate design decision recorded in `src/lib/routes.ts`.
@@ -925,6 +926,7 @@ the back button — a deliberate design decision recorded in `src/lib/routes.ts`
 | Action | Supabase call |
 |---|---|
 | Login | `supabase.auth.signInWithPassword({ email, password })` |
+| Google | `supabase.auth.signInWithOAuth({ provider: "google", … })` — hosted redirect back to `/login`; dashboard setup in [GOOGLE_AUTH.md](GOOGLE_AUTH.md) |
 | Sign-up | `supabase.auth.signUp({ ... })` — creates a workspace, **not** an admin |
 | Forgot | `supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin })` |
 | Reset | signs out locally (`scope: "local"`) then applies the new password |
