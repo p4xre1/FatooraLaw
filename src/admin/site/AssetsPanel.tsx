@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { Copy, ImagePlus, Trash2, UploadCloud } from "lucide-react"
 import { Badge, Btn, Card, Field, Input } from "../../components/kit"
 import { FormAlert } from "../../modules/auth/components/FormAlert"
+import { copyText } from "../../lib/copyText"
 import type { LocaleId } from "../../lib/locales"
 import { errorMessage, LocaleSelect, PanelCard } from "./SitePanelKit"
 import { deleteCmsAsset, listAssets, updateCmsAsset, uploadCmsAsset, type CmsAsset } from "./client"
@@ -35,8 +36,8 @@ export default function AssetsPanel() {
     catch (err) { setError(errorMessage(err)) } finally { setBusy(false) }
   }
   async function copy(url: string) {
-    try { await navigator.clipboard.writeText(url); setNotice("تم نسخ الرابط العام.") }
-    catch { setError("تعذر نسخ الرابط. انسخه يدوياً من الحقل.") }
+    if (await copyText(url)) setNotice("تم نسخ الرابط العام.")
+    else setError("تعذر نسخ الرابط. انسخه يدوياً من الحقل.")
   }
   return <PanelCard title="مكتبة الصور والرسوم" description="تحميل لقطات الشاشة والرسوم التي ستظهر للعامة. الملفات عامة بعد النشر، حد أقصى 10 MB، والصيغ PNG وJPEG وWebP وSVG." loading={loading} error={error} notice={notice} action={<LocaleSelect value={locale} onChange={setLocale} />}>
     <div className="grid gap-3 rounded-xl border border-line bg-canvas/50 p-4 md:grid-cols-[1fr_1fr_auto] md:items-end">

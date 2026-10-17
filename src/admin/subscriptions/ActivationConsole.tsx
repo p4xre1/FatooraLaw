@@ -32,6 +32,7 @@ import { SUBSCRIPTION_SOURCES, type SubscriptionRecord, type SubscriptionSource 
 import { activationKeyHash, codeForSerial, randomActivationKey, randomSerial } from "../../lib/planCodes"
 import { formatSetupKey, isUsableSetupKey, normalizeSetupKey, qrImageDataUrl, secretFromUri } from "../lib/totpEnrollment"
 import { isSupabaseConfigured, supabase } from "../../lib/supabase"
+import { copyText } from "../../lib/copyText"
 import type { PlanPeriod } from "../../lib/plans"
 
 export const SOURCE_LABELS: Record<SubscriptionSource, string> = {
@@ -296,11 +297,9 @@ export function AdminMfaPanel({ onChanged }: { onChanged?: () => void }) {
 
   async function copySecret() {
     if (!secret) return
-    try {
-      // The whole key, ungrouped: a partial copy is what the app calls "too short".
-      await navigator.clipboard.writeText(normalizeSetupKey(secret))
-      setCopied(true)
-    } catch { /* clipboard unavailable: the key is on screen to copy by hand */ }
+    // The whole key, ungrouped: a partial copy is what the app calls "too short".
+    // When both clipboard paths fail the key stays on screen to copy by hand.
+    if (await copyText(normalizeSetupKey(secret))) setCopied(true)
   }
 
   async function verify() {
@@ -456,10 +455,8 @@ function CodeBuilder({ readiness, onIssued }: { readiness: IssuanceReadiness; on
 
   async function copyCode() {
     if (!created) return
-    try {
-      await navigator.clipboard.writeText(created.code)
-      setCopied(true)
-    } catch { /* clipboard unavailable: the code is on screen to copy by hand */ }
+    // When both clipboard paths fail the code stays on screen to copy by hand.
+    if (await copyText(created.code)) setCopied(true)
   }
 
   const waNumber = created ? whatsappNumber(created.contact) : ""

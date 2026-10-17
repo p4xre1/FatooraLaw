@@ -168,3 +168,40 @@ describe("frozen and stopped in the app", () => {
     expect(screen.getByText(plans.stopped("BOOST"))).toBeTruthy()
   })
 })
+
+describe("hiding the sales message", () => {
+  it("keeps the strip's buy button away while PRO is comfortably active", async () => {
+    await usePlan.getState().redeem(await codeFor("pro", "1Y"))
+    render(<PlanStrip />)
+    // The countdown stays — only the sales button goes.
+    expect(screen.getByText(/jours restants/)).toBeDefined()
+    expect(screen.queryByRole("link")).toBeNull()
+  })
+
+  it("gives the strip's sales message an × that hides it and remembers", () => {
+    const { unmount } = render(<PlanStrip />)
+    expect(screen.getByRole("link", { name: /Acheter PRO/ })).toBeDefined()
+    fireEvent.click(screen.getByRole("button", { name: plans.dismiss }))
+    expect(screen.queryByRole("link")).toBeNull()
+    // The status line stays visible; only the sales part went away.
+    expect(screen.getByText(/Aucun code activé/)).toBeDefined()
+    unmount()
+    render(<PlanStrip />)
+    expect(screen.queryByRole("link")).toBeNull()
+  })
+
+  it("hides the WhatsApp buy line in Paramètres while BOOST is active", async () => {
+    await usePlan.getState().redeem(await codeFor("boost", "1Y"))
+    render(<PlanActivationCard />)
+    expect(screen.queryByText(plans.buyHint)).toBeNull()
+    // The code box itself is untouched.
+    expect(screen.getByPlaceholderText("PRO-1M-A1B2C3D4")).toBeDefined()
+  })
+
+  it("shows the buy line on FREE, with an × that hides it", () => {
+    render(<PlanActivationCard />)
+    expect(screen.getByText(plans.buyHint)).toBeDefined()
+    fireEvent.click(screen.getByRole("button", { name: plans.dismiss }))
+    expect(screen.queryByText(plans.buyHint)).toBeNull()
+  })
+})
