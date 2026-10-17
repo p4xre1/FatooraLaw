@@ -47,6 +47,7 @@ vi.mock("../src/lib/supabase", () => {
           getAuthenticatorAssuranceLevel: mock.assurance,
           listFactors: mock.factors,
           enroll: vi.fn(),
+          unenroll: vi.fn(),
           challengeAndVerify: vi.fn(),
         },
       },
