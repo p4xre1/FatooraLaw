@@ -718,8 +718,13 @@ encrypted export and anomaly detection.
 **Record** (`Settings`): `company`, `ice`, `taxId`, `rc`, `address`, `city`,
 `currency`, `taxRate`, `logo`, `headerNote`, `footerNote`.
 
-**Four cards:**
+**Five cards:**
 
+0. **Importer vos données (CSV).** `src/components/DataImportPanel.tsx` over
+   `src/lib/dataImport.ts` — one importer for **all nine collections**:
+   contacts, projects, expenses, stock, orders/leads, ad campaigns, contracts,
+   team members and subscriptions. Pick the record type, download its template,
+   drop the file, read the preview, confirm. Details in §5.1.
 1. **Local data & backups.** Explains that business data is stored per-account in
    this browser and urges a regular export. **Exporter mes données locales**
    calls `exportCurrentBackup()`. If `hasLegacyData()` finds pre-partitioning
@@ -884,7 +889,7 @@ handler to warn on tab close. Its rule: *"never claim a failed write succeeded."
 | `toCSV(rows, filename)` | `.csv` | BOM (`\uFEFF`) prefix for Excel, RFC-style quoting (fields containing `"`, `,`, CR or LF are quoted, inner quotes doubled) |
 | `toExcel(rows, filename)` | `.xls` | An HTML `<table>` served as `application/vnd.ms-excel`, every cell passed through `escapeHtml()` |
 | `toJSON(data, filename)` | `.json` | `JSON.stringify(data, null, 2)` — used for backups |
-| `parseCSV(text)` | `string[][]` | Quote-aware parser used by the Contacts import |
+| `parseCSV(text, delimiter?)` | `string[][]` | Quote-aware parser used by every import; the delimiter may be `,`, `;` or a tab |
 | `runAsync(work, ms = 650)` | `Promise<T>` | Defers work behind a minimum delay so the spinner is visible and the click is not swallowed |
 
 **Formula-injection neutralisation** — `spreadsheetText()` guards both CSV and
@@ -908,9 +913,37 @@ URL is revoked synchronously.
 **Every export path is wrapped in try/catch** and surfaces a specific French
 error into a `role="alert"` paragraph, rather than failing silently.
 
-**There is no import path for anything except Contacts CSV.** No JSON restore
-workflow exists — `SECURITY.md` lists this as a known gap, and the Settings card
-says *"L'export ne remplace pas une procédure de restauration."*
+**No JSON restore workflow exists** — `SECURITY.md` lists this as a known gap,
+and the Settings card says *"L'export ne remplace pas une procédure de
+restauration."* CSV import, below, adds records; it never replaces a workspace.
+
+### 5.1 CSV import — every record type
+
+**Files:** `src/lib/dataImport.ts`, `src/components/DataImportPanel.tsx`,
+`importRecords()` in `src/store/useMizan.ts`, copy in `src/i18n/dataImport.ts`.
+
+One engine, nine datasets (`contacts`, `projects`, `expenses`, `stock`,
+`orders`, `campaigns`, `contracts`, `team`, `tools`). A dataset is a list of
+columns plus a builder that turns one validated row into one stored record.
+
+| Rule | Behaviour |
+|---|---|
+| Headers | **Matched, not counted.** Any order, French/English/Arabic spellings, optional columns omitted, unknown columns ignored. Required columns (`Name*`, `Client*`, `Amount*`…) must be present and filled |
+| Delimiters | `,`, `;` and tab — the one that recognises the most headers wins. BOM and quoted newlines handled by `parseCSV()` |
+| Numbers | `1 250,50`, `1,250.50`, `1250` and a trailing `MAD`/`DH`/`€` all read; bounds are `MAX_AMOUNT` / `MAX_QUANTITY`, rates 0–100, progress a whole 0–100 |
+| Dates | `2026-03-15`, `15/03/2026`, `15.3.2026`; validated through `calendarDay()` |
+| Choices | Canonical values plus synonyms per language (`virement` → `transfer`, `livré` → `delivered`, `oui`/`نعم` → true) |
+| Links | `Client`/`Vendor` are matched by name (or last 9 phone digits) to an existing contact; orders also match a campaign by name and a stock article by SKU or name |
+| New clients | **Orders only** — a buyer who is not a contact yet is created from the row's name, phone and city, once per buyer, and the order points at them |
+| Limits | ≤ **2 MB**, ≤ **10 000 rows**, `.csv`/`.tsv` only |
+| Failure | `DataImportError` carries the row number and *the header as the file writes it* (`Ligne 7 : « Montant » doit être un nombre…`). Nothing is imported |
+| Duplicates | Exact repeats — inside the file and against stored records — are skipped; existing records are never overwritten |
+| Landing | `importRecords()` validates and sanitises **every collection before a single `set`**, so a bad row aborts the whole file, and writes one audit line per collection |
+
+The panel re-checks the owner's `auth.id` and a revision counter after the async
+read, and resets whenever the account or the record type changes, so a slow file
+cannot land in another account or another collection. A storage failure after
+the write is reported as a failure, never as success.
 
 ---
 
@@ -1446,7 +1479,7 @@ webhooks.
 | Reports | ✅ | 🖥️ | — | CSV, print | **TVA explicitly not calculated** |
 | Team | ✅ | 🖥️ | — | — | No email invite, permissions are client-side |
 | Audit | ✅ | 🖥️ | — | CSV | Editable by the user, 500-event cap |
-| Settings | ✅ | 🖥️ | — | JSON backup | **No restore path** |
+| Settings | ✅ | 🖥️ | — | JSON backup, CSV in (all 9 collections) | **No restore path** — import adds records, it does not replace them |
 | Auth | ✅ | ☁️ | ✅ | — | Requires Supabase configuration |
 | Admin CMS | ✅ | ☁️ | ✅ | JSON, encrypted audit | Two roles, RLS-authoritative |
 | Marketing site | ✅ | ☁️ | ✅ | sitemap, llms.txt | CMS-driven, prerendered per locale |

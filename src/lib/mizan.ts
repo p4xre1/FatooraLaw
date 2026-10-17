@@ -127,8 +127,13 @@ export function toExcel(rows: Record<string, unknown>[], filename = "export.xls"
   triggerDownload(html, filename, "application/vnd.ms-excel")
 }
 
-/** Parse records, not individual lines: quoted fields may contain newlines. */
-export function parseCSV(text: string, delimiter: "," | ";" = ","): string[][] {
+/**
+ * Parse records, not individual lines: quoted fields may contain newlines.
+ *
+ * The delimiter is a parameter because spreadsheets disagree: a French Excel
+ * writes `;`, "Unicode text" and a paste from Google Sheets write tabs.
+ */
+export function parseCSV(text: string, delimiter: "," | ";" | "\t" = ","): string[][] {
   const source = text.replace(/^\uFEFF/, "")
   if (!source) return []
   const rows: string[][] = []

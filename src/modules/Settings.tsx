@@ -15,7 +15,7 @@ import { THEME_MODES, useThemeStore, type ThemeMode } from "../lib/theme"
 import { isSupabaseConfigured, supabase } from "../lib/supabase"
 import { storagePurchaseLink } from "../lib/cloudStorage"
 import { usePlan } from "../store/usePlan"
-import ContactImportPanel from "../components/ContactImportPanel"
+import DataImportPanel from "../components/DataImportPanel"
 import { SUPPORT_EMAIL } from "../lib/contact"
 
 export default function Settings() {
@@ -199,7 +199,7 @@ export default function Settings() {
       } />
       {saveError && <p role="alert" className="text-sm text-serious">{saveError}</p>}
 
-      <ContactImportPanel />
+      <DataImportPanel />
 
       <Card className="space-y-3 p-4">
         <p className="text-[13px] text-muted">{t.localData.body}</p>

@@ -8,33 +8,6 @@ import type { Language } from "../lib/language/store.ts"
  * The translation keeps all three facts explicit.
  */
 const en = {
-  contactImport: {
-    title: "Import your contacts",
-    steps: "1. Download the template. 2. Replace the example row with your contacts in Excel or Google Sheets. 3. Save as CSV UTF-8, choose the file below and check the preview. Nothing is imported until you confirm.",
-    hint: "7 columns: Name, Type, ICE, Phone, Email, City, Balance. Use client or supplier for Type. Only Name and Type need values; an empty Balance becomes 0. Keep phone numbers as text to preserve + and leading zeros. Maximum 2 MB / 10,000 contacts. CSV only, not XLSX.",
-    template: "Download contact template",
-    file: "Choose contacts CSV",
-    reading: "Reading your contacts…",
-    preview: (count: number, skipped: number) => `${count} contacts ready to add · ${skipped} exact duplicates skipped. Preview shows up to 5 contacts.`,
-    confirm: "Confirm contact import",
-    cancel: "Cancel import",
-    success: (count: number, skipped: number) => `Added ${count} contacts; skipped ${skipped} exact duplicates. Find them in Clients & Suppliers. Your existing contacts were not replaced.`,
-    savedWarning: "Contacts were added in memory, but browser storage could not save them. Export a backup before leaving this page.",
-    privacy: "The file is read in this browser. Imported contacts are saved locally and are included in optional cloud backup only if you have enabled it. Exact duplicates are skipped; existing contacts are never overwritten.",
-    errors: {
-      empty: "The file has no contacts. Add your contacts below the header row.",
-      header: "Use the 7-column template or a contacts CSV exported from Fatorati. Keep all seven headers, even when optional fields are empty.",
-      csv: "This CSV has invalid quotation marks. Save it again as CSV UTF-8.",
-      rows: "Use at most 10,000 contacts per file.",
-      name: "A contact name is missing.",
-      type: "Type must be client or supplier (lowercase).",
-      balance: "A balance is invalid. Use a number such as 120.50 or -20; do not add a currency symbol.",
-    },
-    row: (row: number, message: string) => `Row ${row}: ${message}`,
-    tooLarge: "The file must not exceed 2 MB.",
-    readError: "Could not read the file. Choose a CSV file and try again.",
-    failed: "The import failed. Check your file and try again.",
-  },
   subtitle: "Company configuration, tax settings and documents",
   appearance: {
     title: "Appearance",
@@ -131,33 +104,6 @@ const en = {
 type SettingsCopy = typeof en
 
 const fr: SettingsCopy = {
-  contactImport: {
-    title: "Importer vos contacts",
-    steps: "1. Téléchargez le modèle. 2. Remplacez la ligne d’exemple par vos contacts dans Excel ou Google Sheets. 3. Enregistrez en CSV UTF-8, choisissez le fichier et vérifiez l’aperçu. Rien n’est importé sans votre confirmation.",
-    hint: "7 colonnes : Name, Type, ICE, Phone, Email, City, Balance. Type : client ou supplier. Seuls Name et Type sont obligatoires ; un solde vide vaut 0. Gardez les téléphones au format texte pour conserver + et les zéros initiaux. Maximum 2 Mo / 10 000 contacts. CSV uniquement, pas XLSX.",
-    template: "Télécharger le modèle de contacts",
-    file: "Choisir le CSV de contacts",
-    reading: "Lecture de vos contacts…",
-    preview: (count: number, skipped: number) => `${count} contacts prêts à ajouter · ${skipped} doublons exacts ignorés. Aperçu limité à 5 contacts.`,
-    confirm: "Confirmer l’import des contacts",
-    cancel: "Annuler l’import",
-    success: (count: number, skipped: number) => `${count} contacts ajoutés ; ${skipped} doublons exacts ignorés. Retrouvez-les dans Clients & Fournisseurs. Vos contacts existants n’ont pas été remplacés.`,
-    savedWarning: "Les contacts ont été ajoutés en mémoire, mais le navigateur n’a pas pu les enregistrer. Exportez une sauvegarde avant de quitter cette page.",
-    privacy: "Le fichier est lu dans ce navigateur. Les contacts sont conservés localement et inclus dans la sauvegarde cloud facultative uniquement si vous l’avez activée. Les doublons exacts sont ignorés ; aucun contact existant n’est écrasé.",
-    errors: {
-      empty: "Ce fichier ne contient aucun contact. Ajoutez vos contacts sous les en-têtes.",
-      header: "Utilisez le modèle à 7 colonnes ou un CSV de contacts exporté de Fatorati. Conservez tous les en-têtes, même pour les champs facultatifs vides.",
-      csv: "Les guillemets de ce CSV sont invalides. Enregistrez-le de nouveau en CSV UTF-8.",
-      rows: "Limitez chaque fichier à 10 000 contacts.",
-      name: "Le nom d’un contact est manquant.",
-      type: "Type doit être client ou supplier (en minuscules).",
-      balance: "Un solde est invalide. Utilisez un nombre comme 120.50 ou -20, sans symbole monétaire.",
-    },
-    row: (row: number, message: string) => `Ligne ${row} : ${message}`,
-    tooLarge: "Le fichier ne doit pas dépasser 2 Mo.",
-    readError: "Lecture du fichier impossible. Choisissez un CSV et réessayez.",
-    failed: "L’import a échoué. Vérifiez le fichier et réessayez.",
-  },
   subtitle: "Configuration de l'entité, fiscalité & documents",
   appearance: {
     title: "Apparence",
@@ -252,33 +198,6 @@ const fr: SettingsCopy = {
 }
 
 const ar: SettingsCopy = {
-  contactImport: {
-    title: "استيراد جهات اتصالك",
-    steps: "1. نزّل القالب. 2. استبدل صف المثال بجهات اتصالك في Excel أو Google Sheets. 3. احفظ بصيغة CSV UTF-8 واختر الملف وراجع المعاينة. لن يتم الاستيراد قبل تأكيدك.",
-    hint: "7 أعمدة: Name, Type, ICE, Phone, Email, City, Balance. اكتب client أو supplier في Type. فقط الاسم والنوع مطلوبان؛ الرصيد الفارغ يساوي 0. احفظ الهاتف كنص للحفاظ على + والأصفار الأولى. الحد 2 ميغابايت / 10,000 جهة اتصال. CSV فقط وليس XLSX.",
-    template: "تنزيل قالب جهات الاتصال",
-    file: "اختيار ملف CSV لجهات الاتصال",
-    reading: "جارٍ قراءة جهات الاتصال…",
-    preview: (count: number, skipped: number) => `${count} جهة اتصال جاهزة للإضافة · تم تجاهل ${skipped} نسخة مطابقة. المعاينة تعرض حتى 5 جهات اتصال.`,
-    confirm: "تأكيد استيراد جهات الاتصال",
-    cancel: "إلغاء الاستيراد",
-    success: (count: number, skipped: number) => `تمت إضافة ${count} جهة اتصال وتجاهل ${skipped} نسخة مطابقة. ستجدها في العملاء والموردين. لم يتم استبدال جهات اتصالك الحالية.`,
-    savedWarning: "أُضيفت جهات الاتصال في الذاكرة لكن تعذر حفظها في المتصفح. صدّر نسخة احتياطية قبل مغادرة الصفحة.",
-    privacy: "يُقرأ الملف داخل هذا المتصفح. تُحفظ الجهات محلياً وتُضمّن في النسخ السحابي الاختياري فقط إذا فعّلته. تُتجاهل النسخ المطابقة ولا يتم استبدال الجهات الموجودة.",
-    errors: {
-      empty: "الملف لا يحتوي على جهات اتصال. أضف جهاتك تحت صف العناوين.",
-      header: "استخدم القالب ذا الأعمدة السبعة أو CSV مُصدّراً من فاتورتي. احتفظ بكل العناوين حتى مع الحقول الاختيارية الفارغة.",
-      csv: "علامات الاقتباس في CSV غير صحيحة. احفظه مجدداً بصيغة CSV UTF-8.",
-      rows: "الحد الأقصى 10,000 جهة اتصال لكل ملف.",
-      name: "اسم جهة اتصال مفقود.",
-      type: "يجب أن يكون النوع client أو supplier بحروف صغيرة.",
-      balance: "الرصيد غير صالح. استخدم رقماً مثل 120.50 أو -20 دون رمز عملة.",
-    },
-    row: (row: number, message: string) => `الصف ${row}: ${message}`,
-    tooLarge: "يجب ألا يتجاوز الملف 2 ميغابايت.",
-    readError: "تعذرت قراءة الملف. اختر ملف CSV وحاول مجدداً.",
-    failed: "فشل الاستيراد. تحقق من الملف وحاول مجدداً.",
-  },
   subtitle: "إعدادات الشركة والضرائب والمستندات",
   appearance: {
     title: "المظهر",

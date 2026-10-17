@@ -6,11 +6,12 @@ export const uid = () => Math.random().toString(36).slice(2, 10)
 const day = 86_400_000
 const now = Date.now()
 
-const allModules: ModuleKey[] = [
+/** Every module a permission map has an entry for. */
+export const MODULE_KEYS: ModuleKey[] = [
   "dashboard", "projects", "invoices", "contacts", "procurement", "inventory", "delivery", "verification", "legal", "reports", "calendar", "risk", "tools", "team", "audit", "settings",
 ]
 export function perms(keys: ModuleKey[]): Record<ModuleKey, boolean> {
-  return allModules.reduce((acc, m) => ({ ...acc, [m]: keys.includes(m) }), {} as Record<ModuleKey, boolean>)
+  return MODULE_KEYS.reduce((acc, m) => ({ ...acc, [m]: keys.includes(m) }), {} as Record<ModuleKey, boolean>)
 }
 
 export const seedSettings: Settings = {
