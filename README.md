@@ -15,6 +15,7 @@ using real financial or client data.
 | [docs/ADS_ANALYTICS.md](docs/ADS_ANALYTICS.md) | paid-ads CSV import, metric definitions, attribution cautions, privacy boundaries and a safe path to Meta/Google API integrations |
 | [docs/BACKUP_AUTOMATION_ROADMAP.md](docs/BACKUP_AUTOMATION_ROADMAP.md) | multi-section exports, local encrypted backups and the server requirements for scheduled monthly backups and email notifications |
 | [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md) | every source of `VITE_SUPABASE_*`, why a deployed site can still be unconfigured, and how to verify a live bundle |
+| [docs/GOOGLE_AUTH.md](docs/GOOGLE_AUTH.md) | enabling and troubleshooting the Google sign-in button: Google Cloud OAuth client, Supabase provider + redirect URLs, existing-account linking and security notes |
 | [docs/SEO_GEO_AIO_SXO.md](docs/SEO_GEO_AIO_SXO.md) | crawlability, per-page metadata, structured data, AI-answer-engine readiness and conversion/site-experience recommendations and backlog |
 | [docs/COMPETITOR_INEO.md](docs/COMPETITOR_INEO.md) | full scan of ineo.ma (72 URLs, 28 features, published pricing) and a gap analysis against this repository |
 | [docs/CODE_REVIEW.md](docs/CODE_REVIEW.md) | this release's code scan: fixed defects, verified-correct areas, open findings |
@@ -228,9 +229,13 @@ not a blank input. Logos are limited to PNG/JPEG/WebP/GIF up to 512 KiB, with
 MIME/signature/payload checks. These are client safeguards, not server-side
 validation or a compliance certification.
 
-Authentication is still the existing email/password flow (Gmail addresses are
-supported); no Google OAuth or local-profile replacement was introduced. APK
-download wiring is deferred until an actual file or download URL is available.
+Authentication is the existing email/password flow (Gmail addresses are
+supported), plus optional **Google sign-in** through Supabase's hosted OAuth
+provider on `/login`. Turning it on is a dashboard change (Google Cloud OAuth
+client + Supabase provider settings) documented in
+[docs/GOOGLE_AUTH.md](docs/GOOGLE_AUTH.md) — no client secret is added to the
+browser bundle. APK download wiring is deferred until an actual file or
+download URL is available.
 
 ## Deployment
 
