@@ -1,11 +1,12 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
-import { beforeEach, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, expect, it, vi } from "vitest"
 
-const mock = vi.hoisted(() => ({ signInWithOAuth: vi.fn(), configured: true }))
+const mock = vi.hoisted(() => ({ signInWithOAuth: vi.fn(), configured: true, settings: vi.fn() }))
 vi.mock("../src/lib/supabase", () => ({
   get isSupabaseConfigured() { return mock.configured },
   supabaseConfigProblem: null,
   supabaseConfigWarning: null,
+  supabaseConfig: { url: "https://test.supabase.co", anonKey: "public-anon-key" },
   supabase: { auth: { signInWithOAuth: mock.signInWithOAuth } },
 }))
 
@@ -16,6 +17,12 @@ beforeEach(() => {
   window.history.replaceState({}, "", "/login")
   mock.configured = true
   mock.signInWithOAuth.mockReset().mockResolvedValue({ data: { provider: "google" }, error: null })
+  mock.settings.mockReset().mockResolvedValue({ ok: true, json: async () => ({ external: { google: true } }) })
+  vi.stubGlobal("fetch", mock.settings)
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
 })
 
 it("starts the Supabase Google OAuth flow and returns to /login", async () => {
@@ -33,7 +40,28 @@ it("starts the Supabase Google OAuth flow and returns to /login", async () => {
   )
 })
 
-it("explains that Google sign-in is not enabled without leaking provider text", async () => {
+it("explains that Google sign-in is not enabled before leaving the app", async () => {
+  mock.settings.mockResolvedValue({ ok: true, json: async () => ({ external: { google: false } }) })
+  render(<Auth onBack={() => {}} />)
+  fireEvent.click(screen.getByRole("button", { name: "Continuer avec Google" }))
+
+  await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("pas encore activée"))
+  expect(mock.signInWithOAuth).not.toHaveBeenCalled()
+  expect(mock.settings).toHaveBeenCalledWith(
+    "https://test.supabase.co/auth/v1/settings",
+    expect.objectContaining({ headers: { apikey: "public-anon-key" }, cache: "no-store" }),
+  )
+})
+
+it("still attempts the redirect when the settings check cannot run", async () => {
+  mock.settings.mockRejectedValue(new Error("offline"))
+  render(<Auth onBack={() => {}} />)
+  fireEvent.click(screen.getByRole("button", { name: "Continuer avec Google" }))
+
+  await waitFor(() => expect(mock.signInWithOAuth).toHaveBeenCalled())
+})
+
+it("translates a raw provider error returned by the client", async () => {
   mock.signInWithOAuth.mockResolvedValue({
     data: { provider: "google", url: null },
     error: { message: "Unsupported provider: provider is not enabled" },

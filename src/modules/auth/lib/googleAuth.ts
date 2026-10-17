@@ -1,5 +1,5 @@
 import { AUTH_PATHS } from "../../../lib/routes"
-import { isSupabaseConfigured, supabase } from "../../../lib/supabase"
+import { isSupabaseConfigured, supabase, supabaseConfig } from "../../../lib/supabase"
 
 /**
  * Google sign-in through Supabase's hosted OAuth flow.
@@ -56,6 +56,32 @@ export function mapGoogleSignInError(message: string): GoogleSignInErrorCode {
 }
 
 /**
+ * Best-effort read of the project's public auth settings, so a disabled
+ * provider is explained on our screen instead of sending the visitor to a raw
+ * Supabase JSON error page. `null` means "could not tell" (offline, unexpected
+ * response): the caller should still attempt the redirect.
+ */
+export async function isGoogleProviderEnabled(): Promise<boolean | null> {
+  if (!isSupabaseConfigured) return false
+  try {
+    const response = await fetch(`${supabaseConfig.url}/auth/v1/settings`, {
+      headers: { apikey: supabaseConfig.anonKey },
+      cache: "no-store",
+    })
+    if (!response.ok) return null
+    const settings: unknown = await response.json()
+    const external = settings !== null && typeof settings === "object"
+      ? (settings as { external?: unknown }).external
+      : null
+    if (external === null || typeof external !== "object") return null
+    const google = (external as Record<string, unknown>).google
+    return typeof google === "boolean" ? google : null
+  } catch {
+    return null
+  }
+}
+
+/**
  * Starts the hosted Google OAuth flow. On success the browser navigates to
  * Google and then back to `/login`; the promise's success value only matters
  * in environments where navigation is stubbed (tests).
@@ -63,6 +89,7 @@ export function mapGoogleSignInError(message: string): GoogleSignInErrorCode {
 export async function signInWithGoogle(): Promise<GoogleSignInResult> {
   if (!isSupabaseConfigured) return { error: "notConfigured" }
   try {
+    if (await isGoogleProviderEnabled() === false) return { error: "providerNotEnabled" }
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {

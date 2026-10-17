@@ -27,6 +27,12 @@ the flow is a **top-level redirect**, not an embedded Google script or iframe.
 opened for `https://accounts.google.com/gsi/…`; that is not part of this
 implementation.)
 
+**Before you enable it:** the public privacy policy currently names Google
+Analytics as the only third-party tool. Google sign-in adds Google as an
+identity provider (it shares the account's name, email address and profile
+picture with the app), so update the `/privacy` page — and the cookie policy if
+it describes authentication storage — before turning the provider on.
+
 ## 1. Google Cloud Console
 
 1. Open <https://console.cloud.google.com/> and create (or select) a project.
