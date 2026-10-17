@@ -72,9 +72,6 @@ const LANGUAGE_NEUTRAL = new Set([
   "auth.common.emailPlaceholder",
   "team.emailPlaceholder",
   // Product/service names stay in their registered brand spelling in Arabic.
-  "calendar.events.adobe.label",
-  "calendar.events.microsoft.label",
-  "calendar.events.sage.label",
   "contacts.table.ice",
   "contacts.whatsapp",
   "contacts.phonePlaceholder",

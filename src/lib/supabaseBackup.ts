@@ -142,7 +142,7 @@ export function startSupabaseBackupSync(userId: string): () => void {
   const unsubscribe = useMizan.subscribe((state) => {
     const changed = state.settings !== lastState.settings || state.projects !== lastState.projects || state.contacts !== lastState.contacts ||
       state.expenses !== lastState.expenses || state.stock !== lastState.stock || state.orders !== lastState.orders ||
-      state.campaigns !== lastState.campaigns || state.contracts !== lastState.contracts || state.team !== lastState.team ||
+      state.campaigns !== lastState.campaigns || state.calendarEvents !== lastState.calendarEvents || state.verificationTeam !== lastState.verificationTeam || state.verificationCalls !== lastState.verificationCalls || state.contracts !== lastState.contracts || state.team !== lastState.team ||
       state.tools !== lastState.tools || state.audit !== lastState.audit
     lastState = state
     if (!active || !useSupabaseBackup.getState().enabled || !changed || state.auth?.id !== userId || timer) return

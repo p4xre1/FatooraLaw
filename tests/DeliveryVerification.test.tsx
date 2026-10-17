@@ -38,7 +38,7 @@ beforeEach(() => {
   localStorage.clear()
   useMizan.getState().signOut()
   useMizan.getState().signIn("Karim Benjelloun", "karim@atlas.ma", "owner", "delivery-user")
-  useMizan.setState({ contacts: [{ ...CLIENT }], stock: [{ ...ITEM }], campaigns: [{ ...CAMPAIGN }], orders: [], projects: [] })
+  useMizan.setState({ contacts: [{ ...CLIENT }], stock: [{ ...ITEM }], campaigns: [{ ...CAMPAIGN }], orders: [], projects: [], verificationTeam: { name: "", members: [] }, verificationCalls: [] })
 })
 
 describe("on Livraisons", () => {
@@ -67,6 +67,8 @@ describe("on Livraisons", () => {
     render(<Delivery />)
     fireEvent.click(screen.getByRole("button", { name: /Nouvelle commande/ }))
     fireEvent.change(screen.getByLabelText("Produit 1"), { target: { value: "s1" } })
+    expect((screen.getByLabelText("Désignation 1") as HTMLInputElement).disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText("Désignation 1"), { target: { value: "Article inventé" } })
     fireEvent.change(screen.getByLabelText("Prix de vente 1"), { target: { value: "150" } })
     fireEvent.change(screen.getByLabelText("Coût de livraison"), { target: { value: "30" } })
     fireEvent.click(screen.getByRole("button", { name: "Enregistrer la commande" }))
@@ -97,8 +99,36 @@ describe("on Vérification clients", () => {
     expect(order.amountPaid).toBe(300)
     expect(order.paidAt).toBeTruthy()
 
+    expect(useMizan.getState().verificationCalls.map((call) => call.outcome)).toEqual(["verified", "called"])
+    expect(screen.getAllByText("Appelé").length).toBeGreaterThan(1)
+
     // And the cost table knows what she cost: 80 products + 40 fulfilment + 200 ads.
     expect(screen.getByText("Ce que chaque client nous a coûté")).toBeTruthy()
+  })
+
+  it("sets up a verification team and attributes every outcome to the selected caller", () => {
+    useMizan.setState({ orders: [seedOrder()] })
+    render(<Verification />)
+
+    fireEvent.change(screen.getByLabelText("Nom de la société ou de l'équipe"), { target: { value: "North Verification" } })
+    fireEvent.click(screen.getByRole("button", { name: "Enregistrer le nom" }))
+    fireEvent.change(screen.getByLabelText("Nom du membre"), { target: { value: "Sara" } })
+    fireEvent.click(screen.getByRole("button", { name: "Ajouter un membre" }))
+
+    expect(useMizan.getState().verificationTeam).toMatchObject({ name: "North Verification", members: [{ name: "Sara" }] })
+    expect((screen.getByLabelText("Attribuer les prochains appels à", { exact: false }) as HTMLSelectElement).value).not.toBe("")
+    fireEvent.click(screen.getByRole("button", { name: "Sans réponse" }))
+    fireEvent.click(screen.getByRole("button", { name: "Vérifier" }))
+
+    expect(useMizan.getState().orders[0]).toMatchObject({ verificationStatus: "verified", callAttempts: 2 })
+    expect(useMizan.getState().verificationCalls.map((call) => ({ agentName: call.agentName, outcome: call.outcome, clientName: call.clientName }))).toEqual([
+      { agentName: "Sara", outcome: "verified", clientName: "Salma Bennani" },
+      { agentName: "Sara", outcome: "no_answer", clientName: "Salma Bennani" },
+    ])
+    expect(screen.getAllByText("50%").length).toBeGreaterThan(0)
+    expect(screen.getByText("Historique des appels par client")).toBeDefined()
+    expect(screen.getAllByText("Sans réponse").length).toBeGreaterThan(1)
+    expect((screen.getByLabelText("Nom de la société ou de l'équipe") as HTMLInputElement).value).toBe("North Verification")
   })
 
   it("creates a lead together with its new client", () => {
@@ -115,6 +145,7 @@ describe("on Vérification clients", () => {
     const created = state.contacts.find((c) => c.name === "Nadia Alaoui")
     expect(created).toMatchObject({ type: "client", city: "Agadir" })
     expect(state.orders[0].clientId).toBe(created?.id)
+    expect(state.orders[0].items[0]).toMatchObject({ label: "Huile d'argan", stockId: null })
   })
 })
 

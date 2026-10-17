@@ -50,7 +50,7 @@ export default function CreateOrder({ onClose }: { onClose: () => void }) {
     const item = stock.find((s) => s.id === stockId)
     setRow(index, {
       stockId,
-      label: item?.name ?? rows[index].label,
+      label: item?.name ?? (stockId ? rows[index].label : ""),
       cost: item?.costPrice !== undefined ? String(item.costPrice) : rows[index].cost,
     })
   }
@@ -60,9 +60,12 @@ export default function CreateOrder({ onClose }: { onClose: () => void }) {
       const items: OrderItem[] = rows.map((row) => {
         const qty = parseAmount(row.qty, false, MAX_QUANTITY)
         const price = parseAmount(row.price)
+        const selectedStock = row.stockId ? stock.find((item) => item.id === row.stockId) : undefined
+        if (row.stockId && !selectedStock) throw new Error("invalid")
         const cost = parseAmount(row.cost, true)
-        if (qty === null || price === null || cost === null || !row.label.trim()) throw new Error("invalid")
-        return { stockId: row.stockId || null, label: row.label.trim(), qty, unitPrice: price, unitCost: cost }
+        const label = selectedStock?.name ?? row.label.trim()
+        if (qty === null || price === null || cost === null || !label) throw new Error("invalid")
+        return { stockId: selectedStock?.id ?? null, label, qty, unitPrice: price, unitCost: cost }
       })
       const deliveryCost = parseAmount(fees.delivery, true)
       const packagingCost = parseAmount(fees.packaging, true)
@@ -162,7 +165,7 @@ export default function CreateOrder({ onClose }: { onClose: () => void }) {
                     </Select>
                   </Field>
                   <Field label={index === 0 ? t.form.label : " "}>
-                    <Input aria-label={`${t.form.label} ${index + 1}`} value={row.label} onChange={(e) => setRow(index, { label: e.target.value })} />
+                    <Input aria-label={`${t.form.label} ${index + 1}`} value={row.label} disabled={Boolean(row.stockId)} placeholder={!row.stockId ? t.form.customProduct : undefined} onChange={(e) => setRow(index, { label: e.target.value })} />
                   </Field>
                   <Field label={index === 0 ? t.form.qty : " "}>
                     <Input aria-label={`${t.form.qty} ${index + 1}`} type="number" min={0} step="0.001" className="tnum" value={row.qty} onChange={(e) => setRow(index, { qty: e.target.value })} />

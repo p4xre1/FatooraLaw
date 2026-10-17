@@ -58,6 +58,22 @@ describe("spreadsheet exports", () => {
   })
 })
 
+it("stores, normalizes, sanitizes and removes user-managed calendar events", () => {
+  useMizan.getState().signIn("Calendar tester", "calendar@example.com", "owner", "calendar-account")
+  const before = useMizan.getState().calendarEvents.length
+  useMizan.getState().addCalendarEvent({
+    title: "  <Rendez-vous comptable>  ", date: "17/10/2026", kind: "deadline", note: "<Préparer les pièces> ",
+  })
+  const event = useMizan.getState().calendarEvents[0]
+  expect(useMizan.getState().calendarEvents).toHaveLength(before + 1)
+  expect(event).toMatchObject({ title: "Rendez-vous comptable", date: "2026-10-17", kind: "deadline", note: "Préparer les pièces" })
+  expect(() => useMizan.getState().addCalendarEvent({ title: "Bad date", date: "2026-02-30", kind: "event", note: "" })).toThrow()
+  expect(() => useMizan.getState().addCalendarEvent({ title: "   ", date: "2026-10-17", kind: "event", note: "" })).toThrow()
+  useMizan.getState().removeCalendarEvent(event.id)
+  expect(useMizan.getState().calendarEvents).toHaveLength(before)
+  expect(useMizan.getState().audit[0].action).toContain("supprimé un élément")
+})
+
 it("rejects asynchronous work failures rather than throwing outside the promise", async () => {
   vi.useFakeTimers()
   const task = runAsync(() => { throw new Error("export failed") }, 10)
@@ -81,11 +97,27 @@ it("exports legacy records without exporting old authentication or deleting the 
 it("exports all current business records including subscriptions, but no auth or session objects", async () => {
   useMizan.getState().signIn("Tester", "tester@gmail.com", "owner", "backup-account")
   useMizan.getState().addTool({ name: "Backed up tool", cost: 19.5, start: "", expiry: "" })
+  useMizan.getState().addCalendarEvent({ title: "Saved calendar event", date: "2026-12-01", kind: "event", note: "Keep the signed copy" })
+  useMizan.getState().setVerificationTeamName("North verification")
+  const agentId = useMizan.getState().addVerificationAgent("Sara")
+  useMizan.setState({
+    contacts: [{ id: "verify-client", type: "client", name: "Backup client", ice: "", phone: "", email: "", city: "", balance: 0 }],
+    orders: [{
+      id: "verify-order", clientId: "verify-client", campaignId: null, createdAt: "2026-12-01T09:00:00.000Z",
+      items: [{ stockId: null, label: "Service", qty: 1, unitPrice: 100, unitCost: 0 }],
+      deliveryCost: 0, packagingCost: 0, otherFees: 0, amountPaid: 0, verificationStatus: "new", deliveryStatus: "pending",
+      callAttempts: 0, firstCallAt: null, verifiedAt: null, paidAt: null, shippedAt: null, deliveredAt: null, stockDeducted: false, notes: "",
+    }],
+  })
+  useMizan.getState().recordVerificationCall("verify-order", "no_answer", agentId)
   exportCurrentBackup()
   const backup = JSON.parse(await downloaded.text())
   expect(backup.format).toBe("fatorati-local-backup")
   expect(backup.data.tools[0].name).toBe("Backed up tool")
-  expect(Object.keys(backup.data).sort()).toEqual(["audit", "campaigns", "contacts", "contracts", "expenses", "orders", "projects", "settings", "stock", "team", "tools"])
+  expect(backup.data.calendarEvents[0].title).toBe("Saved calendar event")
+  expect(backup.data.verificationTeam).toMatchObject({ name: "North verification", members: [{ id: agentId, name: "Sara" }] })
+  expect(backup.data.verificationCalls[0]).toMatchObject({ clientName: "Backup client", agentName: "Sara", outcome: "no_answer" })
+  expect(Object.keys(backup.data).sort()).toEqual(["audit", "calendarEvents", "campaigns", "contacts", "contracts", "expenses", "orders", "projects", "settings", "stock", "team", "tools", "verificationCalls", "verificationTeam"])
   expect(backup.auth).toBeUndefined()
   expect(backup.data.auth).toBeUndefined()
   expect(backup.data.signIn).toBeUndefined()

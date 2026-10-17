@@ -157,6 +157,17 @@ export type SubscriptionTool = {
   expiry: string // ISO date, empty means no expiry
 }
 
+/** A date the business wants to remember; these are user-entered, not legal advice. */
+export type CalendarEventKind = "event" | "deadline"
+export type CalendarEvent = {
+  id: string
+  title: string
+  /** Normalized ISO date (`YYYY-MM-DD`). */
+  date: string
+  kind: CalendarEventKind
+  note: string
+}
+
 /** An advertising platform a campaign ran on. */
 export type AdPlatform = "facebook" | "instagram" | "google" | "tiktok" | "whatsapp" | "other"
 
@@ -179,6 +190,24 @@ export type AdCampaign = {
 
 /** Call-confirmation stage of an order's client. */
 export type VerificationStatus = "new" | "calling" | "no_answer" | "verified" | "refused"
+
+/** A caller in the business's verification group. */
+export type VerificationAgent = { id: string; name: string }
+export type VerificationTeam = { name: string; members: VerificationAgent[] }
+export type VerificationCallOutcome = "called" | "no_answer" | "verified" | "refused"
+/** One attributed attempt in the verification call history. */
+export type VerificationCall = {
+  id: string
+  orderId: string
+  clientId: string
+  /** Snapshot keeps the call history readable if a client record is removed. */
+  clientName: string
+  agentId: string | null
+  /** Snapshot keeps old call history readable if a team member is removed. */
+  agentName: string | null
+  outcome: VerificationCallOutcome
+  calledAt: string
+}
 
 /** Fulfilment stage of an order, after (or beside) verification. */
 export type DeliveryStatus = "pending" | "preparing" | "shipped" | "delivered" | "returned" | "cancelled"

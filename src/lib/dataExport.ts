@@ -4,7 +4,7 @@ import { cryptoAvailable, encryptString } from "./security/encryption"
 
 export const EXPORT_SECTIONS = [
   "settings", "projects", "contacts", "expenses", "stock", "orders", "campaigns",
-  "contracts", "team", "tools", "audit",
+  "calendarEvents", "contracts", "team", "tools", "audit", "verificationTeam", "verificationCalls",
 ] as const
 export type ExportSection = (typeof EXPORT_SECTIONS)[number]
 

@@ -1,7 +1,8 @@
 import { create } from "zustand"
 import { createJSONStorage, persist } from "zustand/middleware"
 import type {
-  AdCampaign, AuditEvent, Contact, Contract, DeliveryOrder, Expense, ModuleKey, Project, Settings, Severity, StockItem, TeamMember, Role, SubscriptionTool,
+  AdCampaign, AuditEvent, CalendarEvent, CalendarEventKind, Contact, Contract, DeliveryOrder, Expense, ModuleKey, Project, Settings, Severity, StockItem, TeamMember, Role, SubscriptionTool,
+  VerificationAgent, VerificationCall, VerificationCallOutcome, VerificationTeam,
 } from "./types"
 import { uid } from "./seed"
 import { emptyBusinessData } from "./defaults"
@@ -41,6 +42,71 @@ function sanitizeOrder(order: DeliveryOrder): DeliveryOrder {
   return { ...order, items, notes: sanitize(order.notes ?? "") }
 }
 
+function normalizeCalendarEvent(event: Partial<CalendarEvent>): Omit<CalendarEvent, "id"> {
+  const title = sanitize(typeof event.title === "string" ? event.title : "")
+  if (!title) throw new Error("Le titre de l'événement est requis.")
+  const day = typeof event.date === "string" ? calendarDay(event.date) : null
+  if (day === null) throw new Error("La date de l'événement est invalide.")
+  if (event.kind !== "event" && event.kind !== "deadline") throw new Error("Le type de l'événement est invalide.")
+  return {
+    title,
+    date: dateFromDay(day),
+    kind: event.kind,
+    note: sanitize(typeof event.note === "string" ? event.note : ""),
+  }
+}
+
+function storedCalendarEvents(value: unknown): CalendarEvent[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((candidate): CalendarEvent[] => {
+    if (!candidate || typeof candidate !== "object") return []
+    const row = candidate as Partial<CalendarEvent>
+    const id = typeof row.id === "string" ? sanitize(row.id) : ""
+    if (!id) return []
+    try {
+      return [{ id, ...normalizeCalendarEvent(row) }]
+    } catch {
+      // A malformed local date or unrecognised kind should not break the whole
+      // dashboard or be rendered as an untrusted component key.
+      return []
+    }
+  })
+}
+
+function storedVerificationTeam(value: unknown): VerificationTeam {
+  if (!value || typeof value !== "object") return { name: "", members: [] }
+  const row = value as Partial<VerificationTeam>
+  const ids = new Set<string>()
+  const members = Array.isArray(row.members) ? row.members.flatMap((candidate): VerificationAgent[] => {
+    if (!candidate || typeof candidate !== "object") return []
+    const member = candidate as Partial<VerificationAgent>
+    const id = typeof member.id === "string" ? sanitize(member.id) : ""
+    const name = typeof member.name === "string" ? sanitize(member.name).slice(0, 120) : ""
+    if (!id || !name || ids.has(id)) return []
+    ids.add(id)
+    return [{ id, name }]
+  }) : []
+  return { name: typeof row.name === "string" ? sanitize(row.name).slice(0, 120) : "", members }
+}
+
+function storedVerificationCalls(value: unknown): VerificationCall[] {
+  if (!Array.isArray(value)) return []
+  const outcomes: VerificationCallOutcome[] = ["called", "no_answer", "verified", "refused"]
+  return value.flatMap((candidate): VerificationCall[] => {
+    if (!candidate || typeof candidate !== "object") return []
+    const row = candidate as Partial<VerificationCall>
+    const id = typeof row.id === "string" ? sanitize(row.id) : ""
+    const orderId = typeof row.orderId === "string" ? sanitize(row.orderId) : ""
+    const clientId = typeof row.clientId === "string" ? sanitize(row.clientId) : ""
+    const clientName = typeof row.clientName === "string" ? sanitize(row.clientName).slice(0, 120) : ""
+    const timestamp = typeof row.calledAt === "string" ? Date.parse(row.calledAt) : NaN
+    if (!id || !orderId || !clientId || !clientName || !outcomes.includes(row.outcome as VerificationCallOutcome) || !Number.isFinite(timestamp)) return []
+    const agentId = typeof row.agentId === "string" && sanitize(row.agentId) ? sanitize(row.agentId) : null
+    const agentName = typeof row.agentName === "string" && sanitize(row.agentName) ? sanitize(row.agentName).slice(0, 120) : null
+    return [{ id, orderId, clientId, clientName, agentId, agentName, outcome: row.outcome as VerificationCallOutcome, calledAt: new Date(timestamp).toISOString() }]
+  })
+}
+
 export type Auth = { id: string; name: string; email: string; role: Role } | null
 
 type State = {
@@ -52,6 +118,9 @@ type State = {
   stock: StockItem[]
   orders: DeliveryOrder[]
   campaigns: AdCampaign[]
+  calendarEvents: CalendarEvent[]
+  verificationTeam: VerificationTeam
+  verificationCalls: VerificationCall[]
   contracts: Contract[]
   team: TeamMember[]
   tools: SubscriptionTool[]
@@ -96,18 +165,26 @@ type State = {
   addTool: (tool: Omit<SubscriptionTool, "id">) => void
   removeTool: (id: string) => void
 
+  addCalendarEvent: (event: Omit<CalendarEvent, "id">) => void
+  removeCalendarEvent: (id: string) => void
+
+  setVerificationTeamName: (name: string) => void
+  addVerificationAgent: (name: string) => string
+  removeVerificationAgent: (id: string) => void
+  recordVerificationCall: (orderId: string, outcome: VerificationCallOutcome, agentId: string | null) => void
+
   updateSettings: (patch: Partial<Settings>) => void
 }
 
-export type LocalData = Pick<State, "settings" | "projects" | "contacts" | "expenses" | "stock" | "contracts" | "team" | "tools" | "audit" | "orders" | "campaigns">
+export type LocalData = Pick<State, "settings" | "projects" | "contacts" | "expenses" | "stock" | "contracts" | "team" | "tools" | "audit" | "orders" | "campaigns" | "calendarEvents" | "verificationTeam" | "verificationCalls">
 
 function initialData(): LocalData {
   return emptyBusinessData()
 }
 
 export function businessSnapshot(state: State): LocalData {
-  const { settings, projects, contacts, expenses, stock, contracts, team, tools, audit, orders, campaigns } = state
-  return { settings, projects, contacts, expenses, stock, contracts, team, tools, audit, orders, campaigns }
+  const { settings, projects, contacts, expenses, stock, contracts, team, tools, audit, orders, campaigns, calendarEvents, verificationTeam, verificationCalls } = state
+  return { settings, projects, contacts, expenses, stock, contracts, team, tools, audit, orders, campaigns, calendarEvents, verificationTeam, verificationCalls }
 }
 
 const SIGNED_OUT_STORAGE = "mizan.store.v2.signed-out"
@@ -372,6 +449,61 @@ export const useMizan = create<State>()(
         get().log("a supprimé un abonnement", tool.name, "tools", "warning")
       },
 
+      addCalendarEvent: (event) => {
+        const record: CalendarEvent = { ...normalizeCalendarEvent(event), id: uid() }
+        set((s) => ({ calendarEvents: [record, ...s.calendarEvents] }))
+        get().log("a ajouté un élément au calendrier", record.title, "calendar", "info")
+      },
+      removeCalendarEvent: (id) => {
+        const event = get().calendarEvents.find((item) => item.id === id)
+        if (!event) return
+        set((s) => ({ calendarEvents: s.calendarEvents.filter((item) => item.id !== id) }))
+        get().log("a supprimé un élément du calendrier", event.title, "calendar", "warning")
+      },
+
+      setVerificationTeamName: (name) => {
+        const cleanName = sanitize(name).slice(0, 120)
+        if (cleanName === get().verificationTeam.name) return
+        set((s) => ({ verificationTeam: { ...s.verificationTeam, name: cleanName } }))
+        get().log("a modifié le nom de l'équipe de vérification", cleanName || "Équipe sans nom", "verification", "info")
+      },
+      addVerificationAgent: (name) => {
+        const cleanName = sanitize(name).slice(0, 120)
+        if (!cleanName) throw new Error("Le nom du vérificateur est requis.")
+        const agent: VerificationAgent = { id: uid(), name: cleanName }
+        set((s) => ({ verificationTeam: { ...s.verificationTeam, members: [...s.verificationTeam.members, agent] } }))
+        get().log("a ajouté un membre à l'équipe de vérification", cleanName, "verification", "info")
+        return agent.id
+      },
+      removeVerificationAgent: (id) => {
+        const agent = get().verificationTeam.members.find((member) => member.id === id)
+        if (!agent) return
+        set((s) => ({ verificationTeam: { ...s.verificationTeam, members: s.verificationTeam.members.filter((member) => member.id !== id) } }))
+        get().log("a retiré un membre de l'équipe de vérification", agent.name, "verification", "warning")
+      },
+      recordVerificationCall: (orderId, outcome, agentId) => {
+        const outcomes: VerificationCallOutcome[] = ["called", "no_answer", "verified", "refused"]
+        if (!outcomes.includes(outcome)) throw new Error("Le résultat de l'appel est invalide.")
+        const order = get().orders.find((item) => item.id === orderId)
+        if (!order) return
+        const agent = agentId === null ? null : get().verificationTeam.members.find((member) => member.id === agentId)
+        if (agentId !== null && !agent) throw new Error("Ce membre ne fait pas partie de l'équipe de vérification.")
+        const statusByOutcome: Record<VerificationCallOutcome, DeliveryOrder["verificationStatus"]> = {
+          called: "calling", no_answer: "no_answer", verified: "verified", refused: "refused",
+        }
+        const clientName = get().contacts.find((contact) => contact.id === order.clientId)?.name ?? order.clientId
+        const call: VerificationCall = {
+          id: uid(), orderId, clientId: order.clientId, clientName, agentId, agentName: agent?.name ?? null,
+          outcome, calledAt: new Date().toISOString(),
+        }
+        get().updateDeliveryOrder(orderId, {
+          verificationStatus: statusByOutcome[outcome],
+          callAttempts: order.callAttempts + 1,
+        })
+        set((s) => ({ verificationCalls: [call, ...s.verificationCalls] }))
+        get().log("a enregistré un appel de vérification", `${clientName} · ${outcome}`, "verification", outcome === "refused" ? "warning" : "info")
+      },
+
       updateSettings: (patch) => {
         if ("taxRate" in patch && !isTaxRate(patch.taxRate)) throw new Error("Le taux de TVA doit être compris entre 0 et 100 %.")
         if ("logo" in patch) validateLogoDataURL(patch.logo)
@@ -404,6 +536,9 @@ export const useMizan = create<State>()(
           audit: Array.isArray(saved?.audit) ? saved.audit : defaults.audit,
           orders: Array.isArray(saved?.orders) ? saved.orders : defaults.orders,
           campaigns: Array.isArray(saved?.campaigns) ? saved.campaigns : defaults.campaigns,
+          calendarEvents: storedCalendarEvents(saved?.calendarEvents),
+          verificationTeam: storedVerificationTeam(saved?.verificationTeam),
+          verificationCalls: storedVerificationCalls(saved?.verificationCalls),
         }
       },
     },

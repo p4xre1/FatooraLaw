@@ -73,8 +73,8 @@ Sidebar labels come from `src/components/nav.tsx`, grouped into five sections.
 | 3 | Opérations | Clients & Fournisseurs | `/contacts` | `modules/Contacts.tsx` | ✅ LIVE 🖥️ |
 | 4 | Opérations | Achats & Dépenses | `/procurement` | `modules/Procurement.tsx` | ✅ LIVE 🖥️ |
 | 5 | Opérations | Stock & Matériel | `/inventory` | `modules/Inventory.tsx` | ✅ LIVE 🖥️ |
-| 6 | Suivi & Échéances | Calendrier | `/calendar` | `modules/Calendar.tsx` | 🎬 **DEMO** |
-| 7 | Suivi & Échéances | Gestion des Risques | `/risk` | `modules/Risk.tsx` | 🎬 **DEMO** |
+| 6 | Suivi & Échéances | Calendrier | `/calendar` | `modules/Calendar.tsx` | ✅ **PERSONAL EVENTS** |
+| 7 | Suivi & Échéances | Gestion des Risques | `/risk` | `modules/Risk.tsx` · `lib/riskAnalytics.ts` | ✅ LIVE · record-derived operational alerts |
 | 8 | Suivi & Échéances | Abonnements & Outils | `/tools` | `modules/Tools.tsx` | ✅ LIVE 🖥️ |
 | 9 | Conformité | Coffre juridique | `/legal` | `modules/LegalVault.tsx` | ✅ LIVE 🖥️ |
 | 10 | Conformité | Rapports & Fiscalité | `/reports` | `modules/Reports.tsx` | ✅ LIVE 🖥️ |
@@ -350,85 +350,59 @@ entry, so the log is the closest thing to a movement history.
 ---
 
 ### 3.6 Calendrier — `/calendar`
-**File:** `src/modules/Calendar.tsx` (135 lines)
+**File:** `src/modules/Calendar.tsx` · **Records:** `CalendarEvent` in `src/store/types.ts`
 
-🎬 **THIS TOOL IS ENTIRELY HARDCODED DEMO CONTENT.** It does **not** import
-`useMizan` and reads **none** of your data.
+✅ A live, user-managed calendar. It starts empty; the previous fictional September
+2026 tax/payment examples have been removed.
 
-**What is on screen.** A Monday-first month grid for **"Septembre 2026"**
-(`MONTH_LABEL`), laid out with a hardcoded `LEAD = 1` blank cell and
-`DAYS = 30`. The source comment says so plainly:
-*"September 2026 — starts Tuesday (Mon-first grid → 1 leading blank), 30 days."*
+**Create, navigate and remove.** Add an event or deadline with a title, date,
+type and optional note. Every saved item can be removed from the saved-items list
+or its selected-day card. Navigate month by month or jump directly to any month
+and year; selecting a saved item jumps to its month. Past items are labeled
+“Ended” based on their date, without changing or deleting the user's record.
 
-**The seven fixed events** (`const EVENTS`):
+**Exports.** Export the week containing the selected date or the displayed month
+as a PNG image. The matching PDF action opens the browser print dialog with a
+print-ready calendar; choose “Save as PDF” there. Exported calendars include
+past/ended labels and the personal-reminder disclaimer.
 
-| Day | Type | Label | Detail |
-|---|---|---|---|
-| 3 | pay | Hébergement OVH | Prélèvement mensuel — 89 MAD (carte ****4021) |
-| 8 | pay | Adobe Creative Cloud | Paiement récurrent — 299 MAD |
-| 12 | renew | Microsoft 365 Business | Fin de période le 12/09 — 129 MAD/mois |
-| 15 | legal | Acompte IS — 1er versement | DGI, base : résultat fiscal N-1 |
-| 20 | pay | Assurance RC Pro | Échéance trimestrielle — 640 MAD |
-| 23 | legal | Déclaration TVA — T3 2026 | Dépôt avant le 30/09, pénalité 15 % |
-| 27 | renew | Fin abonnement Sage Compta | — |
-
-**Event types** render with distinct dot colours and icons: `renew`
-(Renouvellement, brand blue, RefreshCw) · `pay` (Paiement, amber, CreditCard) ·
-`legal` (Échéance légale, red, Scale). Clicking a day shows that day's events in
-a side panel; an "upcoming" list sorts all events by day.
-
-⚠️ **The chevron arrows do not change month** — there is only one month of data.
-The card mentions a real card number suffix (`****4021`) that belongs to nobody.
-
-**Why this matters.** The marketing homepage sells this exact tool as *feature
-one* — "Un calendrier de time-blocking épuré pour ne jamais manquer une date
-clé" — and `/pricing` gates `calendar` and `calendar_deadlines` behind the
-Essentiel plan. A paying user would land on a fixed September 2026 grid.
-This is the highest-priority honesty gap in the product.
-
-**What would make it live:** `src/lib/calendarDates.ts` already provides
-`calendarDay()`, `dateFromDay()`, `addCalendarDays()`, `daysUntil()` and
-`validDateRange()`, and `useToday()` already refreshes at local midnight. The
-date arithmetic is built and tested; only the binding to real records is
-missing. Subscription expiry dates from `/tools` and contract dates from
-`/legal` are the natural event sources.
-
----
+**Storage and validation.** `addCalendarEvent()` normalizes dates to ISO using
+`calendarDay()` / `dateFromDay()`, sanitizes titles and notes, rejects empty
+titles, impossible dates and unknown types, and logs additions/removals. Records
+are account-scoped in the local business store, survive sign-out/sign-in, and are
+included in local/cloud backups and selected CSV exports. All calendar actions
+and export labels are localized in EN/FR/AR. The calendar notice clarifies that
+user-entered reminders are not official tax or legal advice.
 
 ### 3.7 Gestion des Risques — `/risk`
-**File:** `src/modules/Risk.tsx` (115 lines)
+**Files:** `src/modules/Risk.tsx`, `src/lib/riskAnalytics.ts`, `src/i18n/risk.ts`
 
-🎬 **ALSO ENTIRELY HARDCODED.** No `useMizan` import; the list is a module-level
-`const RISKS`.
+✅ **Record-derived operational alerts.** The screen reads the signed-in
+account's saved calendar events, stock, delivery orders, campaigns, contacts,
+projects and subscriptions. It starts empty when there are no matching records;
+it contains no fictional legal, tax or compliance examples.
 
-**The seven fixed risks**, with level, category and due date:
+**Alert sources and product thresholds:**
 
-| Label | Category | Due | Level |
-|---|---|---|---|
-| Déclaration TVA — T3 2026 | Fiscalité | 30/09/2026 | 🔴 high |
-| Acompte IS — 1er versement | Fiscalité | 15/09/2026 | 🔴 high |
-| Contrat client — PME locale | Contrats | 22/09/2026 | 🟠 medium |
-| Registre du commerce — Modèle J | Registre commercial | — | 🟢 ok |
-| Assurance RC Professionnelle | Contrats | 20/09/2026 | 🟠 medium |
-| CNSS — déclaration mensuelle | Social | — | 🟢 ok |
-| Conformité RGPD / Loi 09-08 | Données personnelles | — | 🟢 ok |
+| Source record | When an alert appears | Urgent vs. attention |
+|---|---|---|
+| User-entered calendar deadline | Within 30 days, or already past | Past = urgent; upcoming = attention |
+| Stock item | Quantity is at or below its saved minimum | Zero quantity = urgent; otherwise attention |
+| Verified/delivered order | `orderEconomics()` reports an unpaid balance | Delivered = urgent; verified, not yet delivered = attention |
+| Project | Active or paused project end date is within 30 days or past | Past = urgent; upcoming = attention |
+| Subscription/tool | Saved expiry is within 30 days or past, with a valid date range | Past = urgent; upcoming = attention |
+| Unverified order | Verification is still open at least 7 days after creation | 14+ days = urgent; 7–13 days = attention |
 
-Each card carries a coloured left rail, a level badge, a category chip and a
-`desc` paragraph citing real Moroccan law — the TVA entry quotes a **15 %
-majoration plus 0.5 % per month**, and the contract entry cites **art. 264 DOC**
-on late-payment penalty clauses.
+These are operational reminders, not legal findings. The date windows and
+verification-age thresholds are product rules, not statutory deadlines. The
+screen does not generate tax dates, interpret laws, or infer compliance. Its
+notice says to add official dates the user wants to track to the calendar.
 
-**Interactions that do work:** three count tiles (high / medium / ok), a
-four-way level filter (Tout / Élevé / Moyen / OK) and a search box matching
-`label + category + desc`. These operate over the fixed array, so the UI is
-fully responsive — it just cannot show *your* risks, and nothing can be added,
-edited or dismissed.
-
-⚠️ **Note the legal-content value here is real even though the data is not.**
-The citations (DGI, TGR, DAMANCOM, CNDP, DOC art. 264, Modèle J) are accurate
-and are the same substance the `/assistant` page promises. Turning this into a
-user-editable register with the same seeded catalogue as *defaults* would be a
-small change with a large payoff.
+The page has localized EN/FR/AR labels and descriptions, urgency counts, a
+three-way urgency filter, and search across each record's name, category and
+derived detail. Amounts use the account currency; dates use the selected UI
+locale. Focused coverage lives in `tests/riskAnalytics.test.ts` and
+`tests/Risk.test.tsx`.
 
 ---
 
@@ -543,8 +517,21 @@ charged once per client on their first verified order — a refused lead is
 never charged product or delivery costs in the per-client totals, and a
 repeat order is never charged the acquisition twice.
 
-**Vérification clients** is the call queue: Nouveau → Appelé → Sans
+**Vérification clients** is the call queue: Nouveau → Appelé / Sans
 réponse → Vérifié / Refusé, then payment (derived from the amount paid).
+Each business can name its verification company/team, add or remove callers,
+and choose the caller responsible for the next call outcomes. Every recorded
+`called`, `no_answer`, `verified` or `refused` outcome is saved with its order,
+client/name snapshot, caller/name snapshot and timestamp; recording the result
+also updates the order status, attempt count and audit trail. The call-history
+table keeps those client-level outcomes visible instead of relying only on the
+latest order status. The performance table counts recorded outcomes by caller
+and reports verified outcomes ÷ recorded calls, with the highest rate shown as
+top performer (unassigned calls are not eligible). Legacy attempt counts that
+have no matching outcome record are shown as untracked, never guessed or
+attributed. Team setup and call records are account-scoped, included in
+backups and available as selectable CSV sections.
+
 The store stamps `firstCallAt` / `verifiedAt` / `paidAt` when a stage
 changes, so the page measures — never asks — how long a client waited for
 the first call and how long they took to convince (first call →

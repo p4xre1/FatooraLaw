@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   ADVANCED_MODULES, PLANS, PLAN_MODULE_ORDER, PLAN_ORDER, activationFor, planGain,
-  planIncludes, planStatus, requiredPlan, type PlanActivation,
+  planBannerKey, planIncludes, planStatus, requiredPlan, type PlanActivation,
 } from "../src/lib/plans"
 import type { ModuleKey } from "../src/store/types"
 
@@ -105,6 +105,21 @@ describe("the plan matrix", () => {
 })
 
 describe("how long a plan runs", () => {
+  it("keeps the dashboard banner dismissal stable through a paid window and changes it at the end", () => {
+    const boost = redeemed("boost", "1M", "2026-03-10")
+    const firstDay = planStatus(boost, "2026-03-10")
+    const middleDay = planStatus(boost, "2026-03-25")
+    const expired = planStatus(boost, "2026-04-11")
+
+    // The remaining-day count changes every morning, but the banner should
+    // stay hidden until the paid window actually closes.
+    expect(firstDay.daysLeft).not.toBe(middleDay.daysLeft)
+    expect(planBannerKey(firstDay)).toBe("active:boost:2026-04-10")
+    expect(planBannerKey(middleDay)).toBe(planBannerKey(firstDay))
+    expect(planBannerKey(expired)).toBe("expired:free:2026-04-10")
+    expect(planBannerKey(expired)).not.toBe(planBannerKey(firstDay))
+  })
+
   it("reports free, active and expired from the same record", () => {
     expect(planStatus(null, "2026-03-10")).toMatchObject({ plan: "free", state: "free", activation: null, daysLeft: null })
 

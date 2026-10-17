@@ -7,6 +7,7 @@ import { useFormats } from "../lib/language/formats"
 import { useTranslation } from "../lib/language/store"
 import { Card, SectionTitle, Btn, Badge, Table, Th, Td, Modal, Field, Input, Select, EmptyState, IconBtn } from "../components/kit"
 import { matchesSegment, rankClients, type ClientStats, type ClientTier } from "../lib/clientRank"
+import { clientOrderLedgers } from "../lib/clientOrderLedger"
 import type { ContactSource, SalesChannel } from "../store/types"
 import { useToday } from "../hooks/useToday"
 
@@ -15,7 +16,8 @@ const SOURCES: ContactSource[] = ["whatsapp", "instagram", "facebook", "google",
 const CHANNELS: SalesChannel[] = ["direct", "whatsapp", "instagram", "facebook", "reseller", "other"]
 
 const FACETS: ("all" | "client" | "supplier")[] = ["all", "client", "supplier"]
-type HistoryKind = "project" | "contract"
+type HistoryKind = "project" | "contract" | "order"
+type HistoryEntry = { ts: string; label: string; amount: number; kind: HistoryKind }
 
 export default function Contacts() {
   const { date, money: formatMoney } = useFormats()
@@ -23,7 +25,7 @@ export default function Contacts() {
   const t = copy.contacts
   const common = copy.common
   const modules = copy.shared.modules
-  const { auth, contacts, projects, contracts, stock, settings, addContact, removeContact, importContacts } = useMizan()
+  const { auth, contacts, projects, contracts, stock, orders, campaigns, settings, addContact, removeContact, importContacts } = useMizan()
   const today = useToday()
   const [q, setQ] = useState("")
   const [facet, setFacet] = useState<(typeof FACETS)[number]>("all")
@@ -54,11 +56,15 @@ export default function Contacts() {
     )
   }, [contacts, q, facet])
 
-  // The ranking (clients only): score + tier per client, computed on the
-  // whole base — a segment then slices it, it does not re-score it.
+  const orderLedgers = useMemo(() => clientOrderLedgers(orders, campaigns), [orders, campaigns])
+  const balanceFor = (contact: Contact) => contact.balance + (contact.type === "client" ? orderLedgers.get(contact.id)?.outstanding ?? 0 : 0)
+  const rankingContacts = useMemo(() => contacts.map((contact) => ({ ...contact, balance: balanceFor(contact) })), [contacts, orderLedgers])
+
+  // The ranking (clients only): confirmed delivery receivables feed the
+  // client's real balance before its score is computed.
   const ranked = useMemo(
-    () => rankClients(contacts, projects, stock, Number(today.slice(0, 4))),
-    [contacts, projects, stock, today],
+    () => rankClients(rankingContacts, projects, stock, Number(today.slice(0, 4))),
+    [rankingContacts, projects, stock, today],
   )
   const statsById = useMemo(() => new Map(ranked.map((r) => [r.contact.id, r])), [ranked])
   const segmentActive = Boolean(segCity || segSource || segChannel || segKeyword)
@@ -86,7 +92,7 @@ export default function Contacts() {
         [t.phone]: c.phone,
         [t.email]: c.email,
         [t.table.city]: c.city,
-        [t.table.balance]: c.balance,
+        [t.table.balance]: balanceFor(c),
       })), "fatorati-contacts.csv")
       setExportError(null)
     } catch { setExportError(t.exportError) }
@@ -122,9 +128,15 @@ export default function Contacts() {
     }
   }
 
-  const historyFor = (id: string) => [
+  const historyFor = (id: string): HistoryEntry[] => [
     ...projects.filter((p) => p.clientId === id).map((p) => ({ ts: p.start, label: p.name, amount: p.budget, kind: "project" as const })),
     ...contracts.filter((c) => c.clientId === id).map((c) => ({ ts: c.date, label: c.title, amount: c.value, kind: "contract" as const })),
+    ...(orderLedgers.get(id)?.entries ?? []).map(({ order, economics }) => ({
+      ts: order.createdAt.slice(0, 10),
+      label: order.items.map((item) => `${item.label} ×${item.qty}`).join(", "),
+      amount: economics.revenue,
+      kind: "order" as const,
+    })),
   ].sort((a, b) => (a.ts < b.ts ? 1 : -1))
 
   return (
@@ -181,7 +193,9 @@ export default function Contacts() {
       <Card>
         {ordered.length === 0 ? <EmptyState icon={<Users className="h-5 w-5" />} text={t.empty} /> : (
           <Table head={<><Th>{t.table.name}</Th><Th>{t.table.type}</Th><Th>{t.rank.score}</Th><Th>{t.table.ice}</Th><Th>{t.table.contact}</Th><Th>{t.table.city}</Th><Th className="text-end">{t.table.balance}</Th><Th /></>}>
-            {ordered.map((c) => (
+            {ordered.map((c) => {
+              const balance = balanceFor(c)
+              return (
               <tr key={c.id} className="transition-colors hover:bg-canvas/60">
                 <Td><button type="button" onClick={() => setLedger(c)} className="font-semibold text-ink hover:text-brand">{c.name}</button></Td>
                 <Td><Badge tone={c.type === "client" ? "brand" : "neutral"}>{t.type[c.type]}</Badge></Td>
@@ -189,7 +203,7 @@ export default function Contacts() {
                 <Td className="tnum text-muted">{c.ice}</Td>
                 <Td className="text-muted">{c.phone}</Td>
                 <Td className="text-muted">{c.city}</Td>
-                <Td className={`tnum text-end font-semibold ${c.balance > 0 ? "text-warn" : c.balance < 0 ? "text-serious" : "text-muted"}`}>{formatMoney(c.balance, settings.currency)}</Td>
+                <Td className={`tnum text-end font-semibold ${balance > 0 ? "text-warn" : balance < 0 ? "text-serious" : "text-muted"}`}>{formatMoney(balance, settings.currency)}</Td>
                 <Td>
                   <div className="flex justify-end gap-0.5">
                     <IconBtn title={t.whatsapp} onClick={() => window.open(`https://wa.me/${c.phone.replace(/[^\d]/g, "")}`, "_blank")}><MessageCircle className="h-4 w-4" /></IconBtn>
@@ -198,7 +212,8 @@ export default function Contacts() {
                   </div>
                 </Td>
               </tr>
-            ))}
+              )
+            })}
           </Table>
         )}
       </Card>
@@ -209,7 +224,11 @@ export default function Contacts() {
             <Info label={t.table.type} value={t.type[ledger.type]} />
             <Info label={t.table.ice} value={ledger.ice} />
             <Info label={t.phone} value={ledger.phone} />
-            <Info label={t.table.balance} value={formatMoney(ledger.balance, settings.currency)} accent={ledger.balance > 0} />
+            <Info label={t.table.balance} value={formatMoney(balanceFor(ledger), settings.currency)} accent={balanceFor(ledger) > 0} />
+            {ledger.type === "client" && <>
+              <Info label={t.orderProfit} value={formatMoney(orderLedgers.get(ledger.id)?.profit ?? 0, settings.currency)} />
+              <Info label={t.orderDebt} value={formatMoney(orderLedgers.get(ledger.id)?.outstanding ?? 0, settings.currency)} accent={(orderLedgers.get(ledger.id)?.outstanding ?? 0) > 0} />
+            </>}
           </div>
           {ledger.type === "client" && statsById.get(ledger.id) && (
             <RankPanel stats={statsById.get(ledger.id)!} currency={settings.currency} />

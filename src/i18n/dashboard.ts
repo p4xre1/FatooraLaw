@@ -23,6 +23,7 @@ import type { Language } from "../lib/language/store.ts"
 const en = {
   title: "Dashboard", subtitle: "Recorded local data · no simulated figures",
   range: (n: number) => `Last ${n} months`, period: "Expense period", widgets: "Widgets", show: "Show",
+  planBanner: "Plan time remaining", planBannerNote: "Hide it until this plan ends; it will return when the plan ends or changes.",
   flow: "Monthly expenses", projects: "Budgets and collections", breakdown: "Breakdown",
   quickProject: "Create a project", quickExpense: "Record an expense", quickContract: "Generate a contract",
   cardBudget: "Project budgets", cardCollected: "Collections entered", cardExpenses: "Approved expenses", cardReceivables: "Client balances to collect",
@@ -47,6 +48,7 @@ type DashboardCopy = typeof en
 const fr: DashboardCopy = {
     title: "Tableau de bord", subtitle: "Données locales enregistrées · aucun chiffre simulé",
     range: (n: number) => `${n} derniers mois`, period: "Période des dépenses", widgets: "Widgets", show: "Afficher",
+    planBanner: "Durée du forfait", planBannerNote: "Masquer jusqu'à la fin du forfait ; le bandeau reviendra à son expiration ou à tout changement.",
     flow: "Dépenses mensuelles", projects: "Budgets et encaissements", breakdown: "Répartition",
     quickProject: "Créer un projet", quickExpense: "Créer une dépense", quickContract: "Générer un contrat",
     cardBudget: "Budgets des projets", cardCollected: "Encaissements saisis", cardExpenses: "Dépenses approuvées", cardReceivables: "Soldes clients à recouvrer",
@@ -69,6 +71,7 @@ const fr: DashboardCopy = {
 const ar: DashboardCopy = {
     title: "لوحة التحكم", subtitle: "بيانات محلية مسجلة · بدون أرقام تجريبية",
     range: (n: number) => `آخر ${n} أشهر`, period: "فترة المصاريف", widgets: "الأدوات", show: "إظهار",
+    planBanner: "الوقت المتبقي في الخطة", planBannerNote: "إخفاؤه حتى نهاية الخطة؛ سيظهر مجدداً عند انتهائها أو تغييرها.",
     flow: "المصاريف الشهرية", projects: "الميزانيات والتحصيلات", breakdown: "التوزيع",
     quickProject: "إنشاء مشروع", quickExpense: "تسجيل مصروف", quickContract: "إنشاء عقد",
     cardBudget: "ميزانيات المشاريع", cardCollected: "التحصيلات المسجلة", cardExpenses: "المصاريف المعتمدة", cardReceivables: "أرصدة العملاء المستحقة",
