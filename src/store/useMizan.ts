@@ -43,6 +43,12 @@ function sanitizeOrder(order: DeliveryOrder): DeliveryOrder {
 
 export type Auth = { id: string; name: string; email: string; role: Role } | null
 
+/** The collections a CSV import can add records to (see lib/dataImport.ts). */
+export const IMPORT_SECTIONS = [
+  "contacts", "projects", "expenses", "stock", "orders", "campaigns", "contracts", "team", "tools",
+] as const
+export type ImportSection = (typeof IMPORT_SECTIONS)[number]
+
 type State = {
   auth: Auth
   settings: Settings
@@ -70,6 +76,8 @@ type State = {
   updateContact: (id: string, patch: Partial<Contact>) => void
   removeContact: (id: string) => void
   importContacts: (rows: Omit<Contact, "id">[]) => void
+  /** Append whole records to several collections at once, or to none at all. */
+  importRecords: (payload: ImportPayload) => void
 
   addExpense: (e: Omit<Expense, "id">) => void
   setExpenseStatus: (id: string, status: Expense["status"]) => void
@@ -100,6 +108,15 @@ type State = {
 }
 
 export type LocalData = Pick<State, "settings" | "projects" | "contacts" | "expenses" | "stock" | "contracts" | "team" | "tools" | "audit" | "orders" | "campaigns">
+
+/** Complete records — ids included — built by a CSV import before it is applied. */
+export type ImportPayload = Partial<Pick<State, ImportSection>>
+
+/** Which module's log an imported section belongs to. */
+const IMPORT_MODULES: Record<ImportSection, ModuleKey> = {
+  contacts: "contacts", projects: "projects", expenses: "procurement", stock: "inventory",
+  orders: "delivery", campaigns: "verification", contracts: "legal", team: "team", tools: "tools",
+}
 
 function initialData(): LocalData {
   return emptyBusinessData()
@@ -202,6 +219,105 @@ export const useMizan = create<State>()(
         const items = rows.map((r) => ({ ...r, id: uid(), name: sanitize(r.name), ice: sanitize(r.ice), phone: sanitize(r.phone), email: sanitize(r.email), city: sanitize(r.city) }))
         set((s) => ({ contacts: [...items, ...s.contacts] }))
         get().log("a importé", `${items.length} contacts (CSV)`, "contacts", "warning")
+      },
+
+      /**
+       * The one door every CSV import comes through.
+       *
+       * Each collection is validated and sanitised *before* a single `set`, so
+       * a bad row 9 000 aborts the whole file instead of half-applying it —
+       * the same contract `importContacts` has always had, extended to every
+       * record type. Records arrive complete (the importer assigns the ids) so
+       * an order can point at a client created by the same file.
+       */
+      importRecords: (payload) => {
+        const contacts = (payload.contacts ?? []).map((c) => {
+          requireBalance(c.balance)
+          const name = sanitize(c.name)
+          if (!name) throw new Error("Le nom du contact est requis.")
+          return { ...c, id: c.id || uid(), name, ice: sanitize(c.ice), phone: sanitize(c.phone), email: sanitize(c.email), city: sanitize(c.city) }
+        })
+        const projects = (payload.projects ?? []).map((p) => {
+          requireAmount(p.budget, "Le budget")
+          requireAmount(p.paid, "Le montant encaissé")
+          requireAmount(p.cost, "Le coût")
+          if (!isTaxRate(p.progress) || !Number.isInteger(p.progress)) throw new Error("L'avancement doit être un entier entre 0 et 100.")
+          if (!validDateRange(p.start, p.end)) throw new Error("Les dates du projet sont invalides.")
+          const name = sanitize(p.name)
+          if (!name) throw new Error("Le nom du projet est requis.")
+          return { ...p, id: p.id || uid(), name, milestones: p.milestones ?? [], equipmentIds: p.equipmentIds ?? [] }
+        })
+        const expenses = (payload.expenses ?? []).map((e) => {
+          requireAmount(e.amount, "Le montant")
+          if (e.taxRate !== undefined && !isTaxRate(e.taxRate)) throw new Error("Le taux de TVA doit être compris entre 0 et 100 %.")
+          if (e.date && calendarDay(e.date) === null) throw new Error("La date de la dépense est invalide.")
+          return { ...e, id: e.id || uid(), category: sanitize(e.category), note: sanitize(e.note), receiptImage: e.receiptImage ?? null }
+        })
+        const stock = (payload.stock ?? []).map((item) => {
+          requireAmount(item.qty, "La quantité", MAX_QUANTITY)
+          requireAmount(item.minQty, "Le seuil minimum", MAX_QUANTITY)
+          if (item.costPrice !== undefined) requireAmount(item.costPrice, "Le prix d'achat")
+          const name = sanitize(item.name)
+          if (!name) throw new Error("Le nom de l'article est requis.")
+          const words = sanitizeKeywords(item.keywords)
+          return { ...item, id: item.id || uid(), name, sku: sanitize(item.sku), unit: sanitize(item.unit), keywords: words.length ? words : undefined }
+        })
+        const campaigns = (payload.campaigns ?? []).map((c) => {
+          requireAmount(c.spend, "La dépense publicitaire")
+          for (const [value, label] of [[c.impressions, "Les impressions"], [c.clicks, "Les clics"], [c.conversions, "Les conversions"], [c.conversionValue, "La valeur des conversions"]] as const) {
+            if (value !== undefined) requireAmount(value, label)
+          }
+          if (!validDateRange(c.startedAt, c.endedAt)) throw new Error("Les dates de campagne sont invalides.")
+          const name = sanitize(c.name)
+          if (!name) throw new Error("Le nom de la campagne est requis.")
+          return { ...c, id: c.id || uid(), name }
+        })
+        const contracts = (payload.contracts ?? []).map((c) => {
+          requireAmount(c.value, "La valeur")
+          if (c.date && calendarDay(c.date) === null) throw new Error("La date du contrat est invalide.")
+          const title = sanitize(c.title)
+          if (!title) throw new Error("L'intitulé du contrat est requis.")
+          return { ...c, id: c.id || uid(), title }
+        })
+        const team = (payload.team ?? []).map((m) => {
+          const name = sanitize(m.name)
+          if (!name) throw new Error("Le nom du membre est requis.")
+          return { ...m, id: m.id || uid(), name, email: sanitize(m.email) }
+        })
+        const tools = (payload.tools ?? []).map((tool) => {
+          requireAmount(tool.cost, "Le coût mensuel")
+          if (!validDateRange(tool.start, tool.expiry)) throw new Error("Les dates sont invalides ou l'expiration précède la date de début.")
+          const name = sanitize(tool.name)
+          if (!name) throw new Error("Le nom de l'outil est requis.")
+          return { ...tool, id: tool.id || uid(), name }
+        })
+        const orders = (payload.orders ?? []).map((o) => sanitizeOrder({ ...o, id: o.id || uid() }))
+        // An order without a client is an orphan the delivery screens cannot
+        // show: it must name a contact that exists, or one this same file adds.
+        const clientIds = new Set([...get().contacts.map((c) => c.id), ...contacts.map((c) => c.id)])
+        for (const order of orders) {
+          if (!clientIds.has(order.clientId)) throw new Error("Le client de la commande est introuvable.")
+        }
+
+        set((s) => ({
+          contacts: [...contacts, ...s.contacts],
+          projects: [...projects, ...s.projects],
+          expenses: [...expenses, ...s.expenses],
+          stock: [...stock, ...s.stock],
+          orders: [...orders, ...s.orders],
+          campaigns: [...campaigns, ...s.campaigns],
+          contracts: [...contracts, ...s.contracts],
+          team: [...s.team, ...team],
+          tools: [...tools, ...s.tools],
+        }))
+
+        const counts: Record<ImportSection, number> = {
+          contacts: contacts.length, projects: projects.length, expenses: expenses.length, stock: stock.length,
+          orders: orders.length, campaigns: campaigns.length, contracts: contracts.length, team: team.length, tools: tools.length,
+        }
+        for (const section of IMPORT_SECTIONS) {
+          if (counts[section]) get().log("a importé", `${counts[section]} ${section} (CSV)`, IMPORT_MODULES[section], "warning")
+        }
       },
 
       addExpense: (e) => {

@@ -16,6 +16,7 @@ import { projects } from "./projects.ts"
 import { procurement } from "./procurement.ts"
 import { reports } from "./reports.ts"
 import { settings } from "./settings.ts"
+import { dataImport } from "./dataImport.ts"
 import { topbar } from "./topbar.ts"
 import { onboarding } from "./onboarding.ts"
 import { localSave } from "./localSave.ts"
@@ -57,6 +58,7 @@ const en = {
   procurement: procurement.en,
   reports: reports.en,
   settings: settings.en,
+  dataImport: dataImport.en,
   topbar: topbar.en,
   onboarding: onboarding.en,
   localSave: localSave.en,
@@ -85,6 +87,7 @@ const fr: typeof en = {
   procurement: procurement.fr,
   reports: reports.fr,
   settings: settings.fr,
+  dataImport: dataImport.fr,
   topbar: topbar.fr,
   onboarding: onboarding.fr,
   localSave: localSave.fr,
@@ -113,6 +116,7 @@ const ar: typeof en = {
   procurement: procurement.ar,
   reports: reports.ar,
   settings: settings.ar,
+  dataImport: dataImport.ar,
   topbar: topbar.ar,
   onboarding: onboarding.ar,
   localSave: localSave.ar,

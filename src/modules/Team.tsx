@@ -3,7 +3,7 @@ import { UserPlus, Mail, ShieldCheck } from "lucide-react"
 import type { Role, TeamMember, ModuleKey } from "../store/types"
 import { useMizan } from "../store/useMizan"
 import { roleTints } from "../lib/mizan"
-import { perms } from "../store/seed"
+import { rolePermissions } from "../lib/permissions"
 import { NAV } from "../components/nav"
 import { useTranslation } from "../lib/language/store"
 import { Card, SectionTitle, Btn, Modal, Field, Input, Select, Toggle } from "../components/kit"
@@ -68,13 +68,6 @@ export default function Team() {
   )
 }
 
-const rolePresets: Record<Role, ModuleKey[]> = {
-  owner: MODULE_KEYS,
-  accountant: ["dashboard", "procurement", "reports", "contacts", "verification"],
-  supervisor: ["dashboard", "projects", "inventory", "delivery", "verification"],
-  assistant: ["dashboard", "contacts"],
-}
-
 function Invite({ onClose, onInvite }: { onClose: () => void; onInvite: (m: Omit<TeamMember, "id">) => void }) {
   const { t: copy } = useTranslation()
   const t = copy.team
@@ -89,7 +82,7 @@ function Invite({ onClose, onInvite }: { onClose: () => void; onInvite: (m: Omit
         <Field label={t.email} hint={t.emailHint}><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.emailPlaceholder} /></Field>
         <Field label={t.role}><Select value={role} onChange={(e) => setRole(e.target.value as Role)}>{ASSIGNABLE_ROLES.map((r) => <option key={r} value={r}>{roles[r]}</option>)}</Select></Field>
         <div className="flex items-center gap-2 rounded-lg bg-brand-50 px-3 py-2 text-[12px] font-medium text-brand-700"><ShieldCheck className="h-4 w-4" /> {t.roleDefaults}</div>
-        <Btn className="w-full" disabled={!name.trim() || !email.trim()} onClick={() => onInvite({ name, email, role, active: true, permissions: perms(rolePresets[role]) })}>
+        <Btn className="w-full" disabled={!name.trim() || !email.trim()} onClick={() => onInvite({ name, email, role, active: true, permissions: rolePermissions(role) })}>
           <UserPlus className="h-4 w-4" /> {t.addMember}
         </Btn>
       </div>
