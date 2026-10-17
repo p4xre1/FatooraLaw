@@ -10,6 +10,7 @@ const en = {
   subtitle: (orders: number, delivered: number) => `${orders} order${orders === 1 ? "" : "s"} · ${delivered} delivered`,
   newOrder: "New order",
   newCampaign: "New campaign",
+  invoiceButton: "Prepare invoice",
   empty: "No orders yet. Create the first order — or add a lead from Vérification clients.",
   kpis: {
     orders: "Orders",
@@ -148,6 +149,7 @@ const fr: DeliveryCopy = {
   subtitle: (orders: number, delivered: number) => `${orders} commande${orders === 1 ? "" : "s"} · ${delivered} livrée${delivered === 1 ? "" : "s"}`,
   newOrder: "Nouvelle commande",
   newCampaign: "Nouvelle campagne",
+  invoiceButton: "Préparer la facture",
   empty: "Aucune commande pour le moment. Créez la première — ou ajoutez un lead depuis Vérification clients.",
   kpis: {
     orders: "Commandes",
@@ -284,6 +286,7 @@ const ar: DeliveryCopy = {
   subtitle: (orders: number, delivered: number) => `${orders} ${orders === 1 ? "طلب" : "طلبات"} · ${delivered} تم توصيلها`,
   newOrder: "طلب جديد",
   newCampaign: "حملة جديدة",
+  invoiceButton: "إعداد الفاتورة",
   empty: "لا توجد طلبات بعد. أنشئ أول طلب — أو أضف عميلاً محتملاً من صفحة التحقق من العملاء.",
   kpis: {
     orders: "الطلبات",

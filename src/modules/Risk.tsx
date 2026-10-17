@@ -1,74 +1,123 @@
 import { useMemo, useState } from "react"
-import { ShieldAlert, ShieldCheck, Bell, AlertTriangle, Search } from "lucide-react"
-import { Card, SectionTitle, Badge, Input } from "../components/kit"
-import { useTranslation } from "../lib/language/store"
+import { AlertTriangle, Bell, Search, ShieldAlert } from "lucide-react"
+import { Badge, Card, Input, SectionTitle } from "../components/kit"
 import { useFormats } from "../lib/language/formats"
-import type { RiskCategory, RiskId, RiskLevel } from "../i18n/risk"
+import { useTranslation } from "../lib/language/store"
+import { buildBusinessRisks, type BusinessRisk, type RiskLevel } from "../lib/riskAnalytics"
+import { todayISO } from "../lib/calendarDates"
+import { useMizan } from "../store/useMizan"
 
-/** Colours and icons are presentation; all risk/status words come from i18n. */
-const LEVEL_META: Record<RiskLevel, { tone: "serious" | "warn" | "good"; rail: string; icon: typeof Bell }> = {
+const LEVEL_META: Record<RiskLevel, { tone: "serious" | "warn"; rail: string; icon: typeof Bell }> = {
   high: { tone: "serious", rail: "bg-serious", icon: AlertTriangle },
   medium: { tone: "warn", rail: "bg-warn", icon: Bell },
-  ok: { tone: "good", rail: "bg-emerald-brand", icon: ShieldCheck },
 }
 
-const LEVELS: RiskLevel[] = ["high", "medium", "ok"]
-const FILTERS: (RiskLevel | "all")[] = ["all", "high", "medium", "ok"]
+const LEVELS: RiskLevel[] = ["high", "medium"]
+const FILTERS: (RiskLevel | "all")[] = ["all", "high", "medium"]
 
-/** Fixed records used only to illustrate the screen; none are user data. */
-const RISKS: { id: RiskId; category: RiskCategory; due: string | null; level: RiskLevel }[] = [
-  { id: "vat", category: "tax", due: "2026-09-30", level: "high" },
-  { id: "corporateTax", category: "tax", due: "2026-09-15", level: "high" },
-  { id: "contract", category: "contracts", due: "2026-09-22", level: "medium" },
-  { id: "registry", category: "registry", due: null, level: "ok" },
-  { id: "insurance", category: "contracts", due: "2026-09-20", level: "medium" },
-  { id: "social", category: "social", due: null, level: "ok" },
-  { id: "privacy", category: "privacy", due: null, level: "ok" },
-]
+function fill(template: string, values: Record<string, string | number>): string {
+  return template.replace(/\{(\w+)\}/g, (_, key: string) => String(values[key] ?? ""))
+}
+
+function descriptionFor(
+  risk: BusinessRisk,
+  copy: ReturnType<typeof useTranslation>["t"]["risk"],
+  money: (value: number, currency?: "MAD" | "EUR" | "USD") => string,
+  currency: "MAD" | "EUR" | "USD",
+): string {
+  const detail = risk.detail
+  switch (detail.kind) {
+    case "deadline": {
+      const message = detail.daysUntil < 0
+        ? fill(copy.detail.deadline.overdue, { days: Math.abs(detail.daysUntil) })
+        : detail.daysUntil === 0
+          ? copy.detail.deadline.today
+          : fill(copy.detail.deadline.upcoming, { days: detail.daysUntil })
+      return detail.note ? `${message} ${fill(copy.detail.deadline.note, { note: detail.note })}` : message
+    }
+    case "stock":
+      return fill(copy.detail.stock, { quantity: detail.quantity, minimum: detail.minimum, unit: detail.unit })
+    case "receivable":
+      return fill(detail.delivered ? copy.detail.receivable.delivered : copy.detail.receivable.pending, {
+        amount: money(detail.outstanding, currency),
+      })
+    case "project":
+      return relativeDate(copy.detail.project, detail.daysUntil)
+    case "subscription":
+      return relativeDate(copy.detail.subscription, detail.daysUntil)
+    case "verification":
+      return fill(copy.detail.verification, { days: detail.daysWaiting })
+  }
+}
+
+function relativeDate(
+  copy: { today: string; upcoming: string } & ({ overdue: string } | { expired: string }),
+  daysUntil: number,
+): string {
+  const past = "overdue" in copy ? copy.overdue : copy.expired
+  if (daysUntil < 0) return fill(past, { days: Math.abs(daysUntil) })
+  if (daysUntil === 0) return copy.today
+  return fill(copy.upcoming, { days: daysUntil })
+}
 
 export default function Risk() {
   const { language, t: copy } = useTranslation()
   const t = copy.risk
   const { modules } = copy.shared
-  const { date } = useFormats()
-  const [q, setQ] = useState("")
+  const { date, money } = useFormats()
+  const [query, setQuery] = useState("")
   const [filter, setFilter] = useState<RiskLevel | "all">("all")
 
+  const calendarEvents = useMizan((state) => state.calendarEvents)
+  const stock = useMizan((state) => state.stock)
+  const orders = useMizan((state) => state.orders)
+  const campaigns = useMizan((state) => state.campaigns)
+  const contacts = useMizan((state) => state.contacts)
+  const projects = useMizan((state) => state.projects)
+  const tools = useMizan((state) => state.tools)
+  const currency = useMizan((state) => state.settings.currency)
+  const today = todayISO()
+
+  const risks = useMemo(
+    () => buildBusinessRisks({ calendarEvents, stock, orders, campaigns, contacts, projects, tools }, today),
+    [calendarEvents, stock, orders, campaigns, contacts, projects, tools, today],
+  )
+  const records = useMemo(
+    () => risks.map((risk) => ({ risk, description: descriptionFor(risk, t, money, currency) })),
+    [risks, t, money, currency],
+  )
   const counts = useMemo(
     () => ({
-      high: RISKS.filter((r) => r.level === "high").length,
-      medium: RISKS.filter((r) => r.level === "medium").length,
-      ok: RISKS.filter((r) => r.level === "ok").length,
+      high: risks.filter((risk) => risk.level === "high").length,
+      medium: risks.filter((risk) => risk.level === "medium").length,
     }),
-    [],
+    [risks],
   )
-
   const list = useMemo(() => {
-    const query = q.trim().toLocaleLowerCase(language)
-    return RISKS.filter((r) => {
-      const item = t.items[r.id]
-      const category = t.categories[r.category]
-      return (
-        (filter === "all" || r.level === filter) &&
-        `${item.label} ${category} ${item.desc}`.toLocaleLowerCase(language).includes(query)
-      )
+    const search = query.trim().toLocaleLowerCase(language)
+    return records.filter(({ risk, description }) => {
+      const category = t.categories[risk.category]
+      return (filter === "all" || risk.level === filter)
+        && `${risk.title} ${category} ${description}`.toLocaleLowerCase(language).includes(search)
     })
-  }, [q, filter, language, t])
+  }, [records, query, filter, language, t])
 
   return (
     <div className="mz-view space-y-5">
       <SectionTitle title={modules.risk} sub={t.subtitle} />
 
       <p role="note" className="rounded-lg border border-warn/20 bg-warn-50 px-3 py-2.5 text-[12.5px] leading-relaxed text-muted">
-        {t.demoNotice}
+        {t.sourceNotice}
       </p>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         {LEVELS.map((level) => {
           const meta = LEVEL_META[level]
           return (
             <Card key={level} className="flex items-center gap-3.5 p-4">
-              <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl text-white ${meta.rail}`}><meta.icon className="h-5 w-5" /></span>
+              <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl text-white ${meta.rail}`}>
+                <meta.icon className="h-5 w-5" />
+              </span>
               <div>
                 <p className="text-[22px] font-bold leading-none text-ink tnum">{counts[level]}</p>
                 <p className="mt-1 text-[12px] text-muted">{t.count[level]}</p>
@@ -94,33 +143,38 @@ export default function Risk() {
         </div>
         <div className="relative w-full sm:w-64">
           <Search className="pointer-events-none absolute start-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-faint" />
-          <Input aria-label={t.searchLabel} value={q} onChange={(e) => setQ(e.target.value)} placeholder={t.searchPlaceholder} className="ps-9" />
+          <Input
+            aria-label={t.searchLabel}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={t.searchPlaceholder}
+            className="ps-9"
+          />
         </div>
       </div>
 
       <div className="space-y-2.5">
-        {list.map((r) => {
-          const meta = LEVEL_META[r.level]
-          const item = t.items[r.id]
+        {list.map(({ risk, description }) => {
+          const meta = LEVEL_META[risk.level]
           return (
-            <Card key={r.id} className="relative overflow-hidden p-4 ps-5">
+            <Card key={risk.id} className="relative overflow-hidden p-4 ps-5">
               <span className={`absolute inset-y-0 start-0 w-1.5 ${meta.rail}`} />
               <div className="flex items-start gap-3">
-                <span className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg ${r.level === "ok" ? "bg-good-50 text-emerald-700" : r.level === "medium" ? "bg-warn-50 text-warn" : "bg-serious-50 text-serious"}`}>
+                <span className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg ${risk.level === "medium" ? "bg-warn-50 text-warn" : "bg-serious-50 text-serious"}`}>
                   <meta.icon className="h-4 w-4" />
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-[14px] font-bold text-ink">{item.label}</h3>
-                      <Badge tone="neutral">{t.categories[r.category]}</Badge>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-[14px] font-bold text-ink">{risk.title}</h3>
+                      <Badge tone="neutral">{t.categories[risk.category]}</Badge>
                     </div>
-                    <Badge tone={meta.tone} dot>{t.levels[r.level]}</Badge>
+                    <Badge tone={meta.tone} dot>{t.levels[risk.level]}</Badge>
                   </div>
-                  <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">{item.desc}</p>
-                  {r.due && (
+                  <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">{description}</p>
+                  {risk.due && (
                     <p className="mt-2 inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-faint">
-                      <ShieldAlert className="h-3.5 w-3.5" /> {t.dueLabel} <span className="text-ink">{date(r.due)}</span>
+                      <ShieldAlert className="h-3.5 w-3.5" /> {t.dateLabel} <span className="text-ink">{date(risk.due)}</span>
                     </p>
                   )}
                 </div>

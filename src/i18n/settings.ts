@@ -80,7 +80,7 @@ const en = {
     encryptedBusy: "Encrypting…",
     sections: {
       settings: "Company settings", projects: "Projects", contacts: "Contacts", expenses: "Expenses", stock: "Stock",
-      orders: "Orders", campaigns: "Ad campaigns", contracts: "Contracts", team: "Team", tools: "Subscriptions & tools", audit: "Audit log",
+      orders: "Orders", campaigns: "Ad campaigns", calendarEvents: "Calendar events & deadlines", verificationTeam: "Verification team", verificationCalls: "Verification call history", contracts: "Contracts", team: "Team", tools: "Subscriptions & tools", audit: "Audit log",
     },
     legacy: "Data from the older version remains on this device. It is not automatically assigned to an account, to avoid sharing another user's data.",
     exportLegacy: "Export the older backup",
@@ -203,7 +203,7 @@ const fr: SettingsCopy = {
     encryptedBusy: "Chiffrement…",
     sections: {
       settings: "Paramètres de l'entreprise", projects: "Projets", contacts: "Contacts", expenses: "Dépenses", stock: "Stock",
-      orders: "Commandes", campaigns: "Campagnes publicitaires", contracts: "Contrats", team: "Équipe", tools: "Abonnements et outils", audit: "Journal d'audit",
+      orders: "Commandes", campaigns: "Campagnes publicitaires", calendarEvents: "Événements et échéances du calendrier", verificationTeam: "Équipe de vérification", verificationCalls: "Historique des appels de vérification", contracts: "Contrats", team: "Équipe", tools: "Abonnements et outils", audit: "Journal d'audit",
     },
     legacy: "Les données de l'ancienne version sont conservées sur cet appareil. Elles ne sont pas attribuées automatiquement à un compte, pour éviter de partager les données d'un autre utilisateur.",
     exportLegacy: "Exporter la sauvegarde ancienne",
@@ -324,7 +324,7 @@ const ar: SettingsCopy = {
     encryptedBusy: "جارٍ التشفير…",
     sections: {
       settings: "إعدادات الشركة", projects: "المشاريع", contacts: "جهات الاتصال", expenses: "المصروفات", stock: "المخزون",
-      orders: "الطلبات", campaigns: "الحملات الإعلانية", contracts: "العقود", team: "الفريق", tools: "الاشتراكات والأدوات", audit: "سجل التدقيق",
+      orders: "الطلبات", campaigns: "الحملات الإعلانية", calendarEvents: "أحداث ومواعيد التقويم", verificationTeam: "فريق التحقق", verificationCalls: "سجل مكالمات التحقق", contracts: "العقود", team: "الفريق", tools: "الاشتراكات والأدوات", audit: "سجل التدقيق",
     },
     legacy: "تظل بيانات الإصدار السابق محفوظة على هذا الجهاز. لا تُنسب تلقائياً إلى حساب، لتجنب مشاركة بيانات مستخدم آخر.",
     exportLegacy: "تصدير النسخة الاحتياطية القديمة",

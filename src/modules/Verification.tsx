@@ -1,15 +1,17 @@
-import { useMemo, useState } from "react"
-import { PhoneCall, Plus, UserCheck } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { Award, FileText, PhoneCall, Plus, Trash2, UserCheck, Users, UserPlus } from "lucide-react"
 import { useMizan } from "../store/useMizan"
 import { useTranslation } from "../lib/language/store"
 import { useFormats } from "../lib/language/formats"
-import { Card, SectionTitle, Btn, Badge, Table, Th, Td, EmptyState } from "../components/kit"
+import { Badge, Btn, Card, EmptyState, Field, Input, Select, SectionTitle, Table, Th, Td } from "../components/kit"
 import CreateOrder from "../components/CreateOrder"
 import { formatDuration } from "./Delivery"
 import {
   clientCosts, funnelSummary, orderRevenue, orderTimings, paymentStatus,
 } from "../lib/deliveryAnalytics"
-import type { VerificationStatus } from "../store/types"
+import type { VerificationCallOutcome, VerificationStatus } from "../store/types"
+import { topVerificationPerformer, verificationPerformance } from "../lib/verificationAnalytics"
+import { requestInvoiceFromOrder } from "../lib/invoiceHandoff"
 
 /**
  * Vérification clients: the call queue. Leads wait to be called, take time
@@ -23,16 +25,39 @@ export default function Verification() {
   const t = copy.verification
   const deliveryCopy = copy.delivery
   const modules = copy.shared.modules
-  const { decimalMoney } = useFormats()
-  const { orders, contacts, campaigns, settings, updateDeliveryOrder } = useMizan()
+  const { decimalMoney, dateTime, number } = useFormats()
+  const {
+    auth, orders, contacts, campaigns, settings, updateDeliveryOrder,
+    verificationTeam, verificationCalls, setVerificationTeamName,
+    addVerificationAgent, removeVerificationAgent, recordVerificationCall,
+  } = useMizan()
   const [creating, setCreating] = useState(false)
+  const [teamNameDraft, setTeamNameDraft] = useState(verificationTeam.name)
+  const [memberNameDraft, setMemberNameDraft] = useState("")
+  const [activeAgentId, setActiveAgentId] = useState("")
   const cur = settings.currency
+
+  useEffect(() => setTeamNameDraft(verificationTeam.name), [verificationTeam.name])
+  useEffect(() => {
+    setActiveAgentId((current) => current && verificationTeam.members.some((member) => member.id === current)
+      ? current
+      : verificationTeam.members[0]?.id ?? "")
+  }, [verificationTeam.members])
 
   const now = useMemo(() => new Date().toISOString(), [])
   const funnel = useMemo(() => funnelSummary(orders, campaigns, now), [orders, campaigns, now])
   const costs = useMemo(() => clientCosts(contacts, orders, campaigns), [contacts, orders, campaigns])
+  const performance = useMemo(() => verificationPerformance(verificationTeam.members, verificationCalls), [verificationTeam.members, verificationCalls])
+  const topPerformer = useMemo(() => topVerificationPerformer(performance), [performance])
+  const callHistory = useMemo(() => [...verificationCalls].sort((a, b) => b.calledAt.localeCompare(a.calledAt)), [verificationCalls])
+  const untrackedCalls = useMemo(() => {
+    const loggedByOrder = new Map<string, number>()
+    for (const call of verificationCalls) loggedByOrder.set(call.orderId, (loggedByOrder.get(call.orderId) ?? 0) + 1)
+    return orders.reduce((sum, order) => sum + Math.max(0, order.callAttempts - (loggedByOrder.get(order.id) ?? 0)), 0)
+  }, [orders, verificationCalls])
   const clientOf = (id: string) => contacts.find((c) => c.id === id)
   const campaignOf = (id: string | null) => campaigns.find((c) => c.id === id)
+  const logCall = (orderId: string, outcome: VerificationCallOutcome) => recordVerificationCall(orderId, outcome, activeAgentId || null)
 
   // The queue works the oldest waiting lead first; settled clients sink.
   const queue = useMemo(() => {
@@ -57,6 +82,98 @@ export default function Verification() {
         sub={t.subtitle}
         action={<Btn onClick={() => setCreating(true)}><Plus className="h-4 w-4" /> {t.newLead}</Btn>}
       />
+
+      <Card className="p-4 sm:p-5">
+        <header className="mb-2 flex items-center gap-2">
+          <Users className="h-4 w-4 text-brand" />
+          <h2 className="text-[14px] font-bold">{t.team.title}</h2>
+        </header>
+        <p className="mb-4 text-[12px] leading-relaxed text-muted">{t.team.setupHint}</p>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <form className="flex items-end gap-2" onSubmit={(event) => { event.preventDefault(); setVerificationTeamName(teamNameDraft) }}>
+            <Field label={t.team.nameLabel}>
+              <Input maxLength={120} value={teamNameDraft} onChange={(event) => setTeamNameDraft(event.target.value)} placeholder={t.team.namePlaceholder} />
+            </Field>
+            <Btn type="submit" disabled={teamNameDraft.trim() === verificationTeam.name}>{t.team.saveName}</Btn>
+          </form>
+          <form className="flex items-end gap-2" onSubmit={(event) => {
+            event.preventDefault()
+            if (!memberNameDraft.trim()) return
+            const memberId = addVerificationAgent(memberNameDraft)
+            setActiveAgentId(memberId)
+            setMemberNameDraft("")
+          }}>
+            <Field label={t.team.memberName}>
+              <Input maxLength={120} value={memberNameDraft} onChange={(event) => setMemberNameDraft(event.target.value)} placeholder={t.team.memberPlaceholder} />
+            </Field>
+            <Btn type="submit" disabled={!memberNameDraft.trim()}><UserPlus className="h-4 w-4" /> {t.team.addMember}</Btn>
+          </form>
+        </div>
+        <div className="mt-4 grid gap-4 border-t border-line pt-4 lg:grid-cols-[minmax(0,1fr)_minmax(240px,320px)]">
+          <div>
+            {verificationTeam.members.length ? (
+              <ul className="flex flex-wrap gap-2">
+                {verificationTeam.members.map((member) => (
+                  <li key={member.id} className="flex items-center gap-2 rounded-lg border border-line bg-canvas/60 px-2.5 py-1.5 text-[12px] font-medium text-ink">
+                    <span>{member.name}</span>
+                    <button type="button" onClick={() => removeVerificationAgent(member.id)} aria-label={t.team.removeMemberAria(member.name)} title={t.team.removeMember} className="rounded p-0.5 text-muted hover:bg-serious-50 hover:text-serious">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-[12px] text-muted">{t.team.noMembers}</p>
+            )}
+          </div>
+          <Field label={t.team.activeAgent} hint={t.team.callerHint}>
+            <Select value={activeAgentId} onChange={(event) => setActiveAgentId(event.target.value)}>
+              <option value="">{t.team.unassigned}</option>
+              {verificationTeam.members.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
+            </Select>
+          </Field>
+        </div>
+      </Card>
+
+      <Card>
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3.5">
+          <div className="flex items-center gap-2">
+            <Award className="h-4 w-4 text-brand" />
+            <h2 className="text-[14px] font-bold">{t.team.performanceTitle}</h2>
+          </div>
+          <p className="text-[11px] text-muted">{t.team.rateHelp}</p>
+        </header>
+        <div className="grid gap-3 border-b border-line p-4 sm:grid-cols-2">
+          <div className="rounded-lg bg-brand-50 p-3">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-muted">{t.team.topRate}</p>
+            {topPerformer ? (
+              <div className="mt-1 flex flex-wrap items-baseline justify-between gap-2">
+                <span className="font-semibold text-ink">{topPerformer.name ?? t.team.unassigned}</span>
+                <span className="tnum text-[20px] font-bold text-brand">{number(Math.round((topPerformer.rate ?? 0) * 100))}%</span>
+                <span className="w-full text-[11px] text-muted">{t.team.topMeta(topPerformer.verified, topPerformer.calls)}</span>
+              </div>
+            ) : <p className="mt-1 text-[12px] text-muted">{t.team.noTopRate}</p>}
+          </div>
+          {untrackedCalls > 0 && <p className="self-center text-[12px] leading-relaxed text-muted">{t.team.previousAttempts(untrackedCalls)}</p>}
+        </div>
+        {performance.length ? (
+          <Table head={<><Th>{t.team.member}</Th><Th className="text-end">{t.team.calls}</Th><Th className="text-end">{t.team.called}</Th><Th className="text-end">{t.team.noAnswer}</Th><Th className="text-end">{t.team.verified}</Th><Th className="text-end">{t.team.refused}</Th><Th className="text-end">{t.team.rate}</Th></>}>
+            {performance.map((row) => (
+              <tr key={row.agentId ?? "unassigned"}>
+                <Td className="font-semibold">{row.name ?? t.team.unassigned}</Td>
+                <Td className="tnum text-end">{number(row.calls)}</Td>
+                <Td className="tnum text-end">{number(row.called)}</Td>
+                <Td className="tnum text-end">{number(row.noAnswer)}</Td>
+                <Td className="tnum text-end">{number(row.verified)}</Td>
+                <Td className="tnum text-end">{number(row.refused)}</Td>
+                <Td className="tnum text-end font-semibold">{row.rate === null ? "—" : `${number(Math.round(row.rate * 100))}%`}</Td>
+              </tr>
+            ))}
+          </Table>
+        ) : (
+          <EmptyState icon={<Users className="h-5 w-5" />} text={t.team.performanceEmpty} />
+        )}
+      </Card>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         {kpis.map((kpi) => (
@@ -109,7 +226,7 @@ export default function Verification() {
                     <button
                       type="button"
                       className="block w-full text-[11px] font-semibold text-brand hover:underline"
-                      onClick={() => updateDeliveryOrder(order.id, { callAttempts: order.callAttempts + 1, verificationStatus: status === "new" ? "calling" : status })}
+                      onClick={() => logCall(order.id, "called")}
                     >
                       {t.queue.addAttempt}
                     </button>
@@ -118,12 +235,13 @@ export default function Verification() {
                     <Badge tone={status === "verified" ? "good" : status === "refused" ? "serious" : status === "new" ? "neutral" : "warn"}>
                       {deliveryCopy.verification[status]}
                     </Badge>
+                    {status === "verified" && <Btn size="sm" variant="outline" className="mt-1.5" onClick={() => requestInvoiceFromOrder(order, client, settings.taxRate, auth?.id)}><FileText className="h-3.5 w-3.5" /> {deliveryCopy.invoiceButton}</Btn>}
                     {status !== "verified" && status !== "refused" && (
                       <span className="mt-1.5 flex flex-wrap gap-1">
-                        <Btn size="sm" variant="outline" onClick={() => updateDeliveryOrder(order.id, { verificationStatus: "calling", callAttempts: order.callAttempts + 1 })}>{t.queue.call}</Btn>
-                        <Btn size="sm" variant="outline" onClick={() => updateDeliveryOrder(order.id, { verificationStatus: "no_answer", callAttempts: order.callAttempts + 1 })}>{t.queue.noAnswer}</Btn>
-                        <Btn size="sm" onClick={() => updateDeliveryOrder(order.id, { verificationStatus: "verified" })}>{t.queue.verify}</Btn>
-                        <Btn size="sm" variant="danger" onClick={() => updateDeliveryOrder(order.id, { verificationStatus: "refused" })}>{t.queue.refuse}</Btn>
+                        <Btn size="sm" variant="outline" onClick={() => logCall(order.id, "called")}>{t.queue.call}</Btn>
+                        <Btn size="sm" variant="outline" onClick={() => logCall(order.id, "no_answer")}>{t.queue.noAnswer}</Btn>
+                        <Btn size="sm" onClick={() => logCall(order.id, "verified")}>{t.queue.verify}</Btn>
+                        <Btn size="sm" variant="danger" onClick={() => logCall(order.id, "refused")}>{t.queue.refuse}</Btn>
                       </span>
                     )}
                   </Td>
@@ -140,6 +258,34 @@ export default function Verification() {
                       </Btn>
                     )}
                   </Td>
+                </tr>
+              )
+            })}
+          </Table>
+        )}
+      </Card>
+
+      <Card>
+        <header className="flex items-center gap-2 border-b border-line px-5 py-3.5">
+          <PhoneCall className="h-4 w-4 text-brand" />
+          <h2 className="text-[14px] font-bold">{t.team.historyTitle}</h2>
+        </header>
+        {callHistory.length === 0 ? (
+          <EmptyState icon={<PhoneCall className="h-5 w-5" />} text={t.team.historyEmpty} />
+        ) : (
+          <Table head={<><Th>{t.team.historyClient}</Th><Th>{t.team.historyAgent}</Th><Th>{t.team.historyOutcome}</Th><Th>{t.team.historyDate}</Th></>}>
+            {callHistory.map((call) => {
+              const result = call.outcome === "called" ? t.team.called : deliveryCopy.verification[call.outcome]
+              const tone = call.outcome === "verified" ? "good" : call.outcome === "refused" ? "serious" : call.outcome === "no_answer" ? "warn" : "brand"
+              return (
+                <tr key={call.id}>
+                  <Td>
+                    <span className="font-semibold text-ink">{call.clientName}</span>
+                    <span className="block text-[11px] text-muted">{clientOf(call.clientId)?.phone || "—"}</span>
+                  </Td>
+                  <Td>{call.agentName ?? t.team.unassigned}</Td>
+                  <Td><Badge tone={tone}>{result}</Badge></Td>
+                  <Td className="tnum text-[12px]">{dateTime(Date.parse(call.calledAt))}</Td>
                 </tr>
               )
             })}

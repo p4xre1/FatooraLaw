@@ -111,7 +111,8 @@ export function Progress({ value, tone: tn = "brand" }: { value: number; tone?: 
   )
 }
 
-export function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+/** An on/off switch. Supply `label` when the visible text is outside its button content. */
+export function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label?: string }) {
   return (
     <button
       type="button"
@@ -119,6 +120,7 @@ export function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: 
       className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${checked ? "bg-brand" : "bg-line-strong"}`}
       role="switch"
       aria-checked={checked}
+      aria-label={label}
     >
       <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${checked ? "start-[18px]" : "start-0.5"}`} />
     </button>

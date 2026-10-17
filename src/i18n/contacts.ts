@@ -48,9 +48,12 @@ const en = {
   csvColumns: "Name, Type, ICE, Phone, Email, City, Balance",
   history: "Financial history",
   noTransactions: "No transactions.",
+  orderProfit: "Profit from confirmed orders",
+  orderDebt: "Unpaid order debit",
   historyKind: {
     project: "Project",
     contract: "Contract",
+    order: "Delivery order",
   },
   rank: {
     title: "Ranking",
@@ -126,9 +129,12 @@ const fr: ContactsCopy = {
   csvColumns: "Nom, Type, ICE, Téléphone, E-mail, Ville, Solde",
   history: "Historique financier",
   noTransactions: "Aucune transaction.",
+  orderProfit: "Profit des commandes confirmées",
+  orderDebt: "Débit des commandes impayées",
   historyKind: {
     project: "Projet",
     contract: "Contrat",
+    order: "Commande de livraison",
   },
   rank: {
     title: "Classement",
@@ -202,9 +208,12 @@ const ar: ContactsCopy = {
   csvColumns: "الاسم، النوع، ICE، الهاتف، البريد الإلكتروني، المدينة، الرصيد",
   history: "السجل المالي",
   noTransactions: "لا توجد معاملات.",
+  orderProfit: "ربح الطلبات المؤكدة",
+  orderDebt: "المبلغ المدين للطلبات غير المدفوعة",
   historyKind: {
     project: "مشروع",
     contract: "عقد",
+    order: "طلب توصيل",
   },
   rank: {
     title: "الترتيب",

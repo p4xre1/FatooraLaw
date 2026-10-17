@@ -6,6 +6,7 @@ import { useFormats } from "../lib/language/formats"
 import { planPurchaseLink, type PlanActivation } from "../lib/plans"
 import { effectivePrices } from "../lib/planCatalog"
 import { usePlan, usePlanStatus } from "../store/usePlan"
+import { usePlanBanner } from "../store/useDashboardPrefs"
 import { usePlanCatalog } from "../store/usePlanCatalog"
 import { useMizan } from "../store/useMizan"
 import { useToday } from "../hooks/useToday"
@@ -13,8 +14,9 @@ import { useToday } from "../hooks/useToday"
 /**
  * The account's own plan, in the two places the owner asked to see it:
  *
- *  - `PlanStrip` — the dashboard, so the client always knows how long is left
- *    without going looking for it ("BUT ON DASH U CAN SEE IT").
+ *  - `PlanStrip` — the dashboard, visible by default so the client can see how
+ *    long is left at a glance; the Widgets panel can hide it until the current
+ *    plan window ends.
  *  - `PlanActivationCard` — Paramètres, where the code received over WhatsApp is
  *    typed in.
  *
@@ -48,7 +50,7 @@ export function usePlanLine(): {
   if (status.state === "stopped") {
     return { tone: "warn", text: t.stopped(name), activation: status.activation, label: name }
   }
-  const until = date(status.activation.expiresAt)
+  const until = date(status.endsAt ?? status.activation.expiresAt)
   const left = status.daysLeft
   if (status.state === "expired" || (left !== null && left < 0)) {
     return { tone: "warn", text: t.expired(name, until), activation: status.activation, label: name }
@@ -130,8 +132,24 @@ function showSalesMessage(state: string, daysLeft: number | null): boolean {
   return (daysLeft ?? 0) <= 7
 }
 
-/** The dashboard strip: which plan, how long is left, and the way to extend it. */
+/**
+ * The dashboard strip: which plan, how long is left, and the way to extend it.
+ *
+ * The client can hide it from the dashboard's Widgets panel, and the choice is
+ * remembered for the plan window it was made in (`store/useDashboardPrefs.ts`):
+ * "hide it until the end" means until the end of *this* window, so the strip is
+ * back once the window has expired, is extended, or is frozen by the owner —
+ * each of which is a new sentence worth reading. Hiding it is a display choice,
+ * not a change of plan: the rail, the locks and Paramètres keep saying what the
+ * account is on.
+ */
 export function PlanStrip({ onNavigate }: { onNavigate?: () => void }) {
+  const { visible } = usePlanBanner()
+  if (!visible) return null
+  return <PlanStripCard onNavigate={onNavigate} />
+}
+
+function PlanStripCard({ onNavigate }: { onNavigate?: () => void }) {
   const { t: copy } = useTranslation()
   const t = copy.plans
   const { tone, text, label } = usePlanLine()

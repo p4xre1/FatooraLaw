@@ -69,6 +69,29 @@ it("renders contact actions, table labels and the form in English", () => {
   expect(screen.getByRole("option", { name: "Supplier" })).toBeDefined()
 })
 
+it("includes verified delivery profit and unpaid order debit in the client balance and ledger", () => {
+  act(() => useLanguageStore.getState().setLanguage("en"))
+  act(() => useMizan.setState({
+    contacts: [{ id: "client-debt", name: "Salma Bennani", type: "client", ice: "ICE-1", phone: "", email: "", city: "Tangier", balance: 20 }],
+    projects: [], contracts: [], stock: [], campaigns: [],
+    orders: [{
+      id: "order-debt", clientId: "client-debt", campaignId: null, createdAt: "2026-10-17T09:00:00.000Z",
+      items: [{ stockId: null, label: "Huile d'argan", qty: 1, unitPrice: 200, unitCost: 20 }],
+      deliveryCost: 10, packagingCost: 0, otherFees: 0, amountPaid: 80, verificationStatus: "verified", deliveryStatus: "pending",
+      callAttempts: 0, firstCallAt: null, verifiedAt: "2026-10-17T09:05:00.000Z", paidAt: null, shippedAt: null, deliveredAt: null,
+      stockDeducted: false, notes: "",
+    }],
+  }))
+  render(<Contacts />)
+
+  expect(screen.getByText(/140/)).toBeDefined()
+  fireEvent.click(screen.getByRole("button", { name: "Salma Bennani" }))
+  expect(screen.getByText("Profit from confirmed orders")).toBeDefined()
+  expect(screen.getByText("Unpaid order debit")).toBeDefined()
+  expect(screen.getByText(/Huile d'argan/)).toBeDefined()
+  expect(useMizan.getState().contacts[0].balance).toBe(20)
+})
+
 it("translates the contact form into Arabic and applies RTL", () => {
   act(() => useLanguageStore.getState().setLanguage("ar"))
   act(() => useMizan.setState({ contacts: [{ id: "contact-1", name: "Example Client", type: "client", ice: "ICE-1", phone: "+212600000000", email: "client@example.ma", city: "Tangier", balance: 120 }] }))

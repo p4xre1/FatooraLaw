@@ -7,6 +7,7 @@ import { dashboardData, dashboardMoney } from "../lib/dashboardData"
 import { useToday } from "../hooks/useToday"
 import { Card, SectionTitle, Btn, Badge, Toggle } from "../components/kit"
 import { PlanStrip } from "../components/PlanStatus"
+import { usePlanBanner } from "../store/useDashboardPrefs"
 import { AreaChart, BarChart, Donut, Legend } from "../components/charts"
 import { useTranslation } from "../lib/language/store"
 
@@ -28,6 +29,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (m: ModuleKey) =
   // button, which let the dashboard and the rail disagree.
   const { language, dir, tag, t: copy } = useTranslation()
   const t = copy.dashboard
+  const banner = usePlanBanner()
   const m = useMemo(() => dashboardData({ projects, expenses, contacts, audit }, range, today, t.months), [projects, expenses, contacts, audit, range, today, t])
   const cur = settings.currency
   // Stored category labels are French; a category the user created has no
@@ -72,13 +74,21 @@ export default function Dashboard({ onNavigate }: { onNavigate: (m: ModuleKey) =
         <Btn variant="ghost" size="sm" onClick={() => setShowCustomize((value) => !value)}><SlidersHorizontal className="h-4 w-4" />{t.widgets}</Btn>
       </div>} />
 
-      {/* How long this account's plan runs — always visible, never a widget the
-          client has to switch on. */}
+      {/* How long this account's plan runs. Shown by default and kept out of the
+          charts' reach — but the client can hide it from the Widgets panel below
+          until the plan window ends (see `store/useDashboardPrefs.ts`). */}
       <PlanStrip onNavigate={() => onNavigate("settings")} />
 
-      {showCustomize && <Card className="flex flex-wrap items-center gap-6 px-5 py-3.5">
+      {showCustomize && <Card className="flex flex-wrap items-center gap-x-6 gap-y-3 px-5 py-3.5">
         <span className="text-[12px] font-semibold uppercase tracking-wide text-muted">{t.show}</span>
-        {([["flow", t.flow], ["projects", t.projects], ["breakdown", t.breakdown]] as const).map(([key, label]) => <label key={key} className="flex items-center gap-2 text-[13px] font-medium"><Toggle checked={widgets[key]} onChange={(value) => setWidgets((all) => ({ ...all, [key]: value }))} />{label}</label>)}
+        {([["flow", t.flow], ["projects", t.projects], ["breakdown", t.breakdown]] as const).map(([key, label]) => <label key={key} className="flex items-center gap-2 text-[13px] font-medium"><Toggle checked={widgets[key]} label={label} onChange={(value) => setWidgets((all) => ({ ...all, [key]: value }))} />{label}</label>)}
+        {/* The plan banner switches off only for the window it was hidden in:
+            the note says so, because a toggle that comes back by itself would
+            otherwise look broken. */}
+        <span className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-2 text-[13px] font-medium"><Toggle checked={banner.visible} label={t.planBanner} onChange={(value) => (value ? banner.show() : banner.hide())} />{t.planBanner}</label>
+          <span className="text-[11.5px] text-faint">{t.planBannerNote}</span>
+        </span>
       </Card>}
 
       <div className="grid gap-3 sm:grid-cols-3">{quick.map((action) => <button key={action.label} onClick={() => onNavigate(action.to)} className="group flex items-center gap-3 rounded-xl border border-line bg-surface p-4 text-start shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"><span className={`grid h-10 w-10 place-items-center rounded-lg ${action.tint}`}><action.icon className="h-5 w-5" /></span><span className="text-[13.5px] font-semibold">{action.label}</span></button>)}</div>

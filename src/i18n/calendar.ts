@@ -1,169 +1,141 @@
 import type { Language } from "../lib/language/store.ts"
 
-/**
- * Static calendar examples.
- *
- * `modules.calendar` supplies the title shared by the rail and page title; this
- * section owns the words and the sample data shown inside the calendar.
- *
- * The calendar is currently a fixed demo, not a view of the account's deadlines
- * (`docs/FEATURES_AND_TOOLS.md §3.6`): the month and seven entries are constants
- * in the component, the arrows do not navigate, and none of it reads local
- * records. The prominent note below is therefore part of the translation, not
- * optional fine print. Translating these into three languages without saying
- * they were fictional would make the demo easier to mistake for a real tax
- * reminder. A fake card suffix has been removed rather than localised.
- *
- * The deadlines and tax references are sample copy, not legal advice; the notice
- * directs the reader to official sources. The values here are translated as
- * written, not silently changed or certified.
- */
+/** User-managed calendar events and reminders. */
 const en = {
-  subtitle: "Legal deadlines, contract renewals and subscription payments",
-  demoNotice:
-    "Fictional demonstration data: these examples do not come from your records and are not real deadlines. Verify tax obligations and dates with official sources.",
+  subtitle: "Add and manage the dates you want to remember",
+  notice: "These are your personal reminders, not official tax or legal advice. Verify formal deadlines with the relevant authority.",
   previousMonth: "Previous month",
   nextMonth: "Next month",
-  upcomingTitle: "Sample deadlines",
-  selectedDate: (day: string, month: string) => `${month} ${day}`,
-  selectDay: (day: string, month: string) => `Show events for ${month} ${day}`,
+  thisMonth: "This month",
+  selectMonth: "Choose month and year",
+  addEvent: "Add event",
+  modalTitle: "Add an event or deadline",
+  titleLabel: "Title",
+  titlePlaceholder: "e.g. Pay supplier invoice",
+  dateLabel: "Date",
+  kindLabel: "Type",
   types: {
-    renew: "Renewal",
-    pay: "Payment",
-    legal: "Legal deadline",
+    event: "Event",
+    deadline: "Deadline",
   },
-  events: {
-    ovh: {
-      label: "OVH hosting",
-      detail: "Monthly charge — 89 MAD.",
-    },
-    adobe: {
-      label: "Adobe Creative Cloud",
-      detail: "Recurring payment — 299 MAD. Automatic renewal.",
-    },
-    microsoft: {
-      label: "Microsoft 365 Business",
-      detail: "Period ended on 12/09 — 129 MAD/month if renewed.",
-    },
-    corporateTax: {
-      label: "Corporate income-tax instalment — first payment",
-      detail:
-        "Payable to the General Tax Directorate (DGI). Based on the previous financial year's taxable result.",
-    },
-    insurance: {
-      label: "Professional liability insurance",
-      detail: "Quarterly due date — 640 MAD.",
-    },
-    vat: {
-      label: "VAT return — Q3 2026",
-      detail:
-        "File by 30/09 (DGI). The example states a 15% late-filing surcharge.",
-    },
-    sage: {
-      label: "Sage Compta",
-      detail: "Annual subscription due — 450 MAD/month.",
-    },
-  },
+  noteLabel: "Details (optional)",
+  notePlaceholder: "Add a note or useful details",
+  save: "Save to calendar",
+  listTitle: "Your events and deadlines",
+  selectedDate: (date: string) => `Events on ${date}`,
+  selectDay: (date: string) => `Show events for ${date}`,
+  empty: "Nothing added yet. Add your own events and deadlines to get started.",
+  emptyDate: "Nothing planned for this date.",
+  remove: "Remove",
+  removeAria: (title: string) => `Remove ${title}`,
+  addError: "Could not save this calendar item. Check its title and date.",
+  ended: "Ended",
+  selectedWeek: "Week of selected date",
+  shownMonth: "Displayed month",
+  weekPdf: "Week PDF",
+  weekPng: "Week PNG",
+  monthPdf: "Month PDF",
+  monthPng: "Month PNG",
+  pdfHint: "The print dialog lets you choose Save as PDF.",
+  exportingImage: "Creating PNG…",
+  exportError: "Could not create the calendar image. Please try again.",
+  printSubtitle: "Personal calendar · Events and deadlines",
+  weekTitle: (start: string, end: string) => `Week · ${start} – ${end}`,
+  monthTitle: (month: string) => `Month · ${month}`,
+  today: "Today",
+  moreEvents: (count: number) => `+${count} more`,
 }
 
-type CalendarCopy = typeof en
+export type CalendarCopy = typeof en
 
 const fr: CalendarCopy = {
-  subtitle:
-    "Échéances légales, renouvellements de contrats et paiements d'abonnements",
-  demoNotice:
-    "Données de démonstration fictives : ces exemples ne viennent pas de vos dossiers et ne sont pas de vraies échéances. Vérifiez les obligations fiscales et les dates auprès des sources officielles.",
+  subtitle: "Ajoutez et gérez les dates que vous souhaitez retenir",
+  notice: "Ce sont vos rappels personnels, pas des conseils fiscaux ou juridiques officiels. Vérifiez les échéances formelles auprès de l'administration concernée.",
   previousMonth: "Mois précédent",
   nextMonth: "Mois suivant",
-  upcomingTitle: "Échéances de démonstration",
-  selectedDate: (day: string, month: string) => `${day} ${month}`,
-  selectDay: (day: string, month: string) =>
-    `Afficher les événements du ${day} ${month}`,
+  thisMonth: "Ce mois-ci",
+  selectMonth: "Choisir le mois et l'année",
+  addEvent: "Ajouter un événement",
+  modalTitle: "Ajouter un événement ou une échéance",
+  titleLabel: "Titre",
+  titlePlaceholder: "Ex. : payer une facture fournisseur",
+  dateLabel: "Date",
+  kindLabel: "Type",
   types: {
-    renew: "Renouvellement",
-    pay: "Paiement",
-    legal: "Échéance légale",
+    event: "Événement",
+    deadline: "Échéance",
   },
-  events: {
-    ovh: {
-      label: "Hébergement OVH",
-      detail: "Prélèvement mensuel — 89 MAD.",
-    },
-    adobe: {
-      label: "Adobe Creative Cloud",
-      detail: "Paiement récurrent — 299 MAD. Renouvellement automatique.",
-    },
-    microsoft: {
-      label: "Microsoft 365 Business",
-      detail: "Fin de période le 12/09 — 129 MAD/mois si reconduit.",
-    },
-    corporateTax: {
-      label: "Acompte IS — 1er versement",
-      detail:
-        "À régler auprès de la Direction générale des impôts (DGI), sur la base du résultat fiscal de l'exercice précédent.",
-    },
-    insurance: {
-      label: "Assurance responsabilité civile professionnelle",
-      detail: "Échéance trimestrielle — 640 MAD.",
-    },
-    vat: {
-      label: "Déclaration TVA — T3 2026",
-      detail:
-        "Dépôt avant le 30/09 (DGI). L'exemple mentionne une majoration de 15 % en cas de retard.",
-    },
-    sage: {
-      label: "Sage Compta",
-      detail: "Abonnement annuel à échéance — 450 MAD/mois.",
-    },
-  },
+  noteLabel: "Détails (facultatif)",
+  notePlaceholder: "Ajouter une note ou des détails utiles",
+  save: "Enregistrer au calendrier",
+  listTitle: "Mes événements et échéances",
+  selectedDate: (date: string) => `Événements du ${date}`,
+  selectDay: (date: string) => `Afficher les événements du ${date}`,
+  empty: "Rien n'est encore ajouté. Ajoutez les événements et échéances que vous souhaitez suivre.",
+  emptyDate: "Rien n'est prévu à cette date.",
+  remove: "Supprimer",
+  removeAria: (title: string) => `Supprimer ${title}`,
+  addError: "Impossible d'enregistrer cet élément. Vérifiez son titre et sa date.",
+  ended: "Passé",
+  selectedWeek: "Semaine de la date sélectionnée",
+  shownMonth: "Mois affiché",
+  weekPdf: "PDF de la semaine",
+  weekPng: "Image de la semaine",
+  monthPdf: "PDF du mois",
+  monthPng: "Image du mois",
+  pdfHint: "La fenêtre d'impression permet de choisir « Enregistrer au format PDF ».",
+  exportingImage: "Création du PNG…",
+  exportError: "Impossible de créer l'image du calendrier. Réessayez.",
+  printSubtitle: "Calendrier personnel · Événements et échéances",
+  weekTitle: (start: string, end: string) => `Semaine · du ${start} au ${end}`,
+  monthTitle: (month: string) => `Mois · ${month}`,
+  today: "Aujourd'hui",
+  moreEvents: (count: number) => `+${count} autres`,
 }
 
 const ar: CalendarCopy = {
-  subtitle: "الاستحقاقات القانونية وتجديد العقود ومدفوعات الاشتراكات",
-  demoNotice:
-    "بيانات تجريبية افتراضية: هذه الأمثلة ليست مستمدة من سجلاتك ولا تمثل مواعيد حقيقية. تحقق من الالتزامات الضريبية والتواريخ لدى المصادر الرسمية.",
+  subtitle: "أضف التواريخ التي تريد تذكّرها وأدرها",
+  notice: "هذه تذكيراتك الشخصية وليست استشارة ضريبية أو قانونية رسمية. تحقق من المواعيد الرسمية لدى الجهة المعنية.",
   previousMonth: "الشهر السابق",
   nextMonth: "الشهر التالي",
-  upcomingTitle: "مواعيد توضيحية",
-  selectedDate: (day: string, month: string) => `${day} ${month}`,
-  selectDay: (day: string, month: string) => `عرض أحداث ${day} ${month}`,
+  thisMonth: "هذا الشهر",
+  selectMonth: "اختر الشهر والسنة",
+  addEvent: "إضافة حدث",
+  modalTitle: "إضافة حدث أو موعد نهائي",
+  titleLabel: "العنوان",
+  titlePlaceholder: "مثال: أداء فاتورة المورد",
+  dateLabel: "التاريخ",
+  kindLabel: "النوع",
   types: {
-    renew: "تجديد",
-    pay: "دفع",
-    legal: "استحقاق قانوني",
+    event: "حدث",
+    deadline: "موعد نهائي",
   },
-  events: {
-    ovh: {
-      label: "استضافة OVH",
-      detail: "اقتطاع شهري — 89 MAD.",
-    },
-    adobe: {
-      label: "Adobe Creative Cloud",
-      detail: "دفعة دورية — 299 MAD. تجديد تلقائي.",
-    },
-    microsoft: {
-      label: "Microsoft 365 Business",
-      detail: "انتهت الفترة في 12/09 — 129 MAD شهرياً عند التجديد.",
-    },
-    corporateTax: {
-      label: "دفعة الضريبة على الشركات — الدفعة الأولى",
-      detail:
-        "تُسدّد لدى المديرية العامة للضرائب (DGI)، على أساس النتيجة الضريبية للسنة المالية السابقة.",
-    },
-    insurance: {
-      label: "تأمين المسؤولية المدنية المهنية",
-      detail: "استحقاق فصلي — 640 MAD.",
-    },
-    vat: {
-      label: "إقرار الضريبة على القيمة المضافة — الربع الثالث 2026",
-      detail:
-        "يُودع قبل 30/09 (DGI). يذكر هذا المثال زيادة بنسبة 15٪ عند التأخير.",
-    },
-    sage: {
-      label: "Sage Compta",
-      detail: "موعد استحقاق الاشتراك السنوي — 450 MAD شهرياً.",
-    },
-  },
+  noteLabel: "تفاصيل (اختياري)",
+  notePlaceholder: "أضف ملاحظة أو تفاصيل مفيدة",
+  save: "حفظ في التقويم",
+  listTitle: "أحداثي ومواعيدي النهائية",
+  selectedDate: (date: string) => `أحداث ${date}`,
+  selectDay: (date: string) => `عرض أحداث ${date}`,
+  empty: "لم تضف شيئاً بعد. أضف الأحداث والمواعيد التي تريد متابعتها للبدء.",
+  emptyDate: "لا توجد مواعيد في هذا اليوم.",
+  remove: "حذف",
+  removeAria: (title: string) => `حذف ${title}`,
+  addError: "تعذر حفظ هذا العنصر. تحقق من العنوان والتاريخ.",
+  ended: "انتهى",
+  selectedWeek: "أسبوع التاريخ المحدد",
+  shownMonth: "الشهر المعروض",
+  weekPdf: "PDF الأسبوع",
+  weekPng: "صورة الأسبوع",
+  monthPdf: "PDF الشهر",
+  monthPng: "صورة الشهر",
+  pdfHint: "تتيح نافذة الطباعة اختيار الحفظ بصيغة PDF.",
+  exportingImage: "جارٍ إنشاء صورة PNG…",
+  exportError: "تعذر إنشاء صورة التقويم. حاول مرة أخرى.",
+  printSubtitle: "تقويم شخصي · الأحداث والمواعيد النهائية",
+  weekTitle: (start: string, end: string) => `الأسبوع · من ${start} إلى ${end}`,
+  monthTitle: (month: string) => `الشهر · ${month}`,
+  today: "اليوم",
+  moreEvents: (count: number) => `+${count} أخرى`,
 }
 
 export const calendar: Record<Language, CalendarCopy> = { ar, en, fr }

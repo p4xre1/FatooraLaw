@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react"
-import { BarChart3, Boxes, Megaphone, Plus, Target, Truck } from "lucide-react"
+import { BarChart3, Boxes, FileText, Megaphone, Plus, Target, Truck } from "lucide-react"
 import { useMizan } from "../store/useMizan"
 import { parseAdReportCsv, adMetrics, type AdReportParseResult } from "../lib/adsAnalytics"
 import { useTranslation } from "../lib/language/store"
 import { useFormats } from "../lib/language/formats"
 import { Card, SectionTitle, Btn, Badge, Table, Th, Td, Modal, Field, Input, Select, EmptyState } from "../components/kit"
 import CreateOrder from "../components/CreateOrder"
+import { requestInvoiceFromOrder } from "../lib/invoiceHandoff"
 import {
   adAllocations, audienceInsights, campaignPerformance, funnelSummary, orderEconomics,
   paymentStatus, stockAvailability, type AudienceSegment,
@@ -33,7 +34,7 @@ export default function Delivery() {
   const a = copy.ads
   const modules = copy.shared.modules
   const { decimalMoney } = useFormats()
-  const { orders, campaigns, contacts, stock, settings, updateDeliveryOrder } = useMizan()
+  const { auth, orders, campaigns, contacts, stock, settings, updateDeliveryOrder } = useMizan()
   const [creating, setCreating] = useState(false)
   const [campaignOpen, setCampaignOpen] = useState(false)
   const [adImportOpen, setAdImportOpen] = useState(false)
@@ -121,7 +122,10 @@ export default function Delivery() {
                   </Td>
                   <Td className="tnum text-end font-semibold">{decimalMoney(eco.totalCost, cur)}</Td>
                   <Td className={`tnum text-end font-semibold ${eco.profit < 0 ? "text-serious" : "text-emerald-700"}`}>{decimalMoney(eco.profit, cur)}</Td>
-                  <Td><Badge tone={order.verificationStatus === "verified" ? "good" : order.verificationStatus === "refused" ? "serious" : "warn"}>{t.verification[order.verificationStatus]}</Badge></Td>
+                  <Td>
+                    <Badge tone={order.verificationStatus === "verified" ? "good" : order.verificationStatus === "refused" ? "serious" : "warn"}>{t.verification[order.verificationStatus]}</Badge>
+                    {order.verificationStatus === "verified" && <Btn size="sm" variant="outline" className="mt-1.5" onClick={() => requestInvoiceFromOrder(order, client, settings.taxRate, auth?.id)}><FileText className="h-3.5 w-3.5" /> {t.invoiceButton}</Btn>}
+                  </Td>
                   <Td><Badge tone={pay === "paid" ? "good" : pay === "partial" ? "warn" : "neutral"}>{t.payment[pay]}</Badge></Td>
                   <Td>
                     <Select

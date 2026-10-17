@@ -2,6 +2,9 @@ import { act, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, expect, it, vi } from "vitest"
 import Dashboard from "../src/modules/Dashboard"
 import { accountStorageKey, useMizan } from "../src/store/useMizan"
+import { usePlan } from "../src/store/usePlan"
+import { DASHBOARD_PREFS_STORAGE_KEY, useDashboardPrefs } from "../src/store/useDashboardPrefs"
+import { codeFor } from "../src/lib/planCodes"
 import { seedAudit, seedContacts, seedExpenses, seedProjects } from "../src/store/seed"
 import { useLanguageStore } from "../src/lib/language/store"
 
@@ -16,6 +19,9 @@ beforeEach(() => {
   vi.useFakeTimers()
   vi.setSystemTime(new Date(2026, 9, 12, 12))
   useMizan.getState().signOut()
+  usePlan.getState().forAccount(null)
+  usePlan.getState().clear()
+  useDashboardPrefs.getState().reset()
   localStorage.clear()
 })
 
@@ -29,6 +35,38 @@ it("starts new accounts without made-up business records, identities, subscripti
   expect(state.settings.ice).toBe("")
   expect(state.audit).toHaveLength(1)
   expect(state.audit[0].actor).toBe("Real user")
+})
+
+it("lets the Widgets panel hide the BOOST time banner through its end date", async () => {
+  useMizan.setState({ projects: [], contacts: [], expenses: [], audit: [] })
+  usePlan.getState().forAccount("dashboard-banner-test")
+  const code = await codeFor("boost", "1M")
+  await act(async () => {
+    await usePlan.getState().redeem(code, "2026-10-12")
+  })
+
+  render(<Dashboard onNavigate={() => {}} />)
+  expect(screen.getByText(/BOOST est actif jusqu'au/)).toBeDefined()
+  fireEvent.click(screen.getByRole("button", { name: "Widgets" }))
+  const bannerToggle = screen.getByRole("switch", { name: "Durée du forfait" })
+  expect(bannerToggle.getAttribute("aria-checked")).toBe("true")
+
+  fireEvent.click(bannerToggle)
+  expect(screen.queryByText(/BOOST est actif jusqu'au/)).toBeNull()
+  expect(bannerToggle.getAttribute("aria-checked")).toBe("false")
+  expect(useDashboardPrefs.getState().planBannerOffFor).toBe("active:boost:2026-11-12")
+  expect(JSON.parse(localStorage.getItem(DASHBOARD_PREFS_STORAGE_KEY)!).state.planBannerOffFor).toBe("active:boost:2026-11-12")
+  expect(screen.getByText(/Masquer jusqu'à la fin du forfait/)).toBeDefined()
+
+  // The dashboard refreshes its date when the tab resumes. The BOOST window is
+  // still considered active on its final day and the hidden banner returns on
+  // the next local day, when it becomes expired.
+  act(() => {
+    vi.setSystemTime(new Date(2026, 10, 13, 12))
+    document.dispatchEvent(new Event("visibilitychange"))
+  })
+  expect(screen.getByText(/Votre BOOST a pris fin le/)).toBeDefined()
+  expect(screen.getByRole("switch", { name: "Durée du forfait" }).getAttribute("aria-checked")).toBe("true")
 })
 
 it("shows honest empty states without fake percentages, bank balances or chart data", () => {

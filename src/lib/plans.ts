@@ -134,6 +134,12 @@ export type PlanStatus = {
    */
   state: "free" | "active" | "expired" | "frozen" | "stopped"
   activation: PlanActivation | null
+  /**
+   * The date the window in force closes — the CMS ledger's date when the owner
+   * moved it (unfreezing shifts it), the activation's own otherwise. Null on
+   * FREE, which has no window. `daysLeft` is counted from here.
+   */
+  endsAt: string | null
   /** Whole days left, 0 on the last day, null when nothing is active. */
   daysLeft: number | null
 }
@@ -166,20 +172,40 @@ export function periodEnd(start: string, period: PlanPeriod): string {
  * account never had one.
  */
 export function planStatus(activation: PlanActivation | null, today = todayISO(), control?: PlanControl | null): PlanStatus {
-  if (!activation) return { plan: "free", state: "free", activation: null, daysLeft: null }
+  if (!activation) return { plan: "free", state: "free", activation: null, endsAt: null, daysLeft: null }
   const endsAt = control?.endsAt ?? activation.expiresAt
   // Stopped is terminal in a way expiry is not: the plan name is kept on the
   // activation so the UI can say *what* was stopped.
-  if (control?.status === "stopped") return { plan: "free", state: "stopped", activation, daysLeft: 0 }
+  if (control?.status === "stopped") return { plan: "free", state: "stopped", activation, endsAt, daysLeft: 0 }
   if (control?.status === "frozen") {
     // The clock is paused: what remains is what remained on the freeze day.
     const left = daysUntil(endsAt, control.frozenAt ?? today)
-    return { plan: "free", state: "frozen", activation, daysLeft: left === null ? null : Math.max(0, left) }
+    return { plan: "free", state: "frozen", activation, endsAt, daysLeft: left === null ? null : Math.max(0, left) }
   }
   const left = daysUntil(endsAt, today)
-  if (left === null) return { plan: "free", state: "free", activation: null, daysLeft: null }
-  if (left < 0) return { plan: "free", state: "expired", activation, daysLeft: 0 }
-  return { plan: activation.plan, state: "active", activation, daysLeft: left }
+  if (left === null) return { plan: "free", state: "free", activation: null, endsAt: null, daysLeft: null }
+  if (left < 0) return { plan: "free", state: "expired", activation, endsAt, daysLeft: 0 }
+  return { plan: activation.plan, state: "active", activation, endsAt, daysLeft: left }
+}
+
+/**
+ * What a "hide it until the end" choice on the dashboard's plan banner is
+ * remembered against: the state, the plan and the date its window closes.
+ *
+ * Deliberately *not* the days left — that number changes every morning, and a
+ * banner hidden "until the end of my BOOST year" would be back the next day.
+ * Anything that changes the sentence on the banner changes this key instead, so
+ * the banner returns on its own exactly when it is worth reading again:
+ *
+ *   - the window closes (`active` → `expired`) — renewal time;
+ *   - a code extends or replaces it — a new end date, a new banner;
+ *   - the owner freezes or stops the subscription from the CMS.
+ *
+ * On FREE there is no window, so the key is the state alone and the banner
+ * returns the day a code is redeemed.
+ */
+export function planBannerKey(status: PlanStatus): string {
+  return `${status.state}:${status.plan}:${status.endsAt ?? ""}`
 }
 
 /**
